@@ -46,21 +46,41 @@ Phase 1: Python Fundamentals
 ## Foundational Phases
 
 ### Phase 0: Conceptual Foundations
-**Directory:** `Phase_0/` *(Complete)*
+**Directory:** `Phase_0/`
 
-Conceptual foundations of programming: inputs, outputs, state, instructions, conditions, loops, functions, data, errors, and time. Language-agnostic mental models that transfer across all technologies.
+Language-agnostic mental models of how programs and real systems behave over time. Focuses on inputs, state, instructions, conditions, repetition, failure, time, and complexity—so later phases feel like translation, not new theory.
 
 **Chapters:**
 - **Chapter 0.1:** What Programs Actually Are (`Chapter_0.1_What_Programs_Are.md`)
+  - Programs as systems that transform inputs and state into outputs and new state.
 - **Chapter 0.2:** Conditions and Branching (`Chapter_0.2_Conditions_and_Branching.md`)
+  - True/false tests, branching paths, and how state determines execution flow.
 - **Chapter 0.3:** Loops and Repetition (`Chapter_0.3_Loops_and_Repetition.md`)
+  - Re-execution over time, termination, drift, and why automation lives in loops.
 - **Chapter 0.4:** Functions and Behavior (`Chapter_0.4_Functions_and_Behavior.md`)
+  - Naming behavior, isolating responsibilities, and structuring actions humans can reason about.
 - **Chapter 0.5:** Data and Variables (`Chapter_0.5_Data_and_Variables.md`)
+  - State, naming, meaning, and how programs remember and manipulate information.
 - **Chapter 0.6:** Errors and Failure (`Chapter_0.6_Errors_and_Failure.md`)
+  - Assumptions breaking, failure modes, and designing systems that fail safely.
 - **Chapter 0.7:** Time and State Changes (`Chapter_0.7_Time_and_State_Changes.md`)
-- **Chapter 0.8:** Consolidation (`Chapter_0.8_Consolidation.md`)
-
-**Key Concepts:** State management, control flow, deterministic execution, error handling, temporal reasoning
+  - Time as an implicit input: delays, cooldowns, staleness, and temporal logic.
+- **Chapter 0.8:** Boundaries (`Chapter_0.8_Boundaries.md`)
+  - Where systems touch the outside world and why validation lives at the edges.
+- **Chapter 0.9:** Invariants (`Chapter_0.9_Invariants.md`)
+  - Rules that must always hold true to keep systems stable over time.
+- **Chapter 0.10:** Failure Is Normal (`Chapter_0.10_Failure_Is_Normal.md`)
+  - Designing for missing data, partial truth, and degraded operation.
+- **Chapter 0.11:** Abstraction and Naming (`Chapter_0.11_Abstraction_and_Naming.md`)
+  - Compressing reality into names without hiding meaning or truth.
+- **Chapter 0.12:** Observation vs Action (`Chapter_0.12_Observation_vs_Action.md`)
+  - Separating reading state from changing state to avoid feedback loops.
+- **Chapter 0.13:** Complexity Grows Sideways (`Chapter_0.13_Complexity_Grows_Sideways.md`)
+  - Why small systems become hard quickly and how branching multiplies paths.
+- **Chapter 0.14:** Putting the System Together (`Chapter_0.14_Putting_the_System_Together.md`)
+  - How all Phase 0 concepts interlock into one coherent execution model.
+- **Chapter 0.15:** Phase 0 Consolidation (`Chapter_0.15_Phase_0_Consolidation.md`)
+  - Unified mental model and readiness check before moving into Python.
 
 ---
 

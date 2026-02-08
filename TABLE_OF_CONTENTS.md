@@ -85,30 +85,106 @@ Language-agnostic mental models of how programs and real systems behave over tim
 ---
 
 ### Phase 1: Python Fundamentals Expressed in Code
-**Directory:** `Phase_1/` *(Complete)*
+**Directory:** `Phase_1/` *(In Progress)*
 
-Python as the anchor language for expressing fundamental programming concepts. Deep dive into variables, types, functions, scope, collections, I/O, modules, and program structure.
+Python as the anchor language for expressing fundamental programming concepts. Each chapter maps Phase 0 mental models to Python syntax, building from basic execution to complete living systems.
 
 **Chapters:**
-- **Chapter 1.1:** Python Core Concepts (`Chapter_1.1_Python_Core_Concepts.md`)
-  - Programs, variables, conditions, loops, functions, I/O, errors, living systems
-- **Chapter 1.2:** Python Advanced Patterns (`Chapter_1.2_Python_Advanced_Patterns.md`)
-  - Scope, data types, collections, truthiness, type conversion, dictionaries, persistence, modules, design patterns
+- **Chapter 1.1:** What a Python Program Is (`Chapter_1.1_What_a_Python_Program_Is.md`)
+  - Python as interpreter, execution order, runtime world, scripts vs systems. Bridge to Phase 0.1.
+- **Chapter 1.2:** State and Variables (`Chapter_1.2_State_and_Variables.md`)
+  - Names as state holders, reassignment, state change over time, meaning-driven naming. Bridge to Phase 0.5.
+- **Chapter 1.3:** Conditions and Branching (`Chapter_1.3_Conditions_and_Branching.md`)
+  - if/elif/else, boolean logic, comparison and logical operators, branching paths. Bridge to Phase 0.2.
+- **Chapter 1.4:** Loops and Repetition (`Chapter_1.4_Loops_and_Repetition.md`)
+  - while vs for, loop lifecycles, termination conditions, time.sleep() for living systems. Bridge to Phase 0.3 and 0.7.
+- **Chapter 1.5:** Functions as Named Behavior (`Chapter_1.5_Functions_as_Named_Behavior.md`)
+  - def vs call, parameters, return values, isolation, contracts. Bridge to Phase 0.4 and 0.11.
+- **Chapter 1.6:** Scope and Isolation (`Chapter_1.6_Scope_and_Isolation.md`)
+  - Local vs global scope, lifetime of variables, controlled access to state. Bridge to Phase 0.11.
+- **Chapter 1.7:** Data Types as Categories of Meaning (`Chapter_1.7_Data_Types_as_Categories_of_Meaning.md`)
+  - int, float, bool, str, None, type() function, category errors, modeling reality. Bridge to Phase 0.5.
+- **Chapter 1.8:** Truthiness and Explicit Checks (`Chapter_1.8_Truthiness_and_Explicit_Checks.md`)
+  - Truthy vs falsy values, None handling, safe condition design, zero vs absence. Bridge to Phase 0.8 and 0.10.
+- **Chapter 1.9:** Collections and Grouped State (`Chapter_1.9_Collections_and_Grouped_State.md`)
+  - lists, tuples, sets, indexing, slicing, iteration, mutability, managing many things safely. Bridge to Phase 0.13.
+- **Chapter 1.10:** Dictionaries and Named Systems (`Chapter_1.10_Dictionaries_and_Named_Systems.md`)
+  - Key/value state, .get() vs [] for missing keys, iteration patterns, nested systems, configuration models. Bridge to Phase 0.10.
+- **Chapter 1.11:** Input, Output, and Program Boundaries (`Chapter_1.11_Input_Output_and_Boundaries.md`)
+  - print vs input, file I/O, type conversion at boundaries, observation vs mutation, edge-only I/O. Bridge to Phase 0.8.
+- **Chapter 1.12:** Errors, Exceptions, and Reality Failing (`Chapter_1.12_Errors_and_Exceptions.md`)
+  - Syntax vs runtime errors, tracebacks, try/except/else/finally, exception types, raise, failure as signal. Bridge to Phase 0.6 and 0.10.
+- **Chapter 1.13:** Persistence and Remembering State (`Chapter_1.13_Persistence_and_State.md`)
+  - Files, JSON snapshots, file paths, restoring state after restart. Bridge to Phase 0.7.
+- **Chapter 1.14:** Modules and Program Structure (`Chapter_1.14_Modules_and_Program_Structure.md`)
+  - Imports, multi-file systems, standard library, separation of concerns, execution control. Bridge to Phase 0.11.
+- **Chapter 1.15:** Assembling a Living Python System (`Chapter_1.15_Assembling_a_Living_System.md`)
+  - Main loops, data flow, observation vs action, Phase 0 model expressed in code. Bridge to Phase 0.14 and 0.15.
 
-**Key Concepts:** Python syntax, data types, function design, module organization, input validation, persistence
+**Key Concepts:** Python syntax, data types, function design, scope, module organization, input validation, persistence, living systems
 
-**Artifacts:** System State Monitor, Sensor Snapshot Logger
+**Artifacts:** System State Monitor, Sensor Snapshot Logger, Complete Battery Monitor System
 
 ---
 
 ## Section A: Web Development & Networking
 
 ### Phase 2: HTTP Protocol Fundamentals
-**File:** `Phase_2_HTTP.md`
+**Directory:** `Phase_2/`
 
-Understanding how web communication actually works at the protocol level. Requests, responses, headers, methods, status codes, and the client-server model. Essential foundation for all web technologies.
+Understanding how web communication works at the protocol level. Requests, responses, headers, methods, status codes, and the client-server model. Essential foundation for all web technologies.
 
-**Key Concepts:** HTTP methods, request/response cycle, headers, status codes, stateless protocols, REST principles
+**Chapters:**
+- **Chapter 2.1:** Client-Server and the Request-Response Model (`Chapter_2.1_Client_Server_and_Request_Response.md`)
+  - Client, server, and the request-response cycle. Requests initiate, responses terminate; servers cannot speak without a prior request. Bridge to WebSockets, long polling, SSE.
+- **Chapter 2.2:** Where HTTP Lives (`Chapter_2.2_Where_HTTP_Lives.md`)
+  - HTTP rides on TCP, not raw packets. What the transport guarantees, what it does not, and what happens when connections fail. Phase 0.7 for networking.
+- **Chapter 2.3:** What HTTP Is (`Chapter_2.3_What_HTTP_Is.md`)
+  - HTTP as a text protocol, request-response structure, statelessness, and how it runs over connections.
+- **Chapter 2.4:** HTTP as Text (`Chapter_2.4_HTTP_as_Text.md`)
+  - Line-based format, CRLF, and how requests and responses are structured as text.
+- **Chapter 2.5:** Statelessness and Connection Lifecycle (`Chapter_2.5_Statelessness_and_Connection_Lifecycle.md`)
+  - Statelessness, connection reuse, keep-alive, and request independence.
+- **Chapter 2.6:** Request Structure (`Chapter_2.6_Request_Structure.md`)
+  - Method, path, version, headers, and body. How a request is built and sent.
+- **Chapter 2.7:** The Request Line (`Chapter_2.7_The_Request_Line.md`)
+  - Method, path, and HTTP version. How the first line carries core information.
+- **Chapter 2.8:** Response Structure (`Chapter_2.8_Response_Structure.md`)
+  - Status line, headers, and body. How a response is structured and delivered.
+- **Chapter 2.9:** Status Codes Overview (`Chapter_2.9_Status_Codes_Overview.md`)
+  - 2xx, 3xx, 4xx, 5xx. What each range means and how servers and clients use them.
+- **Chapter 2.10:** Status Codes: Success and Redirects (`Chapter_2.10_Status_Codes_Success_and_Redirects.md`)
+  - 200, 201, 204, 301, 302, 304. When and why to use each.
+- **Chapter 2.11:** Status Codes: Client and Server Errors (`Chapter_2.11_Status_Codes_Client_and_Server_Errors.md`)
+  - 400, 401, 403, 404, 500, 502, 503. How errors are signaled and interpreted.
+- **Chapter 2.12:** Errors vs Failures (`Chapter_2.12_Errors_vs_Failures.md`)
+  - HTTP error responses vs network failures, timeouts, partial responses. "Server responded with an error" vs "request never completed." Bridge to Phase 0.6 and 0.10.
+- **Chapter 2.13:** HTTP Methods (`Chapter_2.13_HTTP_Methods.md`)
+  - GET, POST, PUT, PATCH, DELETE. Semantics and when to use each.
+- **Chapter 2.14:** Safety and Idempotency (`Chapter_2.14_Safety_and_Idempotency.md`)
+  - Safe vs unsafe methods, idempotent vs non-idempotent. Why retries matter and why POST is special. Phase 0-style invariants applied to HTTP.
+- **Chapter 2.15:** Headers: Overview and Purpose (`Chapter_2.15_Headers_Overview.md`)
+  - Role of headers, request vs response headers, and common patterns.
+- **Chapter 2.16:** Headers: Content and Type (`Chapter_2.16_Headers_Content_and_Type.md`)
+  - Content-Type, Content-Length, Accept. Encoding and negotiation.
+- **Chapter 2.17:** Headers: Caching and Control (`Chapter_2.17_Headers_Caching_and_Control.md`)
+  - Cache-Control, ETag, If-None-Match. How caching is communicated.
+- **Chapter 2.18:** URLs, Paths, and Query Strings (`Chapter_2.18_URLs_Paths_and_Query_Strings.md`)
+  - URL structure, path segments, query parameters, and encoding.
+- **Chapter 2.19:** Request Bodies and Content Types (`Chapter_2.19_Request_Bodies_and_Content_Types.md`)
+  - When bodies are used, JSON vs form data, and Content-Type in practice.
+- **Chapter 2.20:** Cookies and Session State (`Chapter_2.20_Cookies_and_Session_State.md`)
+  - Set-Cookie, Cookie, statelessness, and how sessions are implemented.
+- **Chapter 2.21:** Trust Boundaries and Security Surfaces (`Chapter_2.21_Trust_Boundaries_and_Security_Surfaces.md`)
+  - Headers as input, cookies as ambient authority, why servers don't trust clients. No crypto or TLS—just boundaries and risk.
+- **Chapter 2.22:** Redirects and the Location Header (`Chapter_2.22_Redirects_and_Location.md`)
+  - 3xx redirects, Location header, and when and how redirects are used.
+- **Chapter 2.23:** REST Principles (`Chapter_2.23_REST_Principles.md`)
+  - Resources, representations, HTTP as application protocol, RESTful design. Descriptive and mechanical, not dogmatic.
+- **Chapter 2.24:** Seeing HTTP in the Wild (`Chapter_2.24_Seeing_HTTP_in_the_Wild.md`)
+  - Observation, inspection, reality vs diagrams. curl, browser DevTools, and debugging.
+
+**Key Concepts:** HTTP methods, request/response cycle, headers, status codes, stateless protocols, safety and idempotency, errors vs failures, trust boundaries, REST principles
 
 **Prerequisites:** Phase 0, Phase 1
 

@@ -63,6 +63,15 @@ These rules apply to all instructional content in this project.
 - Preserve filenames when possible
 - Expanded content must still respect the ~15-minute target
 
+### Homestead Example Variety
+
+- **Diversify examples** — Don't rely only on battery/generator. Use a range of homestead contexts:
+  - **Animals:** chickens, pigs, cows; different animal buildings (coop, pig barn, cow barn)
+  - **Solar:** production monitoring, logging, panel status
+  - **Electric poultry net:** fence voltage, energizer status, fence-down alerts
+  - **ESP32/MicroPython:** coop controller, sensor nodes in animal buildings, MQTT publishers, DHT22 temp/humidity, Wi‑Fi connect/reconnect
+- Battery and generator remain useful models for state and automation; alternate with other contexts throughout a chapter so learners see the same concepts across different homestead systems.
+
 ---
 
 ## Using the Resources
@@ -107,6 +116,17 @@ Before writing or expanding content:
 3. **Optional:** ChatGPT generates additional or alternative sections.
 4. **Cursor:** Edit for consistency, remove filler, ensure technical accuracy.
 
+### When Receiving a ChatGPT-Expanded Chapter (Cursor, every time)
+
+When the user drops a ChatGPT-expanded chapter, apply these four steps **before** any refinement:
+
+1. **Remove meta-commentary** — Delete any intro text that addresses the reader or describes the draft (e.g., "This is a deep, expanded rewrite...", "You can drop this in as a replacement for..."). Start directly with the chapter title and content.
+2. **Remove horizontal rules** — Strip all horizontal rules (e.g., `⸻`, `---` between sections). Use headings only.
+3. **Standardize headings** — Use numbered `##` style: `## 1) Section Title`, `## 2) Next Section`, etc. Match the style used in existing Phase 0/1 chapters.
+4. **Broaden homestead examples** — Apply Homestead Example Variety: diversify beyond battery/generator. Add or alternate with coop, pig barn, cow barn, solar, electric poultry net, ESP32 sensor nodes, etc. So learners see concepts across many homestead systems.
+
+After these four steps are done, the user will ask for refinement separately.
+
 ---
 
 ## Expanding Existing Content
@@ -122,6 +142,129 @@ When adding more detail to a section:
    - Brief pointers to where the concept shows up later (e.g., HTTP, SQLite, MQTT)
 4. **Keep the voice** — concept-first, audio-friendly, no filler.
 5. **Cite by name** — refer to resources.md entries, don’t repeat URLs in chapter files.
+
+---
+
+## Code Examples and Projects
+
+Code examples and projects are separate from chapter content. They provide hands-on practice and executable demonstrations of concepts. Code is not read aloud—it's for focused coding time, not driving time.
+
+### Code Examples Structure
+
+**Code examples live in separate `.py` files**, not in chapter markdown files.
+
+- **Location:** `Phase_X/examples/Chapter_X.Y_example.py`
+- **Purpose:** Demonstrate one concept clearly and executably
+- **Format:** Well-commented, runnable code that shows correct patterns
+- **Reference in chapters:** Chapter markdown describes what the code demonstrates conceptually (audio-friendly), then references the file: "See `Chapter_1.4_loop_example.py` for a working main loop pattern."
+
+### Project Organization
+
+Projects are organized by scope and purpose:
+
+```
+Phase_X/
+  examples/
+    Chapter_X.Y_example.py          # Single-concept demonstrations
+  challenges/
+    Chapter_X.Y_challenge_1.py      # Progressive practice exercises
+    Chapter_X.Y_challenge_2.py
+  solutions/
+    Chapter_X.Y_challenge_1_solution.py  # Solutions (for reference)
+  projects/
+    project_1_basic_monitor.py      # Multi-concept applications
+    project_2_with_persistence.py
+  capstone/
+    complete_system.py               # Full system integrating all concepts
+```
+
+### Challenge Types
+
+Challenges provide progressive practice. They are **not read aloud**—they're for hands-on coding time.
+
+**Challenge formats:**
+- **Fill-in-the-blank:** Partial code with clear comments indicating what to complete
+- **Bug fixes:** Code with intentional bugs, clear description of expected behavior
+- **Refactoring:** Working code that needs improvement (naming, structure, organization)
+- **Design challenges:** Conceptual prompts ("Design a function that...") followed by implementation
+
+**Challenge descriptions in chapters:**
+- Audio-friendly: "Challenge: Design a function that reads voltage and returns None if the sensor times out. Think through the boundary validation, then implement it when you're ready to code."
+- Clear constraints and expected behavior
+- No code blocks in chapter text—code lives in separate files
+
+### Progressive Project Structure
+
+Projects build complexity gradually:
+
+- **Exercises:** Small, single-concept practice (can be done while reviewing chapter)
+- **Projects:** Multi-concept applications (require focused coding time, clearly marked "when not driving")
+- **Capstone:** Complete system integrating all phase concepts (major project, multiple sessions)
+
+Each project builds toward the capstone. Homestead examples throughout—battery/generator, coop/pig barn/cow barn controllers, solar monitoring, poultry net status, ESP32 sensor nodes. Diversify contexts (see Homestead Example Variety).
+
+### Executable Examples
+
+All code examples must be **executable in Cursor**.
+
+- Code runs without errors
+- Examples demonstrate both correct patterns and common mistakes (with comments explaining why)
+- Homestead-focused: all examples relate to the homestead/IoT context (battery, coop, poultry net, solar, ESP32 sensor nodes—diversify per Homestead Example Variety)
+- Clear output: examples produce visible, meaningful results when run
+
+### Audio-First Design for Code
+
+**Chapter markdown files:**
+- Describe code conceptually (works for TTS)
+- Reference code files by name: "The example in `Chapter_1.4_loop_example.py` demonstrates..."
+- Explain what the code does and why, not how line-by-line
+- Use "When you're ready to code" markers to separate audio content from hands-on work
+
+**Code files:**
+- Extensive docstrings and comments explaining purpose
+- Clear function and variable names (self-documenting)
+- Separate from audio stream—not read aloud
+- Can be opened and executed independently
+
+### "When Not Driving" Markers
+
+Clearly mark hands-on coding opportunities:
+
+- **"Try This"** markers indicate executable examples to run
+- **"Challenge"** markers indicate practice exercises
+- **"Project"** markers indicate multi-concept applications requiring focused time
+- All coding work is explicitly separated from audio/listening content
+
+### Integration with Content Creation
+
+**When creating chapters:**
+1. Write chapter content (conceptual, audio-friendly)
+2. Create corresponding code examples in `examples/` directory
+3. Reference code files conceptually in chapter text
+4. Create challenges that reinforce chapter concepts
+5. Ensure code examples are executable and tested
+
+**When creating code:**
+- ChatGPT drafts code examples and challenges
+- Cursor tests/executes code to ensure it works
+- Cursor verifies code aligns with chapter concepts
+- Code examples explicitly demonstrate the chapter's mental model
+
+### Code Example Guidelines
+
+**Each code example should:**
+- Demonstrate one clear concept from the chapter
+- Be runnable and produce meaningful output
+- Include docstrings explaining purpose
+- Use homestead/IoT examples where possible; diversify contexts (coop, poultry net, solar, ESP32, etc.)
+- Show correct patterns (and optionally common mistakes with comments)
+- Be well-commented but not over-commented
+
+**Code examples should NOT:**
+- Be included in chapter markdown files (reference only)
+- Be read aloud or described line-by-line in chapters
+- Include solutions to challenges (solutions go in `solutions/` directory)
+- Mix multiple unrelated concepts (one concept per example file)
 
 ---
 
@@ -167,4 +310,7 @@ Each chapter file should:
 5. **ChatGPT** = drafting, brainstorming, long-form generation.
 6. **Cursor** = fetching, editing, consistency, technical accuracy, tightening.
 7. **Cut filler.** Keep substance. Maintain the concept-first, homestead-grounded voice.
-8. **Homestead examples** — Use homestead examples anywhere that is appropriate.
+8. **Homestead examples** — Use homestead examples anywhere appropriate. Diversify: not just battery/generator, but also chickens/pigs/cows, coop/pig barn/cow barn, solar, electric poultry net, ESP32 sensor nodes. Alternate contexts so learners see concepts across many homestead systems.
+9. **Code examples** — Live in separate `.py` files, referenced conceptually in chapters. Never read code aloud. Code is for hands-on time, not driving time. All code must be executable in Cursor.
+10. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
+11. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.

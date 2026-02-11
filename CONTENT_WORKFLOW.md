@@ -149,6 +149,53 @@ When adding more detail to a section:
 
 Code examples and projects are separate from chapter content. They provide hands-on practice and executable demonstrations of concepts. Code is not read aloud—it's for focused coding time, not driving time.
 
+### Code Examples Reference Files
+
+Each phase has a **`Phase_X_Code_Examples.md`** file that serves as a visual reference index for all code mentioned in that phase's chapters. This file is **not read aloud**—it's for when you're not listening and need to see the code visually.
+
+**Purpose:**
+- Provide a centralized visual reference for all code examples mentioned in phase chapters
+- Allow learners to quickly find code when reviewing chapters visually
+- Keep chapter files audio-first (no code blocks that break text-to-speech flow)
+- Stand on their own—code examples reference files should be usable without having the related chapter open
+
+**Structure:**
+Each `Phase_X_Code_Examples.md` file should:
+- List code examples organized by chapter
+- Reference the chapter, section, and approximate line number where code is mentioned
+- Include the actual code snippets (formatted as code blocks)
+- Note the context/purpose of each code example
+- Use clear headings: `## Chapter X.Y: Chapter Title`
+
+**Format:**
+```markdown
+## Chapter X.Y: Chapter Title
+
+### Section Name (Line ~XX)
+**Context:** Brief description of what this code demonstrates
+
+```language
+// Actual code snippet here
+```
+```
+
+**Note:** The line number reference is included in the section heading itself (e.g., `### Section Name (Line ~XX)`). Do not add a separate "Reference:" line at the bottom—the heading contains all the location information needed.
+
+**When creating code examples reference files:**
+1. Go through each chapter in the phase
+2. Identify all code snippets, examples, or code-like structures mentioned
+3. Extract the code and note its location (chapter, section, approximate line)
+4. Organize by chapter in the reference file
+5. Include context about what the code demonstrates
+6. Make entries self-contained—each example should be understandable without opening the chapter, but keep it minimal without sacrificing clarity
+
+**Important:**
+- **Do NOT add code blocks to chapter markdown files**—chapters remain audio-first
+- Code examples reference files are visual-only, for review when not listening
+- Code examples reference files should stand on their own—usable without having the related chapter open, but kept minimal without sacrificing clarity
+- Chapters should describe code conceptually and use minimal references—keep them as short as possible to not disturb read-aloud flow. Examples: "(Code examples)" or "(See code examples)" at the end of a section, or omit entirely if the context is clear
+- Keep code examples reference files updated as chapters are created or modified
+
 ### Code Examples Structure
 
 **Code examples live in separate `.py` files**, not in chapter markdown files.
@@ -312,5 +359,6 @@ Each chapter file should:
 7. **Cut filler.** Keep substance. Maintain the concept-first, homestead-grounded voice.
 8. **Homestead examples** — Use homestead examples anywhere appropriate. Diversify: not just battery/generator, but also chickens/pigs/cows, coop/pig barn/cow barn, solar, electric poultry net, ESP32 sensor nodes. Alternate contexts so learners see concepts across many homestead systems.
 9. **Code examples** — Live in separate `.py` files, referenced conceptually in chapters. Never read code aloud. Code is for hands-on time, not driving time. All code must be executable in Cursor.
-10. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
-11. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.
+10. **Code examples reference files** — Each phase has a `Phase_X_Code_Examples.md` file that indexes all code mentioned in chapters, organized by chapter with section and line references. Visual-only, not read aloud. Do NOT add code blocks to chapter markdown files. References in chapters should be minimal (e.g., "(Code examples)") to avoid disrupting read-aloud flow.
+11. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
+12. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.

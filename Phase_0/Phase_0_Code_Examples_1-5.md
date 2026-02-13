@@ -572,3 +572,303 @@ def check_solar_system():
     return "ok" if production > 0 and 11.5 < battery < 14.8 else "alert"
 ```
 
+---
+
+## Chapter 0.05: Data and Variables
+
+### 1) What Data Is (Stripped of Metaphor) (Line ~20)
+
+**Context:** Data is information in a form the computer can manipulate—examples of different data types.
+
+```python
+# A number representing temperature
+temperature = 72.5
+
+# A word representing a name or label
+sensor_name = "coop_temperature"
+
+# A true or false value
+fan_on = True
+
+# A list of readings
+readings = [68.2, 69.1, 70.3, 69.8]
+
+# A structured collection of related values
+sensor_data = {
+    "temperature": 72.5,
+    "humidity": 45,
+    "timestamp": "2024-01-15T10:30:00"
+}
+```
+
+---
+
+### 2) Programs Only See Representations (Line ~34)
+
+**Context:** Human thought ("battery is low") becomes data operations (number comparison).
+
+```python
+# When you think: "The battery is low"
+# The program sees:
+voltage = 11.8  # A number
+is_low = voltage < 12.1  # Compared against threshold
+# Producing a true or false result
+
+# When you think: "The generator should start"
+# The program sees:
+if is_low and not generator_running:  # A condition
+    generator_running = True  # A variable, a state change
+```
+
+---
+
+### 3) Variables Are Memory With Names (Line ~57)
+
+**Context:** A variable is a name that points to data—enables memory and state.
+
+```python
+# A name → a value
+battery_voltage = 12.5  # Name points to data
+
+# Variables let programs:
+# Remember something
+last_check_time = current_time()
+
+# Refer to it later
+if battery_voltage < 12.1:
+    start_generator()
+
+# Change it over time
+battery_voltage = read_sensor()  # Value changes, name stays
+```
+
+---
+
+### 4) State Is Just Data Over Time (Line ~79)
+
+**Context:** State is current variable values at a moment; changing variables changes state.
+
+```python
+# State at moment 1
+voltage = 12.5
+fan_on = False
+
+# Variables update
+voltage = read_sensor()  # Now 11.8
+fan_on = True
+
+# State at moment 2
+# voltage = 11.8, fan_on = True
+# Conditions change, loops behave differently, outputs shift
+# All from data changing
+```
+
+---
+
+### 5) Variables Do Not Hold Meaning (Line ~100)
+
+**Context:** The computer sees data types, not meaning; wrong data causes wrong behavior.
+
+```python
+# Computer doesn't care that battery_voltage is a voltage
+battery_voltage = 12.5  # It's just a number
+
+# Computer doesn't care that temperature is in degrees
+temperature = 72  # It's just a number
+
+# Computer doesn't care that door_open refers to a door
+door_open = True  # It's just true or false
+
+# If data is wrong, program behaves "correctly" but does wrong thing
+battery_voltage = 120.5  # Wrong: 120V instead of 12V
+if battery_voltage < 12.1:  # Never triggers, but logic is "correct"
+    start_generator()
+```
+
+---
+
+### 6) Data Has Shape, Not Just Value (Line ~119)
+
+**Context:** Same concept (temperature) can have different shapes—not interchangeable.
+
+```python
+# A single temperature value
+temperature = 72.5
+
+# A list of temperature values
+temperatures = [68.2, 69.1, 70.3, 69.8]
+
+# A table of timestamps and temperatures
+temperature_log = [
+    {"time": "10:00", "temp": 68.2},
+    {"time": "10:05", "temp": 69.1}
+]
+
+# A record with temperature, humidity, and voltage
+sensor_reading = {
+    "temperature": 72.5,
+    "humidity": 45,
+    "voltage": 12.5
+}
+
+# All involve "temperature" but are not interchangeable
+# Wrong shape = bugs
+```
+
+---
+
+### 7) Shape Determines How Data Can Be Used (Line ~134)
+
+**Context:** You can't use data in ways that don't match its shape.
+
+```python
+# Cannot loop over a single number
+temperature = 72.5
+for t in temperature:  # Error: not iterable
+    ...
+
+# Cannot compare a list as if it were one value
+readings = [68.2, 69.1, 70.3]
+if readings > 70:  # Wrong: comparing list to number
+    ...
+
+# Cannot treat structured data like a simple value
+sensor_data = {"temp": 72.5, "humidity": 45}
+if sensor_data > 70:  # Wrong: comparing dict to number
+    ...
+
+# Must match shape to usage
+if sensor_data["temp"] > 70:  # Correct: access field first
+    ...
+```
+
+---
+
+### 8) Temporary vs Persistent Data (Line ~150)
+
+**Context:** Some data exists briefly; other data persists and influences future behavior.
+
+```python
+# Temporary data: exists briefly, used once, discarded
+def check_voltage():
+    reading = read_sensor()  # Temporary: only exists in function
+    if reading < 12.1:
+        return True
+    return False
+# reading is gone after function ends
+
+# Persistent data: persists across loops, carries history
+voltage_history = []  # Persistent: accumulates over time
+last_generator_start = None  # Persistent: influences future decisions
+
+while True:
+    reading = read_sensor()  # Temporary: new each loop
+    voltage_history.append(reading)  # Persistent: accumulates
+    
+    if reading < 12.1 and last_generator_start is None:
+        start_generator()
+        last_generator_start = current_time()  # Persistent: remembers
+```
+
+---
+
+### 9) Variables Are Where Bugs Hide (Line ~182)
+
+**Context:** Unpredictable behavior usually comes from variables changing unexpectedly or not changing when they should.
+
+```python
+# Variable changed unexpectedly
+voltage = 12.5
+# ... code elsewhere changes voltage to 120.5 ...
+if voltage < 12.1:  # Unexpected behavior: condition never true
+
+# Variable didn't change when it should have
+generator_running = False
+start_generator()
+# Missing: generator_running = True
+if generator_running:  # Still False, logic breaks
+
+# Variable reused incorrectly
+temp = read_sensor()
+# ... later ...
+temp = read_voltage()  # Reused for different purpose
+if temp > 70:  # Wrong: comparing voltage to temperature threshold
+```
+
+---
+
+### 10) Naming Variables Is About Preserving Meaning (Line ~197)
+
+**Context:** Good names describe what data represents; bad names hide intent.
+
+```python
+# Good: describes what data represents, reflects real-world concepts
+battery_voltage = 12.5
+last_generator_start_time = current_time()
+is_temperature_safe = True
+
+# Bad: hides intent, encourages misuse
+x = 12.5  # What is x?
+temp = current_time()  # Misleading: temp suggests temperature
+flag = True  # What does flag represent?
+
+# Variable name is a promise: "This data represents this thing"
+# Breaking that promise causes confusion
+```
+
+---
+
+### 11) Data Is the Interface Between Reality and Logic (Line ~215)
+
+**Context:** Real systems must be translated into data; good data design makes logic simple.
+
+```python
+# Reality: battery voltage sensor
+# Translation into data:
+voltage = read_sensor()  # Single number
+
+# Reality: generator state (off, starting, running, stopping)
+# Good translation: explicit state
+generator_state = "off"  # Clear, explicit
+
+# Bad translation: implicit state
+generator_running = False  # Doesn't capture "starting" or "stopping"
+
+# Good data design makes logic simple
+if generator_state == "off" and voltage < 12.1:
+    generator_state = "starting"  # Clear transitions
+
+# Bad data design makes logic defensive
+if not generator_running and not generator_starting and voltage < 12.1:
+    # Messy: multiple flags to track one concept
+    ...
+```
+
+---
+
+### Reflection: Data Design Questions (Line ~237)
+
+**Context:** Framework for thinking about data in a system.
+
+```python
+# What data exists right now?
+current_voltage = 12.5
+current_temperature = 72.0
+
+# What data changes over time?
+voltage_history = [12.5, 12.4, 12.3, 12.2]  # Changes each reading
+
+# What data represents the past?
+last_generator_start = "2024-01-15T08:30:00"
+
+# What data represents the present?
+current_state = {
+    "voltage": 12.5,
+    "generator_running": False,
+    "fan_on": True
+}
+
+# What data do I wish I had but don't?
+# (Design question for future features)
+```
+

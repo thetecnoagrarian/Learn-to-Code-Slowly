@@ -20,6 +20,7 @@ These are resources for technologies I want to learn and build with.
 - [Docker Networking](https://docs.docker.com/engine/network/) — Docker container networking documentation
 - [Docker Buildx](https://docs.docker.com/build/buildx/) — Docker CLI plugin for multi-platform image builds
 - [Express.js](https://expressjs.com/) — Fast, minimal web application framework for Node.js
+- [Express: Using template engines](https://expressjs.com/en/guide/using-template-engines.html) — View engines, app.set('view engine'), and registering custom engines
 - [Linode](https://www.linode.com/docs/) — Cloud hosting provider; Linux VMs and infrastructure
 - [Shoelace](https://shoelace.style/) — Forward-thinking library of web components built with Lit
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) — Synchronous Node.js binding for SQLite3

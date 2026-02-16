@@ -122,7 +122,7 @@ When the user drops a ChatGPT-expanded chapter, apply these four steps **before*
 
 1. **Remove meta-commentary** — Delete any intro text that addresses the reader or describes the draft (e.g., "This is a deep, expanded rewrite...", "You can drop this in as a replacement for..."). Start directly with the chapter title and content.
 2. **Remove horizontal rules** — Strip all horizontal rules (e.g., `⸻`, `---` between sections). Use headings only.
-3. **Standardize headings** — Use numbered `##` style: `## 1) Section Title`, `## 2) Next Section`, etc. Match the style used in existing Phase 0/1 chapters.
+3. **Standardize headings** — Use numbered `##` style: `## 1) Section Title`, `## 2) Next Section`, etc. Match the style used in existing Section A Phase 1/2 chapters.
 4. **Broaden homestead examples** — Apply Homestead Example Variety: diversify beyond battery/generator. Add or alternate with coop, pig barn, cow barn, solar, electric poultry net, ESP32 sensor nodes, etc. So learners see concepts across many homestead systems.
 
 After these four steps are done, the user will ask for refinement separately.

@@ -1,554 +1,71 @@
-# Phase 2 · Chapter 2.8: Response Structure
+# Section B Phase 1 · Chapter 1.8: Response Structure
 
-A response is the server’s half of the HTTP contract.
+A response is the server's half of the HTTP contract. The client speaks first. The server responds exactly once. The response tells the client what happened, what data if any is included, and how to interpret that data. If the response is malformed, the client cannot safely proceed.
 
-The client speaks first.
-The server responds exactly once.
+## Learning Objectives
 
-The response tells the client what happened, what data (if any) is included, and how to interpret that data. If the response is malformed, the client cannot safely proceed. Chapter 2.6 showed request structure; Chapter 2.7 showed the request line. This chapter shows the server's reply—the response structure. Whether your Pi responds to a voltage query, your ESP32 receives a temperature reading confirmation, or your coop controller gets a fence status update—the response structure is the same.
+By the end of this chapter, you should be able to:
+- Describe the four-part structure of an HTTP response: status line, headers, blank line, optional body.
+- Explain status code classes (2xx, 3xx, 4xx, 5xx) and how they affect client behavior.
+- Distinguish absence of response (transport failure) from HTTP error responses.
+- Debug response failures by checking status line, headers, and body boundaries.
 
-The structure of a response is not flexible.
-It is not negotiable.
-It mirrors the request structure with precision.
+## Key Terms
 
+- **Status line** — First line of a response: HTTP version, status code, reason phrase. The server's primary signal.
+- **Status code** — Three-digit integer. 2xx success, 3xx redirection, 4xx client error, 5xx server error. Machine signal, not decoration.
+- **Reason phrase** — Human-readable text (OK, Not Found). Informational only. The status code is authoritative.
+
+Chapter 1.6 showed request structure. Chapter 1.7 showed the request line. This chapter shows the server's reply. Whether your Pi responds to a voltage query, your ESP32 receives a temperature confirmation, or your coop controller gets a fence status update, the response structure is the same. The structure of a response is not flexible or negotiable. It mirrors the request structure with precision.
 
 ## 1) Responses Always Follow Requests
 
-A response cannot exist on its own.
-	•	No request → no response
-	•	One request → one response
-	•	The server never sends two responses to one request
+A response cannot exist on its own. No request means no response. One request means one response. The server never sends two responses to one request. If a server sends nothing, the client experiences absence, not an error response. Every HTTP response has up to four parts, in this order: status line, headers, blank line, optional body. This mirrors the request structure exactly, with one substitution: the status line replaces the request line. Nothing comes before the status line.
 
-If a server sends nothing, the client experiences absence, not an error response.
+## 2) The Status Line
 
+Every HTTP response begins with a status line. If the client does not receive a valid status line, the response is invalid, the client cannot interpret anything else, and the connection may be dropped. The status line always contains three parts: HTTP version, status code, reason phrase. Separated by single spaces. The response begins by declaring the protocol version. Your dashboard requests HTTP/1.1, so your Pi responds with HTTP/1.1 in the status line. This tells the client which parsing rules apply, which defaults apply, which behaviors are allowed. Servers usually respond using the same HTTP version requested, or downgrade gracefully. Version mismatch can cause parsing errors, misinterpreted headers, and connection handling issues.
 
-## 2) A Response Has Four Parts
+The status code is a three-digit integer. This is the most important part of the response. Clients interpret meaning from this number, not from text. Status codes are control signals, not decoration. Clients use them to decide whether the request succeeded, whether to retry, whether to redirect, whether to stop. The first digit defines the class: 1xx informational (rare), 2xx success, 3xx redirection, 4xx client error, 5xx server error. This classification is foundational.
 
-Every HTTP response has up to four parts, in this order:
-	1.	Status line
-	2.	Headers
-	3.	Blank line
-	4.	Optional body
+## 3) Status Code Classes
 
-This mirrors the request structure exactly, with one substitution:
-	•	The status line replaces the request line
+A 2xx status means the server received the request, understood it, and successfully processed it. Important: 2xx means the request succeeded. It does not mean the data is what you expected. Your dashboard sends a request for voltage and gets 200 OK with body indicating sensor offline. The request succeeded—the server processed it correctly. The data just indicates the sensor is offline. Your solar logger returns 200 OK with an empty body because no production data exists yet today. The request succeeded. Your coop controller gets 200 OK with HTML error page instead of JSON because the Pi returned a generic error page. The request succeeded at the protocol level—the body format is wrong. 200 OK with an empty body, or with HTML instead of JSON, is still success at the protocol level. The client must validate the body separately. Check Content-Type. Parse accordingly.
 
+A 3xx status means the request was valid, the resource is elsewhere, and the client should take additional action. A redirect is not an error. It is the server telling the client: you asked correctly, but look over here instead. The Location header carries the new target. Your dashboard requests voltage, but your Pi moved it to a new path. The server responds with 301 and a Location header pointing to the new path.
 
-## 3) The Status Line Is Mandatory
+A 4xx status means the client made a request, the server understood it, and the server refuses or cannot fulfill it due to client-side issues. Client error does not mean the client software is buggy or the connection failed. It means the request is invalid in context. Your ESP32 sends a request without authentication. Your Pi responds 401 Unauthorized. The request is syntactically correct but missing required auth. Your dashboard requests a path that does not exist. Your Pi responds 404 Not Found. Your drip irrigation controller sends a POST with malformed JSON. Your Pi responds 400 Bad Request. The path exists, but the body is invalid. Each 4xx has a specific meaning; fix the request accordingly before retrying.
 
-Every HTTP response begins with a status line.
+A 5xx status means the request was valid but the server failed while processing it. Your dashboard requests voltage, but the Pi's sensor reading code crashes. The server responds 500 Internal Server Error. In principle, 4xx means client responsibility—fix the request. 5xx means server responsibility—the server failed. Clients may retry 5xx responses. They usually should not retry 4xx responses. Your dashboard gets 500 from the Pi. The request was valid but the server crashed. Retry might work if the server recovers. If you get 401 Unauthorized, retrying will not help—fix the auth token first.
 
-If the client does not receive a valid status line:
-	•	The response is invalid
-	•	The client cannot interpret anything else
-	•	The connection may be dropped
+## 4) The Reason Phrase and Headers
 
-Nothing comes before the status line.
+The reason phrase comes third: OK, Not Found, Internal Server Error, Unauthorized. Clients must not rely on the reason phrase. It may vary, may be localized, may be omitted entirely. The status code is authoritative. HTTP/1.1 allows empty reason phrases. A server might send version, code, and nothing else for 204 No Content. Your Pi might send 204 after a successful DELETE. Clients must not break if the phrase is missing.
 
+After the status line come zero or more headers. Same structure as request headers: name, colon, value, one per line. Response headers describe the body if any, caching rules, redirect targets, and server behavior. They do not contain the content itself. Common response headers: Content-Type (format of the body—application/json for your Pi's voltage response), Content-Length (size of the body in bytes), Location (redirect target), Cache-Control (caching rules—no-cache for real-time sensor data), Set-Cookie (session data if your dashboard uses sessions), Date (server timestamp). Headers are case-insensitive. The order of headers does not matter. Clients read headers as a set, not a sequence.
 
-## 4) The Status Line Has Three Parts
+## 5) The Blank Line and Body
 
-The status line always contains:
-	1.	HTTP version
-	2.	Status code
-	3.	Reason phrase
+After headers, the server sends a blank line. This blank line marks the end of headers and the start of the body if any. Section A Phase 1 boundary principle applies: everything before the blank line is metadata, everything after is payload. Clients must respect this boundary. Without the blank line, the client cannot know where headers end and body begins. Parsing fails. A response may include a body. Some responses never include a body: 204 No Content (successful DELETE), 304 Not Modified (cached version still valid), responses to HEAD requests. Your dashboard sends DELETE for a sensor. Your Pi responds 204 No Content with no body—the deletion succeeded, nothing to return. Your poultry net API might return 204 after a successful configuration update.
 
-Separated by single spaces.
+HTTP does not interpret body content. The body is a stream of bytes interpreted by the client using headers. HTTP does not care if it is HTML, JSON, XML, binary, or garbage. The Content-Type header tells the client how to interpret the body. Your Pi responds to a voltage request with Content-Type application/json and a JSON body. Your dashboard knows to parse it as JSON. Your solar logger might return Content-Type application/json for production data. Your coop controller expects JSON from the fence status endpoint. Without Content-Type, the body is ambiguous. The Content-Length header tells the client how many bytes to read. Your Pi responds with a 24-byte body. Content-Length 24 tells your dashboard to read exactly 24 bytes, then stop. The freezer sensor API might return a short JSON payload with internal and external temperatures. Content-Length must match exactly. Without Content-Length, the client may use chunked encoding, wait for connection close, or misread the body. The response ends when Content-Length bytes are read, or the connection closes, or the chunked stream ends. After that, the client may send another request if the connection is open (HTTP/1.1 keep-alive) or close the connection. If extra bytes appear after the response, the client may treat them as a new response or treat the connection as corrupted. Your Pi sends Content-Length 24 but actually sends 30 bytes. Your dashboard reads 24 bytes, stops. The remaining 6 bytes corrupt the next request. The server must send exactly what it declares.
 
-Example:
+## 6) Parsing and Debugging
 
-```
-HTTP/1.1 200 OK
-```
+Clients parse responses sequentially: read status line, parse status code, read headers, detect blank line, read body if any. Failure at any step invalidates the response. There is no guessing or scanning ahead. The status line tells the client whether to expect a body. Headers tell it how to interpret the body. The blank line tells it where the body starts. Content-Length tells it when the body ends. Given the same response bytes, every compliant client parses them the same way. There is no ambiguity if the structure is correct. Frameworks and libraries parse this structure. Understanding it removes mystery. When something goes wrong, ask: what status code was returned? Was there a response at all? Did the connection fail? No response means transport failure, not HTTP error. Your ESP32 sends a POST and gets no response. Did you get any HTTP response? If no, the connection failed (transport layer). If yes, check the status code. 500 means server error—retry might work. 400 means bad request—fix the request. Your dashboard gets 500 with body containing an error message. The request was valid; the Pi's sensor code crashed. Retry might work. But 401 means fix the auth token first. These questions determine the entire debugging path.
 
-Your Pi responds to `GET /api/voltage` with this status line, indicating success.
+## 7) Absence Is Not a Response
 
+If the connection drops, the server crashes, or the network fails, there is no response. This is not 5xx. It is absence. Your dashboard sends a voltage request but the Pi's WiFi disconnected. No response arrives. This is not 500 Internal Server Error—that would be a valid HTTP response. This is absence. Your dashboard experiences a timeout, not an HTTP error. The server cannot send explanations later, clarify intent afterward, or speak outside a response. Everything it wants the client to know must fit in the response. Your dashboard gets 200 OK with no body. The request succeeded but there is no data. Check: is Content-Length 0 present, or is the body missing? Both are valid. The status code says success. Your coop controller gets 302 Found—check the Location header for where to look next. The redirect is an instruction, not an error. Follow the Location header.
 
+## Common Pitfalls
 
-## 5) Formal Grammar of the Status Line
+Confusing absence with 5xx: no response (timeout, connection drop) is not an HTTP error. 500 is a valid response—the server spoke. Retrying 4xx: 401 and 404 will not succeed on retry. Fix the request first. Ignoring status code: clients must branch on the numeric code, not the reason phrase. Trusting Content-Type blindly: the server can lie. Validate and parse defensively. Wrong Content-Length: server declares one size, sends another—client misreads, corrupts next request.
 
-In formal terms:
+## Summary
 
-HTTP-VERSION SP STATUS-CODE SP REASON-PHRASE CRLF
+An HTTP response consists of a status line (version, code, reason phrase), headers (metadata), a blank line (boundary), and an optional body (payload). The status code is the most important signal. Headers describe interpretation. The body is raw data. Absence of response is not an HTTP error—it is transport failure. 4xx means fix the request. 5xx means retry might work.
 
-This grammar is strict.
+## Next
 
-
-## 6) The HTTP Version Comes First
-
-The response begins by declaring the protocol version.
-
-Example:
-
-```
-HTTP/1.1
-```
-
-Your dashboard requests HTTP/1.1, so your Pi responds with HTTP/1.1 in the status line.
-
-This tells the client:
-	•	Which parsing rules apply
-	•	Which defaults apply
-	•	Which behaviors are allowed
-
-
-## 7) The Version Must Match the Request (Usually)
-
-In practice:
-	•	Servers respond using the same HTTP version requested
-	•	Or downgrade gracefully
-
-If the client requests HTTP/1.1, it expects an HTTP/1.1 response.
-
-Version mismatch can cause:
-	•	Parsing errors
-	•	Misinterpreted headers
-	•	Connection handling issues
-
-
-## 8) The Status Code Comes Second
-
-The status code is a three-digit integer.
-
-This is the most important part of the response.
-
-Clients do not interpret meaning from text.
-They interpret meaning from this number.
-
-
-## 9) Status Codes Are Machine Signals
-
-Status codes are not decoration.
-They are control signals.
-
-Clients use them to decide:
-	•	Whether the request succeeded
-	•	Whether to retry
-	•	Whether to redirect
-	•	Whether to stop
-
-
-## 10) Status Code Classes
-
-The first digit defines the class:
-	•	1xx — Informational (rare)
-	•	2xx — Success
-	•	3xx — Redirection
-	•	4xx — Client error
-	•	5xx — Server error
-
-This classification is foundational.
-
-
-## 11) 2xx: Success
-
-A 2xx status means:
-	•	The server received the request
-	•	Understood it
-	•	Successfully processed it
-
-Example:
-
-HTTP/1.1 200 OK
-
-
-
-## 12) Success Does Not Mean “What You Wanted”
-
-Important distinction:
-
-A 2xx response means the request succeeded.
-It does not mean:
-	•	The data is what you expected (e.g., `200 OK` with `{"voltage": null}`—request succeeded, but sensor returned null)
-	•	The resource exists in the form you wanted (e.g., `200 OK` with HTML error page instead of JSON)
-	•	The body contains anything useful (e.g., `200 OK` with empty body)
-
-Example: Your dashboard sends `GET /api/voltage` and gets `200 OK` with body `{"error": "sensor offline"}`. The request succeeded—the server processed it correctly. The data just indicates the sensor is offline. The request succeeded. Nothing more.
-
-
-## 13) 3xx: Redirection
-
-A 3xx status means:
-	•	The request was valid
-	•	The resource is elsewhere
-	•	The client should take additional action
-
-Example:
-
-```
-HTTP/1.1 301 Moved Permanently
-```
-
-Your dashboard requests `/api/voltage`, but your Pi has moved it to `/api/sensors/voltage`. The server responds with `301` and a `Location: /api/sensors/voltage` header.
-
-
-
-## 14) Redirects Are Instructions
-
-A redirect is not an error.
-
-It is the server telling the client:
-
-“You asked correctly, but look over here instead.”
-
-The Location header carries the new target.
-
-
-## 15) 4xx: Client Error
-
-A 4xx status means:
-	•	The client made a request
-	•	The server understood it
-	•	The server refuses or cannot fulfill it due to client-side issues
-
-Example:
-
-```
-HTTP/1.1 404 Not Found
-```
-
-Your ESP32 requests `GET /api/nonexistent`. Your Pi responds `404 Not Found`—the path doesn't exist on this server.
-
-
-
-## 16) Client Error Does Not Mean Client Is Broken
-
-A 4xx response does not mean:
-	•	The client software is buggy
-	•	The user is wrong
-	•	The connection failed
-
-It means:
-	•	The request is invalid in context
-
-Example: Your ESP32 sends `GET /api/voltage` without authentication. Your Pi responds `401 Unauthorized`. The request is syntactically correct, but missing required auth—client error, not server failure. Or your dashboard sends `GET /api/nonexistent`—`404 Not Found`. The path doesn't exist—client requested something that isn't there.
-
-
-## 17) 5xx: Server Error
-
-A 5xx status means:
-	•	The request was valid
-	•	The server failed while processing it
-
-Example:
-
-```
-HTTP/1.1 500 Internal Server Error
-```
-
-Your dashboard requests `GET /api/voltage`, but your Pi's sensor reading code crashes. The server responds `500 Internal Server Error`—the request was valid, but the server failed while processing it.
-
-
-
-## 18) Server Error Means “Not Your Fault”
-
-In principle:
-	•	4xx → client responsibility (fix the request)
-	•	5xx → server responsibility (server failed)
-
-Clients may retry 5xx responses.
-They usually should not retry 4xx responses.
-
-Example: Your dashboard gets `500 Internal Server Error` from the Pi. The request was valid, but the server crashed. Retry might work if the server recovers. But if you get `401 Unauthorized`, retrying won't help—you need to fix the auth token first.
-
-
-## 19) The Reason Phrase Comes Third
-
-The reason phrase is a short, human-readable description.
-
-Examples:
-	•	`OK` (for 200)
-	•	`Not Found` (for 404)
-	•	`Internal Server Error` (for 500)
-	•	`Unauthorized` (for 401)
-
-Your Pi might send `HTTP/1.1 200 OK` or just `HTTP/1.1 200`—the reason phrase is optional.
-
-
-## 20) The Reason Phrase Is Informational Only
-
-Clients must not rely on the reason phrase.
-
-It:
-	•	May vary
-	•	May be localized
-	•	May be omitted entirely
-
-The status code is authoritative.
-
-
-## 21) HTTP/1.1 Allows Empty Reason Phrases
-
-This is valid:
-
-```
-HTTP/1.1 204
-```
-
-No reason phrase—just version, code, CRLF. Your Pi might send `HTTP/1.1 204` (no content) after a successful DELETE. Clients must not break if the phrase is missing.
-
-
-## 22) Headers Follow the Status Line
-
-After the status line come zero or more headers.
-
-Same structure as request headers:
-
-```
-Header-Name: value
-```
-
-One per line.
-CRLF terminated (`\r\n`).
-
-Example: Your Pi responds with:
-```
-Content-Type: application/json
-Content-Length: 24
-Date: Mon, 30 Jan 2026 12:00:00 GMT
-```
-
-Same format as request headers—name, colon, space, value, CRLF.
-
-
-## 23) Response Headers Carry Metadata
-
-Response headers describe:
-	•	The body (if any)
-	•	Caching rules
-	•	Redirect targets
-	•	Server behavior
-
-They do not contain the content itself.
-
-
-## 24) Common Response Headers
-
-Frequently seen response headers include:
-	•	`Content-Type` — format of the body (e.g., `application/json` for your Pi's voltage response)
-	•	`Content-Length` — size of the body in bytes (e.g., `24` for `{"voltage": 12.4}`)
-	•	`Location` — redirect target (e.g., `/api/sensors/voltage` if the endpoint moved)
-	•	`Cache-Control` — caching rules (e.g., `no-cache` for real-time sensor data)
-	•	`Set-Cookie` — session data (if your dashboard uses sessions)
-	•	`Date` — server timestamp (when your Pi sent the response)
-
-
-## 25) Headers Are Case-Insensitive
-
-These are equivalent:
-
-Content-Type
-content-type
-CONTENT-TYPE
-
-Convention favors capitalization, but clients must not depend on it.
-
-
-## 26) Header Order Is Not Significant
-
-The order of headers does not matter.
-
-Clients must:
-	•	Read headers as a set
-	•	Not depend on ordering
-
-
-## 27) The Blank Line Is Mandatory
-
-After headers, the server sends a blank line.
-
-This blank line:
-	•	Is exactly CRLF
-	•	Marks the end of headers
-	•	Marks the start of the body (if any)
-
-
-## 28) The Blank Line Is a Boundary
-
-Phase 0 boundary principle applies:
-	•	Everything before the blank line is metadata
-	•	Everything after is payload
-
-Clients must respect this boundary.
-
-
-## 29) The Body Is Optional
-
-A response may include a body.
-
-Some responses never include a body:
-	•	`204 No Content` (e.g., successful DELETE—nothing to return)
-	•	`304 Not Modified` (cached version is still valid—no body needed)
-	•	Responses to HEAD requests (HEAD asks for headers only, never body)
-
-Example: Your dashboard sends `DELETE /api/sensors/old_id`. Your Pi responds `HTTP/1.1 204 No Content` with no body—the deletion succeeded, nothing to return.
-
-
-## 30) The Body Is Raw Bytes
-
-HTTP does not interpret body content.
-
-The body is:
-	•	A stream of bytes
-	•	Interpreted by the client using headers
-
-HTTP does not care if it’s:
-	•	HTML
-	•	JSON
-	•	XML
-	•	Binary
-	•	Garbage
-
-
-## 31) Content-Type Explains the Body
-
-The Content-Type header tells the client how to interpret the body.
-
-Example:
-
-```
-Content-Type: application/json
-```
-
-Your Pi responds to `GET /api/voltage` with `Content-Type: application/json` and a body like `{"voltage": 12.4}`. Your dashboard knows to parse it as JSON.
-
-Without it, the body is ambiguous.
-
-
-## 32) Content-Length Explains the Size
-
-The Content-Length header tells the client how many bytes to read.
-
-Example:
-
-```
-Content-Length: 24
-```
-
-Your Pi responds with `{"voltage": 12.4}` (24 bytes). The `Content-Length: 24` header tells your dashboard to read exactly 24 bytes, then stop.
-
-Without it, the client may:
-	•	Use chunked encoding
-	•	Wait for connection close
-	•	Misread the body
-
-
-## 33) The Response Is Complete When the Body Ends
-
-The response ends when:
-	•	Content-Length bytes are read (e.g., read 24 bytes, stop)
-	•	OR the connection closes (server closed it)
-	•	OR the chunked stream ends (last chunk with size 0)
-
-After that, the client may:
-	•	Send another request (if connection is open—HTTP/1.1 keep-alive)
-	•	Close the connection
-
-Example: Your dashboard reads `Content-Length: 24`, reads exactly 24 bytes (`{"voltage": 12.4}`), then stops. The response is complete. If the connection is still open (keep-alive), your dashboard can send another request on the same connection.
-
-
-## 34) No Extra Data Is Allowed
-
-If extra bytes appear after the response:
-	•	The client may treat them as a new response
-	•	Or treat the connection as corrupted
-
-Example: Your Pi sends `Content-Length: 24` but actually sends 30 bytes. Your dashboard reads 24 bytes, stops. The remaining 6 bytes are still in the connection buffer. If your dashboard sends another request, those 6 bytes might be parsed as part of the next request—corruption.
-
-Protocol discipline matters. The server must send exactly what it declares.
-
-
-## 35) Response Parsing Is Sequential
-
-Clients parse responses in order:
-	1.	Read status line
-	2.	Parse status code
-	3.	Read headers
-	4.	Detect blank line
-	5.	Read body (if any)
-
-Failure at any step invalidates the response.
-
-
-## 36) HTTP Responses Are Deterministic
-
-Given the same response bytes:
-	•	Every compliant client will parse them the same way
-	•	There is no ambiguity if the structure is correct
-
-
-## 37) Frameworks Hide This—but It Still Exists
-
-Even if you never see raw HTTP:
-	•	Your browser parses this
-	•	Your HTTP library parses this
-	•	Your server constructs this
-
-Understanding it removes mystery.
-
-
-## 38) Debugging Starts at the Status Line
-
-When something goes wrong, ask:
-	•	What status code was returned? (200? 404? 500?)
-	•	Was there a response at all? (Did you get a status line, or did the connection drop?)
-	•	Did the connection fail? (No response = transport failure, not HTTP error)
-
-Example: Your ESP32 sends a POST and gets no response. Check: Did you get any HTTP response at all? If no—connection failed (transport layer). If yes—check the status code. `500` = server error (retry might work). `400` = bad request (fix the request). These questions determine the entire debugging path.
-
-
-## 39) Absence Is Not a Response
-
-If:
-	•	The connection drops (network hiccup)
-	•	The server crashes (Pi rebooted)
-	•	The network fails (Wi-Fi disconnected)
-
-There is no response.
-
-This is not a 5xx.
-It is absence.
-
-Example: Your dashboard sends `GET /api/voltage` but the Pi's Wi-Fi disconnected. No response arrives. This is not `500 Internal Server Error`—that would be a valid HTTP response. This is absence—no HTTP response at all. Your dashboard experiences a timeout, not an HTTP error.
-
-
-## 40) The Response Is the Server’s Only Voice
-
-The server cannot:
-	•	Send explanations later
-	•	Clarify intent afterward
-	•	Speak outside a response
-
-Everything it wants the client to know must fit here.
-
-
-## Reflection
-
-Think about real responses—your Pi responding to voltage queries, ESP32 receiving confirmations, coop controller getting fence status.
-	•	If a client receives a response with status 200 but no body, what does that mean?
-	•	If a client receives no response at all, how is that different from a 500?
-	•	If a server returns 302, what must the client look for next?
-
-Consider failure modes:
-	•	Your dashboard sends `GET /api/voltage` and gets `200 OK` with no body. The request succeeded, but there's no data. Check: Is `Content-Length: 0` present? Or is the body missing entirely? Both are valid—the status code says success.
-	•	Your ESP32 sends a POST and gets no response—connection dropped, not a 500 error. How do you tell? Check: Did you get any HTTP response at all? If no status line, it's transport failure (connection broke), not an HTTP error response.
-	•	Your coop controller gets `302 Found`—check the `Location` header for where to look next. The redirect is an instruction, not an error. Follow the `Location` header.
-	•	Your dashboard gets `500 Internal Server Error` with body `{"error": "sensor read failed"}`. The request was valid, but the Pi's sensor code crashed. This is retryable—the server might recover. But `401 Unauthorized` is not retryable—fix the auth token first.
-
-These distinctions matter when debugging and handling errors.
-
-
-## Core Understanding
-
-An HTTP response consists of:
-	•	Status line — protocol version, status code, reason phrase
-	•	Headers — metadata about the response
-	•	Blank line — boundary marker
-	•	Optional body — payload bytes
-
-The status code is the most important signal.
-Headers describe interpretation.
-The body is raw data.
-Absence of response is not an HTTP error.
-
-This chapter builds on Chapter 2.1 (request-response), 2.2 (HTTP on TCP), 2.3 (what HTTP is), 2.4 (HTTP as text), 2.5 (statelessness and connection lifecycle), 2.6 (request structure), and 2.7 (request line). Next: Chapter 2.9 — Status Codes Overview, where we map status code ranges to behavior and decision-making, and learn how clients actually react to them.
+This chapter builds on Chapters 1.1 through 1.7. Next: **Chapter 1.9 — Status Codes Overview**, where we map status code ranges to behavior and decision-making, and learn how clients actually react to them.

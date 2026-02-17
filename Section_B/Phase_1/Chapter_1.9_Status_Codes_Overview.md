@@ -1,483 +1,71 @@
-# Phase 2 · Chapter 2.9: Status Codes Overview
+# Section B Phase 1 · Chapter 1.9: Status Codes Overview
 
-Status codes are not messages.
-They are not explanations.
-They are not opinions.
+Status codes are not messages, explanations, or opinions. They are signals. They are how the server tells the client what happened at the protocol boundary—nothing more, nothing less. If you misunderstand status codes, you will misdiagnose failures, retry when you should not, stop when you should retry, and blame the wrong side of the system.
 
-Status codes are signals.
+## Learning Objectives
 
-They are how the server tells the client what happened at the protocol boundary—nothing more, nothing less.
+By the end of this chapter, you should be able to:
+- Explain status codes as machine signals that drive client behavior (retry, redirect, abort).
+- Describe the five classes: 1xx informational, 2xx success, 3xx redirection, 4xx client error, 5xx server error.
+- Distinguish absence of response (transport failure) from HTTP error responses.
+- Apply the rule: 4xx means fix the request; 5xx means retry may help; 2xx means do not retry automatically.
 
-If you misunderstand status codes, you will misdiagnose failures, retry when you shouldn’t, stop when you should retry, and blame the wrong side of the system.
+## Key Terms
 
-This chapter exists to lock in a correct mental model. Chapter 2.8 showed response structure; this chapter focuses on the status code—the most important signal in the response. Whether your Pi responds to voltage queries, your ESP32 receives confirmations, or your coop controller gets fence status—status codes work the same way.
+- **Status code** — Three-digit integer. The first digit defines the class. The number drives client behavior, not the reason phrase.
+- **4xx** — Client error. The request reached the server; the server refuses or cannot fulfill it due to client-side issues. Fix the request.
+- **5xx** — Server error. The request was valid; the server failed while processing it. Retry may help.
 
+This chapter exists to lock in a correct mental model. Chapter 1.8 showed response structure; this chapter focuses on the status code—the most important signal in the response. Whether your Pi responds to voltage queries, your ESP32 receives confirmations, or your coop controller gets fence status, status codes work the same way.
 
 ## 1) Status Codes Are Part of the Contract
 
-When a server responds, it must choose a status code.
+When a server responds, it must choose a status code. That choice is part of the HTTP contract. The status code tells the client: did the request reach the server? Did the server understand it? Did the server act on it? Who is responsible for the outcome? Everything else in the response is secondary. Status codes are designed for clients first. Humans may see 404 Not Found. The client—your dashboard, ESP32, coop controller—sees 404. The number drives behavior. Your dashboard checks if status code equals 404 to decide what to do, not the text Not Found.
 
-That choice is part of the HTTP contract.
+The first digit defines the class of outcome: 2xx success, 3xx redirection, 4xx client-side failure, 5xx server-side failure. This classification is deliberate and fundamental. Every status code answers one core question: did the request complete successfully, and if not, where did it fail? Not: was the data good, was the server happy, did the user get what they wanted. Just: what happened to the request.
 
-The status code tells the client:
-	•	Did the request reach the server?
-	•	Did the server understand it?
-	•	Did the server act on it?
-	•	Who is responsible for the outcome?
+## 2) 1xx and 2xx
 
-Everything else in the response is secondary.
+The 1xx range exists but most developers rarely encounter it. 1xx codes mean the request was received, processing is continuing, no final outcome yet. 100 Continue, 101 Switching Protocols. Know they exist, know they are transitional, know they are rare in practice.
 
+A 2xx status means the request reached the server, the server understood it, and the server acted on it successfully. This is protocol-level success. Critical: 2xx does not mean everything is fine. A 2xx response does not mean the resource contained meaningful data (200 OK with voltage null—request succeeded, sensor returned null), the user got what they expected (200 OK with HTML error page instead of JSON), or the system state is ideal (200 OK with error sensor offline—request processed, sensor is down). It only means the request was handled successfully. Your dashboard sends a voltage request and gets 200 OK with voltage null. The request succeeded. The data indicates the sensor returned null. Success at the protocol level, not necessarily useful data.
 
-## 2) Status Codes Are for Machines First
+200 OK means the request succeeded and the response contains a representation of the resource. This is the most common status code. Your Pi responds 200 OK when your dashboard fetches voltage successfully, when your ESP32 reports temperature and the server processes it, or when your solar logger returns production data. Your coop controller might get 200 OK with fence status. 201 Created means the request succeeded and a new resource was created. Usually paired with POST and a Location header. Your ESP32 sends POST to register a new sensor. Your Pi responds 201 Created with Location pointing to the new resource. Your drip irrigation controller might POST a schedule and get 201 if a new schedule was created. 204 No Content means the request succeeded and there is no response body. This is intentional, not an error. Used when an update succeeded or nothing needs to be returned. Your dashboard sends DELETE for a sensor. Your Pi responds 204 No Content. Your poultry net API might return 204 after a successful config update. In general, 2xx means do not retry automatically. The request worked. Retrying may cause duplicate actions. Your ESP32 sends POST for temperature and gets 200 OK. Retrying would send the same reading twice. Do not retry success.
 
-Status codes are designed for clients, not humans.
+## 3) 3xx Redirection
 
-Humans may see:
+A 3xx status means the request was valid and the server wants the client to take another step. This is not a failure. It is guidance. A redirect is the server saying: what you want exists, but not here. The server must tell the client where to go next. That information is in headers, not the status code alone.
 
-```
-404 Not Found
-```
+301 Moved Permanently means the resource has permanently moved. Clients should update bookmarks. Caches may store this redirect. Your dashboard requests voltage, but your Pi moved it to a new path. Responds 301 with Location header. Your dashboard should update its code—this is permanent. 302 Found means the resource is temporarily elsewhere. The client should not assume permanence. Common in login flows and temporary routing. 304 Not Modified is special: the client's cached version is still valid, no body is sent, the client should reuse its cache. This saves bandwidth. Your dashboard requests voltage with If-None-Match. Your Pi checks—data has not changed. Responds 304 with no body. Many people treat redirects as errors. They are not. Redirects are successful control-flow signals.
 
-But the client (your dashboard, ESP32, coop controller) sees:
+## 4) 4xx Client Error
 
-```
-404
-```
+A 4xx status means the request reached the server, the server understood it, and the server refuses or cannot process it due to client-side issues. The core rule: 4xx means the client must change something. Retrying the same request will usually fail again. Your ESP32 sends a voltage request without auth and gets 401 Unauthorized. Retrying with no auth will fail again. Fix the request—add the Authorization header. Your dashboard requests a nonexistent path and gets 404 Not Found. Retrying will not help. Fix the path.
 
-The number is what drives behavior. Your dashboard checks `if status_code == 404:` to decide what to do, not the text "Not Found".
+400 Bad Request means the request was malformed—invalid syntax, missing required fields, unparseable body. The server could not understand the request as sent. Your ESP32 sends POST with malformed JSON (missing closing brace). Your Pi responds 400. Your coop controller sends a PUT with invalid JSON structure. 400. 401 Unauthorized means authentication is required; credentials are missing or invalid. 401 often includes a WWW-Authenticate header. It does not mean forbidden. Your ESP32 sends a voltage request without Authorization. Your Pi responds 401. The ESP32 must include a valid token. 403 Forbidden means the server understood who you are but you are not allowed to do this. Authentication succeeded; authorization failed. Your ESP32 authenticates but tries DELETE on an admin-only resource. Your Pi responds 403. Your dashboard might get 403 when trying to access another user's sensor. 404 Not Found means the server cannot find the requested resource. The path does not map to anything. It does not say whether the resource existed before or might exist later. Your dashboard sends a request to a nonexistent path. Your ESP32 requests a sensor that does not exist. 404. 4xx errors are not server failures. The server is functioning correctly. It is enforcing rules. Blaming the server for 401 is usually incorrect. The Pi is working—it is enforcing authentication. The ESP32 needs to fix its request.
 
+## 5) 5xx Server Error
 
-## 3) The First Digit Is the Category
+A 5xx status means the request was valid and the server failed while handling it. This is the server admitting fault. 500 Internal Server Error means something went wrong, the server cannot provide more detail, and the failure occurred after request parsing. This is the generic server failure. Your dashboard sends a voltage request, but the Pi's sensor reading code crashes. Your Pi responds 500. 502 Bad Gateway means the server is acting as a gateway or proxy and an upstream service failed. Your dashboard requests from a reverse proxy. The proxy forwards to your Pi, but the Pi is down. The proxy responds 502. 503 Service Unavailable means the server is temporarily unable to handle the request—often overload or maintenance. Clients may retry later. Your Pi is rebooting. Your ESP32 sends POST. Your Pi responds 503. The ESP32 should retry after a delay.
 
-HTTP status codes are grouped by their first digit.
+In general: 5xx means retry might succeed. 4xx means retry will likely fail. 2xx means retry may cause harm. This matters for automation. Your ESP32 sends temperature readings every five minutes. If it gets 503, it should retry after a delay—the server might recover. If it gets 401, retrying will not help—fix the auth token first. Your freezer sensor API might get 502 from a reverse proxy when the backend Pi is rebooting—retry later. Your coop controller gets 500 when the fence logic crashes—retry might work once the server recovers. The status code drives the retry decision. Wrong status codes break automation.
 
-This digit defines the class of outcome.
-	•	2xx → success
-	•	3xx → redirection
-	•	4xx → client-side failure
-	•	5xx → server-side failure
+## 6) Responsibility and Absence
 
-This classification is deliberate and fundamental.
+Status codes encode responsibility: 2xx means no one failed, 3xx means coordination required, 4xx means client responsibility, 5xx means server responsibility, no response means network or transport failure. Absence is not a status code. If the connection times out, DNS fails, or the network drops, there is no status code. This is not 5xx. It is absence. A missing response means the server may never have seen the request. A 500 means the server saw the request and failed. These are completely different failure modes. Your ESP32 sends POST but WiFi drops. No response. This is absence—the Pi never saw the request. Contrast with 500—the Pi saw the request, parsed it, then crashed. Different failure modes require different handling.
 
+## 7) Status Codes Drive Behavior
 
-## 4) Status Codes Answer One Core Question
+Clients use status codes to decide: retry, redirect, cache, abort, prompt user. This is why correctness matters. Your dashboard checks 200 to display voltage, 404 to show sensor not found, 500 to show server error and retry, 503 to show temporarily unavailable and retry later. The status code drives all these decisions. Well-designed APIs use status codes precisely, do not overload meaning into the body, and let clients behave mechanically. Poor APIs always return 200 even on errors, hide errors in JSON with 200 OK, and break automation. Your Pi always returns 200 OK even when a sensor does not exist, with body error sensor not found. Your dashboard cannot distinguish success from failure—it must parse the body. Bad design. Use 404 for missing resources. Your solar logger might return 200 with an error object when the inverter is offline—better to return 503 or 424. Returning the wrong status code is a protocol violation in spirit. Correct status codes are part of being a good HTTP citizen. When debugging: no response means check transport. 4xx means inspect the request. 5xx means inspect the server or retry. If you understand this, debugging HTTP becomes mechanical instead of emotional.
 
-Every status code answers this question:
+## Common Pitfalls
 
-Did the request complete successfully, and if not, where did it fail?
+Retrying 4xx: 401 and 404 will not succeed on retry. Fix the request first. Not retrying 5xx: 503 and 500 may succeed on retry after a delay. Confusing absence with 5xx: no response is transport failure, not server error. Always returning 200: clients cannot decide behavior mechanically. Hiding errors in the body with 200 OK breaks automation.
 
-Not:
-	•	Was the data good?
-	•	Was the server happy?
-	•	Did the user get what they wanted?
+## Summary
 
-Just: what happened to the request.
+Status codes are signals. The first digit defines responsibility. 2xx means success—do not retry automatically. 3xx means redirect—follow Location. 4xx means fix the request—retry will likely fail. 5xx means server failed—retry may help. No response means transport failure. The number drives behavior.
 
+## Next
 
-## 5) 1xx: Informational (Mostly Ignored)
-
-The 1xx range exists, but most developers never encounter it.
-
-1xx codes mean:
-	•	The request was received
-	•	Processing is continuing
-	•	No final outcome yet
-
-Examples:
-	•	100 Continue
-	•	101 Switching Protocols
-
-For now:
-	•	Know they exist
-	•	Know they are transitional
-	•	Know they are rare in practice
-
-
-## 6) 2xx: Success
-
-A 2xx status means:
-	•	The request reached the server
-	•	The server understood it
-	•	The server acted on it successfully
-
-This is protocol-level success.
-
-
-## 7) Success Does Not Mean “Everything Is Fine”
-
-This is critical.
-
-A 2xx response does not mean:
-	•	The resource contained meaningful data (e.g., `200 OK` with `{"voltage": null}`—request succeeded, but sensor returned null)
-	•	The user got what they expected (e.g., `200 OK` with HTML error page instead of JSON)
-	•	The system state is ideal (e.g., `200 OK` with `{"error": "sensor offline"}`—request processed, but sensor is down)
-
-It only means:
-
-The request was handled successfully.
-
-Example: Your dashboard sends `GET /api/voltage` and gets `200 OK` with body `{"voltage": null}`. The request succeeded—the server processed it correctly. The data just indicates the sensor returned null. Success at the protocol level, not necessarily useful data.
-
-
-## 8) 200 OK: Generic Success
-
-200 OK means:
-	•	The request succeeded
-	•	The response contains a representation of the resource
-
-This is the most common status code.
-
-Example use cases:
-	•	GET returns data (e.g., `GET /api/voltage` → `200 OK` with `{"voltage": 12.4}`)
-	•	POST processed successfully without creating a new resource (e.g., `POST /api/temp` → `200 OK` with confirmation)
-
-Your Pi responds `200 OK` when your dashboard fetches voltage successfully, or when your ESP32 reports temperature and the server processes it.
-
-
-## 9) 201 Created: Resource Creation
-
-201 Created means:
-	•	The request succeeded
-	•	A new resource was created as a result
-
-Usually paired with:
-	•	POST
-	•	A `Location` header pointing to the new resource
-
-Example: Your ESP32 sends `POST /api/sensors` to register a new sensor. Your Pi responds `201 Created` with `Location: /api/sensors/esp32_coop`. This tells the client something new now exists.
-
-
-## 10) 204 No Content: Success Without a Body
-
-204 No Content means:
-	•	The request succeeded
-	•	There is no response body
-
-This is not an error.
-This is intentional.
-
-Used when:
-	•	An update succeeded (e.g., `PUT /api/config` → `204 No Content`)
-	•	Nothing needs to be returned (e.g., `DELETE /api/sensors/old_id` → `204 No Content`)
-
-Example: Your dashboard sends `DELETE /api/sensors/old_id`. Your Pi responds `204 No Content`—deletion succeeded, nothing to return.
-
-
-## 11) 2xx Means “Do Not Retry”
-
-In general:
-	•	2xx → do not retry automatically
-
-The request worked.
-Retrying may cause duplicate actions.
-
-Example: Your ESP32 sends `POST /api/temp` and gets `200 OK`. Retrying would send the same temperature reading twice—duplicate data. Don't retry success.
-
-
-## 12) 3xx: Redirection
-
-A 3xx status means:
-	•	The request was valid
-	•	The server wants the client to take another step
-
-This is not a failure.
-It is guidance.
-
-
-## 13) Redirection Is Explicit Behavior
-
-A redirect is the server saying:
-
-“What you want exists, but not here.”
-
-The server must tell the client where to go next.
-
-That information is carried in headers, not the status code alone.
-
-
-## 14) 301 Moved Permanently
-
-301 means:
-	•	The resource has permanently moved
-	•	Clients should update bookmarks
-	•	Caches may store this redirect
-
-This is a strong signal.
-
-Example: Your dashboard requests `/api/voltage`, but your Pi has permanently moved it to `/api/sensors/voltage`. Responds `301 Moved Permanently` with `Location: /api/sensors/voltage`. Your dashboard should update its code to use the new path—this is permanent.
-
-
-## 15) 302 Found (Temporary Redirect)
-
-302 means:
-	•	The resource is temporarily elsewhere
-	•	The client should not assume permanence
-
-This is common in:
-	•	Login flows
-	•	Temporary routing
-
-Example: Your dashboard requests `/api/voltage`, but your Pi temporarily routes it to `/api/sensors/voltage` during maintenance. Responds `302 Found` with `Location: /api/sensors/voltage`. The client follows the redirect.
-
-
-## 16) 304 Not Modified
-
-304 is special.
-
-It means:
-	•	The client’s cached version is still valid
-	•	No body is sent
-	•	The client should reuse its cache
-
-This saves bandwidth and time.
-
-Example: Your dashboard requests `GET /api/voltage` with `If-None-Match: "abc123"`. Your Pi checks—the data hasn't changed. Responds `304 Not Modified` with no body. Your dashboard uses its cached version.
-
-
-## 17) 3xx Does Not Mean Error
-
-Many people treat redirects as errors.
-
-They are not.
-
-Redirects are successful control-flow signals.
-
-
-## 18) 4xx: Client Error
-
-A 4xx status means:
-	•	The request reached the server
-	•	The server understood it
-	•	The server refuses or cannot process it due to client-side issues
-
-
-## 19) 4xx Means “Fix the Request”
-
-This is the core rule:
-
-4xx means the client must change something.
-
-Retrying the same request will usually fail again.
-
-Example: Your ESP32 sends `GET /api/voltage` without auth and gets `401 Unauthorized`. Retrying the same request (still no auth) will fail again. Fix the request—add the `Authorization` header. Or your dashboard sends `GET /api/nonexistent` and gets `404 Not Found`. Retrying won't help—the path doesn't exist. Fix the path.
-
-
-## 20) 400 Bad Request
-
-400 means:
-	•	The request was malformed
-	•	Invalid syntax
-	•	Missing required fields
-	•	Unparseable body
-
-The server could not understand the request as sent.
-
-Example: Your ESP32 sends `POST /api/temp` with malformed JSON: `{"temp": 72.5` (missing closing brace). Your Pi responds `400 Bad Request`—the request syntax is invalid.
-
-
-## 21) 401 Unauthorized
-
-401 means:
-	•	Authentication is required
-	•	Credentials are missing or invalid
-
-Important detail:
-	•	401 often includes `WWW-Authenticate` header
-	•	It does not mean forbidden
-
-Example: Your ESP32 sends `GET /api/voltage` without an `Authorization` header. Your Pi responds `401 Unauthorized`—authentication required. The ESP32 must include a valid token.
-
-
-## 22) 403 Forbidden
-
-403 means:
-	•	The server understood who you are
-	•	You are not allowed to do this
-
-Authentication succeeded.
-Authorization failed.
-
-Example: Your ESP32 authenticates successfully but tries to `DELETE /api/config` (admin-only). Your Pi responds `403 Forbidden`—you're authenticated, but not authorized for this action.
-
-
-## 23) 404 Not Found
-
-404 means:
-	•	The server cannot find the requested resource
-	•	The path does not map to anything
-
-It does not say:
-	•	Whether the resource existed before
-	•	Whether it might exist later
-
-Example: Your dashboard sends `GET /api/nonexistent`. Your Pi responds `404 Not Found`—that path doesn't exist on this server. Or your ESP32 requests `GET /api/sensors/999` (sensor doesn't exist). `404 Not Found`—the resource isn't there.
-
-
-## 24) 4xx Errors Are Not Server Failures
-
-The server is functioning correctly.
-It is enforcing rules.
-
-Blaming the server for a 4xx is usually incorrect.
-
-Example: Your ESP32 gets `401 Unauthorized` from your Pi. The Pi is working correctly—it's enforcing authentication. The ESP32 needs to fix its request (add auth token). Don't blame the Pi for doing its job.
-
-
-## 25) 5xx: Server Error
-
-A 5xx status means:
-	•	The request was valid
-	•	The server failed while handling it
-
-This is the server admitting fault.
-
-
-## 26) 500 Internal Server Error
-
-500 means:
-	•	Something went wrong
-	•	The server cannot provide more detail
-	•	The failure occurred after request parsing
-
-This is the generic server failure.
-
-Example: Your dashboard sends `GET /api/voltage`, but your Pi's sensor reading code crashes (unhandled exception). Your Pi responds `500 Internal Server Error`—the request was valid, but the server failed while processing it.
-
-
-## 27) 502 Bad Gateway
-
-502 means:
-	•	The server is acting as a gateway or proxy
-	•	An upstream service failed
-
-Common in microservice architectures.
-
-Example: Your dashboard requests `/api/voltage` from a reverse proxy. The proxy forwards to your Pi, but the Pi is down. The proxy responds `502 Bad Gateway`—the gateway (proxy) is working, but the upstream service (Pi) failed.
-
-
-## 28) 503 Service Unavailable
-
-503 means:
-	•	The server is temporarily unable to handle the request
-	•	Often due to overload or maintenance
-
-Clients may retry later.
-
-Example: Your Pi is rebooting or overloaded. Your ESP32 sends `POST /api/temp`. Your Pi responds `503 Service Unavailable`—temporarily down, try again later. The ESP32 should retry after a delay.
-
-
-## 29) 5xx Means “Retry May Help”
-
-In general:
-	•	5xx → retry might succeed
-	•	4xx → retry will likely fail
-	•	2xx → retry may cause harm
-
-This matters for automation.
-
-Example: Your ESP32 sends temperature readings every 5 minutes. If it gets `503 Service Unavailable`, it should retry after a delay—the server might recover. But if it gets `401 Unauthorized`, retrying won't help—it needs to fix the auth token first. The status code drives the retry decision.
-
-
-## 30) Status Codes Encode Responsibility
-
-This is the most important mental model:
-	•	2xx → no one failed
-	•	3xx → coordination required
-	•	4xx → client responsibility
-	•	5xx → server responsibility
-	•	No response → network/transport failure
-
-
-## 31) Absence Is Not a Status Code
-
-If:
-	•	The connection times out
-	•	DNS fails
-	•	The network drops
-
-There is no status code.
-
-This is not a 5xx.
-It is absence.
-
-
-## 32) Clients Must Distinguish Absence from Error
-
-A missing response means:
-	•	The server may never have seen the request
-
-A 500 means:
-	•	The server saw the request and failed
-
-These are completely different failure modes.
-
-Example: Your ESP32 sends `POST /api/temp` but the Wi-Fi drops. No response arrives. This is absence—the Pi never saw the request. Contrast with `500 Internal Server Error`—the Pi saw the request, parsed it, then crashed. Different failure modes require different handling.
-
-
-## 33) Status Codes Drive Client Behavior
-
-Clients use status codes to decide:
-	•	Retry?
-	•	Redirect?
-	•	Cache?
-	•	Abort?
-	•	Prompt user?
-
-This is why correctness matters.
-
-Example: Your dashboard checks `if status_code == 200:` to display voltage. If status is `404`, it shows "sensor not found". If status is `500`, it shows "server error" and retries. If status is `503`, it shows "temporarily unavailable" and retries later. The status code drives all these decisions.
-
-
-## 34) APIs Live or Die on Status Codes
-
-Well-designed APIs:
-	•	Use status codes precisely
-	•	Do not overload meaning into the body
-	•	Let clients behave mechanically
-
-Poor APIs:
-	•	Always return 200 (even on errors)
-	•	Hide errors in JSON (`{"error": "not found"}` with `200 OK`)
-	•	Break automation (clients can't decide behavior mechanically)
-
-Example: Your Pi always returns `200 OK`, even when a sensor doesn't exist, with body `{"error": "sensor not found"}`. Your dashboard can't distinguish success from failure—it must parse the body to know what happened. Bad design.
-
-
-## 35) Status Codes Are Not Optional
-
-Returning the wrong status code is a protocol violation in spirit, even if not enforced.
-
-Correct status codes are part of being a good HTTP citizen.
-
-
-## Reflection
-
-Think about real responses—your Pi responding to voltage queries, ESP32 receiving confirmations, coop controller getting fence status.
-	•	If a request fails with no response, who do you blame?
-	•	If a request returns 403, what must change?
-	•	If a request returns 503, should the client retry?
-	•	If an API always returns 200, how do clients know what happened?
-
-Consider failure modes:
-	•	Your ESP32 sends `POST /api/temp` and gets no response—connection dropped. Who's responsible? The network/transport layer. This is absence, not an HTTP error. Different from `500 Internal Server Error`—that means the Pi saw the request and crashed.
-	•	Your dashboard gets `403 Forbidden` when trying to delete a sensor. You're authenticated but not authorized. What must change? Fix the request—use a different endpoint, get admin permissions, or accept that you can't delete sensors. Retrying the same request won't help.
-	•	Your Pi returns `503 Service Unavailable`—server is rebooting. Should the client retry? Yes, after a delay. The server might recover. Contrast with `401 Unauthorized`—retrying won't help, fix the auth first.
-	•	Your Pi always returns `200 OK`, even when a sensor doesn't exist, with body `{"error": "sensor not found"}`. How do clients know what happened? They can't—they must parse the body. Bad design. Use `404 Not Found` for missing resources.
-
-These distinctions matter when debugging and handling errors.
-
-
-## Core Understanding
-
-HTTP status codes are signals, not messages.
-	•	The first digit defines responsibility
-	•	The full code provides detail
-	•	2xx = success
-	•	3xx = redirect
-	•	4xx = client must change
-	•	5xx = server failed
-	•	No response = transport failure
-
-If you understand this, debugging HTTP becomes mechanical instead of emotional.
-
-This chapter builds on Chapter 2.1 (request-response), 2.2 (HTTP on TCP), 2.3 (what HTTP is), 2.4 (HTTP as text), 2.5 (statelessness and connection lifecycle), 2.6 (request structure), 2.7 (request line), and 2.8 (response structure). Next: Chapter 2.10 — Status Codes: Success and Redirects, where we go deep on 200, 201, 204, 301, 302, and 304, and learn exactly when each should be used and why they exist.
+This chapter builds on Chapters 1.1 through 1.8. Next: **Chapter 1.10 — Status Codes: Success and Redirects**, where we go deep on 200, 201, 204, 301, 302, and 304, and learn exactly when each should be used and why they exist.

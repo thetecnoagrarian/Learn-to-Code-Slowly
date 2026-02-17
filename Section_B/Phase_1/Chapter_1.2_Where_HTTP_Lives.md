@@ -1,419 +1,91 @@
-# Phase 2 · Chapter 2.2: Where HTTP Lives
+# Section B Phase 1 · Chapter 1.2: Where HTTP Lives
 
-Phase 0.7 introduced time and state changes.
-Phase 0.6 introduced failure.
-Phase 0.8 introduced boundaries.
+Where HTTP lives—on top of TCP—and what it assumes about the transport layer. The mental map for debugging when "nothing came back."
 
-Networking combines all three.
+## Learning Objectives
 
-HTTP does not exist in isolation.
-It does not float in the air.
-It does not magically deliver messages.
+By the end of this chapter, you should be able to:
+- Explain where HTTP sits in the protocol stack (on top of TCP).
+- Distinguish HTTP errors (4xx, 5xx) from transport failures (timeout, connection refused).
+- Describe what HTTP assumes and what it does not guarantee.
+- Debug "no response" failures by separating layers.
 
-HTTP lives on top of something else.
+## Key Terms
 
-Understanding where HTTP lives—and what it assumes about what lives beneath it—is the difference between:
-	•	Calm debugging
-	•	And weeks of “this makes no sense”
+- **TCP** — Transport-layer protocol that provides a reliable, ordered byte stream. HTTP rides on TCP.
+- **Transport failure** — Connection refused, timeout, DNS failure, network unreachable. No HTTP response exists.
+- **HTTP error** — Server responded with a status code (4xx, 5xx). The exchange completed.
 
-This chapter is not a networking course.
-It is a mental map.
+Section A Phase 1 introduced time (Chapter 1.7), failure (Chapter 1.6), and boundaries (Chapter 1.8). Networking combines all three. HTTP does not exist in isolation or float in the air. HTTP lives on top of something else. Understanding where it lives—and what it assumes about what lies beneath—is the difference between calm debugging and weeks of confusion.
 
-Chapter 2.1 established the request-response model. This chapter shows where that model lives—on top of TCP, not in the air. Whether you're fetching sensor config on a Raspberry Pi, calling a coop API from a dashboard, or hitting a solar inverter API—when "nothing came back," the failure was often below HTTP.
+Chapter 1.1 established the request-response model. This chapter shows where that model runs: on top of TCP. Whether you are fetching sensor config on a Raspberry Pi, calling a coop API from a dashboard, or hitting a solar inverter API, when "nothing came back," the failure was often below HTTP.
 
-Enough context to know:
-	•	What HTTP guarantees
-	•	What it absolutely does not
-	•	And why failures often feel “mysterious” until you separate layers
+## 1) Protocol Layers Are Contracts
 
-## 1) Protocol Layers Are Contracts, Not Implementations
-
-Before we talk about HTTP specifically, we need one grounding idea:
-
-Each protocol layer is a contract, not a solution.
-
-A layer:
-	•	Makes assumptions about the layer below
-	•	Provides guarantees to the layer above
-	•	Refuses responsibility outside its contract
-
-HTTP is one such layer.
-
-It assumes:
-	•	Something else moves bytes
-	•	Something else establishes connections
-	•	Something else handles packet loss
-
-If those assumptions fail, HTTP does not “try harder.”
-
-It simply… stops.
+Each protocol layer is a contract, not a full solution. A layer makes assumptions about the layer below, provides guarantees to the layer above, and refuses responsibility outside its contract. HTTP is one such layer. It assumes that something else moves bytes, establishes connections, and handles packet loss. If those assumptions fail, HTTP does not try harder. It simply stops.
 
 ## 2) HTTP Does Not Send Packets
 
-This sounds obvious, but it is the root of many misunderstandings.
-
-HTTP does not:
-	•	Send packets
-	•	Route traffic
-	•	Retransmit lost data
-	•	Detect congestion
-	•	Discover paths
-	•	Handle IP addresses
-
-HTTP does not even know what a packet is.
-
-HTTP operates on messages, not packets.
-Specifically:
-	•	Requests
-	•	Responses
-
-If you imagine HTTP “sending” something, what it is really doing is:
-
-Writing text into a stream and assuming the stream gets delivered.
-
-That assumption is crucial.
+HTTP does not send packets, route traffic, retransmit lost data, detect congestion, discover paths, or handle IP addresses. HTTP does not know what a packet is. It operates on messages—requests and responses. When HTTP "sends" something, it is really writing text into a stream and assuming the stream gets delivered. That assumption is crucial.
 
 ## 3) HTTP Is an Application-Layer Protocol
 
-HTTP lives at the application layer.
+HTTP lives at the application layer. It is designed for programs. It describes meaning, not movement: methods, headers, status codes, message structure. It deals in semantics, not transport mechanics. HTTP does not define how bytes reach the other side, how long it takes, or what happens if they do not arrive. Those responsibilities live below HTTP. That separation is what lets you reason about a coop dashboard API, a solar inverter endpoint, or a poultry net status service without thinking about packet loss—until something breaks.
 
-This means:
-	•	It is designed for programs
-	•	It describes meaning, not movement
-	•	It deals in semantics, not transport mechanics
+## 4) The Layer Beneath: TCP
 
-HTTP defines:
-	•	Methods
-	•	Headers
-	•	Status codes
-	•	Message structure
+Most of the time, HTTP runs on TCP. TCP is a transport-layer protocol. Its job is to provide a reliable connection, ordered delivery, and a continuous byte stream. From HTTP's perspective, TCP looks like a pipe: write bytes in one end, they arrive in order at the other end—or the pipe breaks. HTTP does not see packets or retransmissions. It sees bytes arriving or the pipe breaking.
 
-HTTP does not define:
-	•	How bytes reach the other side
-	•	How long it takes
-	•	What happens if they don’t
+When your browser requests the coop door status from your Pi, or your phone fetches solar production from the logger, HTTP hands a message to TCP. TCP handles everything between your machine and the server. HTTP only cares that the message arrives in order or the connection fails. Everything else is below its concern.
 
-Those responsibilities live below HTTP.
+## 5) What TCP Provides
 
-## 4) The Layer Beneath: TCP (Usually)
+TCP guarantees that bytes arrive in the same order they were sent. If HTTP sends a request line and headers, that exact sequence arrives in order—or not at all. If bytes are lost in transit, TCP retransmits them; HTTP never sees the loss. If TCP cannot recover, the connection fails and HTTP sees nothing. TCP presents data as a stream, not messages. HTTP must decide where messages start and end, and parse the stream correctly. That is why HTTP is line-based and structured.
 
-Most of the time, HTTP runs on TCP.
+TCP does not guarantee that a connection will succeed, remain open, or complete. It does not guarantee that delivery will be fast or that the remote side exists. TCP can hang, stall, reset, timeout, or disappear. HTTP does not override any of this.
 
-TCP is a transport-layer protocol.
+A subtle point: HTTP writes do not necessarily map to single packets or single reads. A server might receive half a request, pause, then receive the rest. HTTP implementations must accumulate bytes, detect message boundaries, and handle incomplete data. That is why parsing matters. Chapter 1.4 covers HTTP as text and how the stream is parsed.
 
-Its job is to provide:
-	•	A reliable connection
-	•	Ordered delivery
-	•	A continuous byte stream
+## 6) HTTP's Core Assumption
 
-From HTTP’s perspective, TCP looks like:
+HTTP assumes one thing: if it can write bytes to the stream and the stream stays open, those bytes will arrive in order. Everything else is outside HTTP's responsibility. This assumption is reasonable, but it is not a promise. When the transport fails, HTTP has no fallback. There is no partial HTTP error, half response, or graceful degradation. From HTTP's perspective, the world has two states: a response arrived, or no response arrived. There is no third category. Think of HTTP as a carefully written letter and TCP as the mail service. If the letter arrives and says 404, that is information. If the letter never arrives, that is absence. Do not confuse the two.
 
-“Here is a pipe.
-Write bytes in one end.
-They arrive in order at the other end—or the pipe breaks.”
+## 7) Absence vs Error
 
-That’s it.
+This mirrors Section A Phase 1 Chapter 1.10 (Failure Is Normal). When your Python client requests the voltage API from your Pi, an HTTP error means you get a Response object with status 500, headers, and body—the exchange completed. A transport failure means you get a ConnectionError, Timeout, or ConnectionRefused—no Response object, no status code. Your code must handle both.
 
-HTTP does not see packets.
-HTTP does not see retransmissions.
-HTTP sees either:
-	•	Bytes arriving
-	•	Or the pipe breaking
+An HTTP error is a valid HTTP response. It has a status code, headers, maybe a body. It means the server responded. A transport failure has no HTTP status, headers, or body. It means the exchange never completed. This distinction is foundational.
 
-## 5) What TCP Provides (From HTTP’s Point of View)
+## 8) Common Transport-Level Failures
 
-TCP guarantees a few critical things:
+HTTP cannot describe DNS lookup failure, connection refused, connection timeout, network unreachable, TLS handshake failure, or connection reset mid-transfer. On a homestead: the dashboard requests voltage from the Pi. DNS fails because the hostname is wrong. Connection refused because the Pi is offline or the service is not running. Timeout because WiFi blipped, the Pi is asleep, or the solar inverter is unreachable. Network unreachable because of the wrong subnet or the ESP32 is out of range. Same for coop status, poultry net energizer, solar production, freezer temperature API—no HTTP status, no response at all.
 
-1. Ordered Delivery
+In all of these cases, no HTTP response exists. Your code receives an exception or timeout. The server may never have seen the request. HTTP is silent here. When debugging, ask first: did you get an HTTP status? If yes, the transport succeeded and the failure is in the application layer. If no, the transport failed. That single question narrows the search.
 
-Bytes arrive in the same order they were sent.
+## 9) Why This Feels Mysterious
 
-If HTTP sends:
+When a request hangs and nothing comes back—with no error response—the failure almost always occurred below HTTP. Homestead debugging: the dashboard never loads the coop status. Did you get a 500? That is HTTP—the server responded, something broke. Did the request hang? That is transport—Pi offline, WiFi drop, wrong hostname. Different failure, different fix. The solar logger works in curl but hangs in your script—different clients, different timeouts. The drip irrigation controller fetches the schedule; curl succeeds from your laptop but the ESP32 in the garden times out. Same endpoint, different network path, different client. Once you internalize the layers, debugging becomes mechanical.
 
-GET /index.html HTTP/1.1
-Host: example.com
+## 10) Time, Concurrency, and Shared Resources
 
-HTTP can assume:
-	•	That exact sequence arrives in order
-	•	Or not at all
+HTTP does not define timeouts. It does not say how long a server may take, how long a client should wait, or what "too slow" means. Timeouts are client decisions, transport decisions, application decisions. That is why different clients behave differently and the same request can work in one tool and hang in another.
 
-2. Reliable Delivery (Within Limits)
+HTTP appears synchronous: request, then response. Underneath, TCP buffers, networks delay, congestion happens, retries occur. HTTP pretends this complexity does not exist. That abstraction is powerful but leaky. The network is shared. Your HTTP request competes with other traffic, shares bandwidth, and experiences congestion. HTTP does not know this. It only sees slower bytes or no bytes.
 
-If bytes are lost in transit:
-	•	TCP retransmits them
-	•	HTTP never sees the loss
+TCP makes delivery likely, not absolute. Off-grid solar, flaky WiFi, Pi reboots—packets drop, connections reset. A freezer sensor API might be reachable most of the time but unreachable when the barn WiFi is overloaded or the Pi restarts. HTTP assumes success but must handle absence: retry logic, timeouts, graceful degradation. The client must decide how long to wait and whether to retry. This is why retries exist, why idempotency matters later (Chapter 1.14), and why failure handling is not optional.
 
-If TCP cannot recover:
-	•	The connection fails
-	•	HTTP sees nothing
+## 11) Mapping Back to Section A Phase 1
 
-3. A Continuous Stream
+State maps to connection open or closed. Time maps to delays, timeouts, and waiting. Failure maps to absence of response. Boundary maps to bytes crossing process boundaries. Assumptions map to stream reliability. Nothing new was introduced. The model was extended. The same principles from Section A Phase 1—validation at boundaries, failure as normal, time as an implicit input—apply here. HTTP is another boundary layer.
 
-TCP presents data as a stream, not messages.
+## Common Pitfalls
 
-HTTP has to:
-	•	Decide where messages start
-	•	Decide where messages end
-	•	Parse the stream correctly
+Confusing transport failure with HTTP error: a 404 or 500 is an HTTP response—the server spoke. A timeout or connection refused is transport—the server never spoke. Treat them differently in your code. Assuming HTTP guarantees delivery: HTTP assumes the transport works. If TCP fails, HTTP has no fallback. Ignoring client differences: the same request can work in curl and hang in Python because of different timeouts. curl uses its own defaults; your script uses the library's defaults. They are not the same.
 
-This is why HTTP is line-based and structured.
+## Summary
 
-## 6) What TCP Does Not Guarantee
+HTTP rides on TCP. It does not move packets. It assumes a reliable byte stream. If the stream fails, HTTP has nothing to say. Transport failure (no response) is distinct from HTTP error (4xx, 5xx). Handle both. When nothing came back, check the layer below HTTP first.
 
-This matters just as much.
+## Next
 
-TCP does not guarantee:
-	•	That a connection will succeed
-	•	That a connection will remain open
-	•	That delivery will be fast
-	•	That delivery will complete
-	•	That the remote side exists
-
-TCP can:
-	•	Hang
-	•	Stall
-	•	Reset
-	•	Timeout
-	•	Disappear
-
-HTTP does not override any of this.
-
-## 7) HTTP’s Core Assumption
-
-HTTP assumes exactly one thing:
-
-“If I can write bytes to the stream, and the stream stays open, those bytes will arrive in order.”
-
-Everything else is outside HTTP’s responsibility.
-
-This assumption is reasonable—but it is not a promise.
-
-## 8) When the Assumption Breaks
-
-When the transport fails, HTTP has no fallback.
-
-There is no:
-	•	“Partial HTTP error”
-	•	“Half response”
-	•	“Graceful degradation”
-
-From HTTP’s perspective, the world looks like one of two states:
-	1.	A response arrived
-	2.	No response arrived
-
-There is no third category.
-
-## 9) Absence vs Error (Again)
-
-This mirrors Phase 0.10 exactly.
-
-Example: your Python client calls `requests.get("http://pi.local/api/voltage")`. HTTP error: you get a Response object with status 500, headers, body—the exchange completed. Transport failure: you get `ConnectionError`, `Timeout`, or `ConnectionRefused`—no Response object, no status code. Your code must handle both.
-
-An HTTP error:
-	•	Is a valid HTTP response
-	•	Has a status code
-	•	Has headers
-	•	Has a body (maybe)
-	•	Means the server responded
-
-A transport failure:
-	•	Has no HTTP status
-	•	Has no headers
-	•	Has no body
-	•	Means the exchange never completed
-
-This distinction is foundational.
-
-## 10) Common Transport-Level Failures
-
-Here are failures HTTP cannot describe:
-	•	DNS lookup failure
-	•	Connection refused
-	•	Connection timeout
-	•	Network unreachable
-	•	TLS handshake failure
-	•	Connection reset mid-transfer
-
-Homestead: the dashboard requests voltage from the Pi. DNS fails (hostname wrong). Connection refused (Pi offline). Timeout (WiFi blip). Network unreachable (wrong subnet). No HTTP status—no response at all.
-
-In all of these cases:
-	•	No HTTP response exists
-	•	Your code receives an exception or timeout
-	•	The server may never have seen the request
-
-HTTP is silent here.
-
-## 11) Why This Feels “Mysterious”
-
-From the programmer’s perspective:
-	•	“I sent a request”
-	•	“Nothing came back”
-	•	“But there was no error response”
-	•	“What happened?”
-
-The answer is almost always:
-
-The failure occurred below HTTP.
-
-Homestead debugging: the dashboard "never loads" the coop status. Check: did you get a 500? (HTTP—server responded, something broke.) Or did the request hang? (Transport—Pi offline, WiFi drop, wrong hostname.) Different failure, different fix.
-
-Until you internalize the layers, this feels random.
-
-Once you do, it becomes mechanical.
-
-## 12) Time Lives Below HTTP
-
-HTTP does not define timeouts.
-
-It does not say:
-	•	How long a server may take
-	•	How long a client should wait
-	•	What “too slow” means
-
-Timeouts are:
-	•	Client decisions
-	•	Transport decisions
-	•	Application decisions
-
-This is why:
-	•	Different clients behave differently
-	•	The same request can “work” in one tool and “hang” in another
-
-## 13) HTTP Is Synchronous, Transport Is Not
-
-HTTP appears synchronous:
-	•	Request
-	•	Then response
-
-But underneath:
-	•	TCP buffers
-	•	Networks delay
-	•	Congestion happens
-	•	Retries occur
-
-HTTP pretends this complexity does not exist.
-
-That abstraction is powerful—but leaky.
-
-## 14) Partial Writes, Partial Reads
-
-Another subtle point:
-
-HTTP writes do not necessarily map to:
-	•	Single packets
-	•	Single reads
-	•	Single sends
-
-A server might:
-	•	Receive half a request
-	•	Pause
-	•	Then receive the rest
-
-HTTP implementations must:
-	•	Accumulate bytes
-	•	Detect message boundaries
-	•	Handle incomplete data
-
-This is why parsing matters.
-
-## 15) Why HTTP Is Text (Preview)
-
-HTTP’s text-based nature exists because it rides on a stream.
-	•	Lines
-	•	Delimiters
-	•	Headers
-	•	Length markers
-
-These are not stylistic choices.
-They are stream survival strategies.
-
-We’ll dig into this next chapter.
-
-## 16) The Transport Is Shared
-
-One more important idea:
-
-The network is shared.
-
-Your HTTP request:
-	•	Competes with other traffic
-	•	Shares bandwidth
-	•	Experiences congestion
-
-HTTP does not know this.
-It only sees:
-	•	Slower bytes
-	•	Or no bytes
-
-## 17) Reliability Is Probabilistic
-
-This is uncomfortable but true:
-
-TCP makes delivery likely, not absolute.
-
-Homestead: off-grid solar, flaky WiFi, Pi reboots. Packets drop. Connections reset. HTTP assumes success but must handle absence—retry logic, timeouts, graceful degradation.
-
-At scale:
-	•	Packets drop
-	•	Connections reset
-	•	Routes change
-	•	Machines reboot
-
-HTTP assumes success, but must be prepared for absence.
-
-This is why retries exist.
-This is why idempotency matters later.
-This is why failure handling is not optional.
-
-## 18) Mapping Back to Phase 0 Concepts
-
-Let’s map explicitly:
-	•	State → connection open or closed
-	•	Time → delays, timeouts, waiting
-	•	Failure → absence of response
-	•	Boundary → bytes crossing process boundaries
-	•	Assumptions → stream reliability
-
-Nothing new was introduced.
-The model was extended.
-
-## 19) Mental Model to Keep
-
-Hold this picture in your head:
-
-HTTP is a carefully written letter.
-TCP is the mail service.
-The road can wash out.
-
-If the letter arrives and says “404,” that’s information.
-If the letter never arrives, that’s absence.
-
-Do not confuse the two.
-
-## Reflection
-
-Think about a real system—battery monitor, coop controller, poultry net, solar logger, homestead dashboard. Sit with these questions:
-	•	When an HTTP request hangs, which layer failed?
-	•	When you see a 500 error, did the transport succeed?
-	•	When your code retries a request, what assumptions is it making?
-	•	What does “no response” actually mean?
-
-Consider failure modes:
-	•	Dashboard requests /api/voltage from Pi—nothing comes back. Transport failure or HTTP error? (No status = transport. 500 = HTTP.)
-	•	Same request “works” in curl, hangs in Python. Why? (Different timeouts, different clients.)
-
-If you can answer those cleanly, you are thinking in layers.
-
-## Core Understanding
-
-Say this slowly:
-
-HTTP rides on TCP. It does not move bytes.
-HTTP assumes a transport stream.
-TCP usually provides that stream.
-If the stream fails, HTTP has nothing to say.
-No response is absence—not an error response.
-
-That distinction will save you years. Your code receives either a Response (HTTP completed) or an exception (transport failed)—never both, never neither.
-
-This chapter builds on Chapter 2.1 (request-response model). Next: Chapter 2.3 — What HTTP Is, where we define the protocol itself—message format, semantics, and structure.
+This chapter builds on Chapter 1.1 (request-response model). Next: **Chapter 1.3 — What HTTP Is**, where we define the protocol itself—message format, semantics, and structure.

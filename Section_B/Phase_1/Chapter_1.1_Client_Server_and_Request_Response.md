@@ -1,396 +1,134 @@
-# Phase 2 · Chapter 2.1: Client–Server and the Request–Response Model
+# Section B Phase 1 · Chapter 1.1: Client–Server and the Request–Response Model
 
-Phase 0.8 established boundaries—places where programs touch the outside world and must defend themselves.
-Phase 1 showed how boundaries work in Python: input, output, validation, failure handling.
+Client–server roles, the request–response cycle, and why servers cannot initiate communication. The foundation for all web programming.
 
-Now we apply the same mental model to the web.
+## Learning Objectives
 
-HTTP is not magic.
-HTTP is not a framework.
-HTTP is not “the internet.”
+By the end of this chapter, you should be able to:
+- Distinguish client and server roles in an HTTP exchange.
+- Describe the request–response cycle and why it is asymmetric.
+- Explain why servers cannot initiate communication.
+- Identify request and response as boundaries requiring validation.
 
-HTTP is a boundary protocol.
+## Key Terms
 
-On one side of that boundary is a client.
-On the other side is a server.
-Data crosses the boundary in a very specific, asymmetric way.
+- **Client** — The initiator of an HTTP request. Decides when to speak, what to ask for, opens the connection, sends the first message.
+- **Server** — The responder. Listens, waits, accepts incoming connections, receives requests, sends responses.
+- **Request** — A message that starts an HTTP interaction and carries intent. Always initiates.
+- **Response** — A message that ends an interaction and carries the result. Always paired with a request.
 
-This chapter establishes the foundation that everything else in web programming depends on—whether you're building a sensor API on a Raspberry Pi, a coop controller dashboard, or a solar logger. It covers:
-	•	Who speaks first
-	•	Who responds
-	•	What a request is
-	•	What a response is
-	•	And why servers cannot speak without being spoken to
+Section A Phase 1 Chapter 1.8 (Boundaries) established that validation lives at edges—where programs touch the outside world. Section A Phase 2 showed how boundaries work in Python: input, output, validation, failure handling. Now we apply the same mental model to the web.
 
-If this chapter lands, the rest of HTTP will feel mechanical instead of mystical.
+HTTP is not magic, a framework, or “the internet.” HTTP is a boundary protocol. On one side of that boundary is a client. On the other is a server. Data crosses the boundary in a specific, asymmetric way.
+
+This chapter covers who speaks first, who responds, what a request is, what a response is, and why servers cannot speak without being spoken to. Whether you're building a sensor API on a Raspberry Pi, a coop door controller dashboard, or a solar production logger, this foundation applies.
 
 ## 1) Two Roles, Not Two Peers
 
-The web has exactly two roles in an HTTP exchange:
-	•	Client
-	•	Server
+The web has exactly two roles in an HTTP exchange: client and server. These are not moral roles, “frontend” and “backend,” or permanent identities. They are roles in a conversation.
 
-These are not moral roles.
-They are not “frontend” and “backend.”
-They are not permanent identities.
+### The Client
 
-They are roles in a conversation.
+The client is the initiator. The client decides when to speak, what to ask for, opens the connection, sends the first message, and waits.
 
-The Client
+A browser is a client. A Python script using requests is a client. Your phone app is a client. A battery monitor fetching config from a remote API is a client. An ESP32 checking soil moisture from a garden sensor API is a client. Anything that initiates an HTTP request is acting as a client.
 
-The client is the initiator.
+### The Server
 
-The client:
-	•	Decides when to speak
-	•	Decides what to ask for
-	•	Opens the connection
-	•	Sends the first message
-	•	Waits
+The server is the responder. The server listens, waits, accepts incoming connections, receives requests, and sends responses.
 
-A browser is a client.
-curl is a client.
-A Python script using requests is a client.
-Your phone app is a client.
-A battery monitor fetching config from a remote API is a client.
+A web server is a server. An API endpoint is a server. A Python process running Flask is a server. A sensor API serving voltage readings to a dashboard is a server. A coop controller serving door status to a webcam app is a server. Anything that waits for requests and responds is acting as a server.
 
-Anything that initiates an HTTP request is acting as a client.
+### Roles Are Contextual
 
-The Server
-
-The server is the responder.
-
-The server:
-	•	Listens
-	•	Waits
-	•	Accepts incoming connections
-	•	Receives requests
-	•	Sends responses
-
-A web server is a server.
-An API endpoint is a server.
-A Python process running Flask is a server.
-A sensor API serving voltage readings to a dashboard is a server.
-
-Anything that waits for requests and responds is acting as a server.
-
-Roles Are Contextual
-
-The same machine can be both client and server at different times.
-
-A Raspberry Pi might:
-	•	Act as a server for your browser (dashboard, sensor API)
-	•	Act as a client to fetch weather data or remote config
-	•	Act as both in different processes
-
-Client and server are roles in an exchange, not fixed identities.
+The same machine can be both client and server at different times. A Raspberry Pi might act as a server for your browser (dashboard, sensor API) and as a client to fetch weather data or remote config—or both in different processes. Client and server are roles in an exchange, not fixed identities.
 
 ## 2) The Asymmetry Is the Point
 
-The client–server model is intentionally asymmetric.
+The client–server model is intentionally asymmetric. The asymmetry is simple: the client initiates, the server responds. That constraint makes the web work.
 
-This asymmetry is not a design flaw.
-It is the core constraint that makes the web work.
-
-The asymmetry is simple:
-	•	The client initiates
-	•	The server responds
-
-That’s it.
-
-But everything flows from that.
-
-The server does not:
-	•	Choose when a request arrives
-	•	Decide who connects
-	•	Push messages out of the blue
-
-The client does not:
-	•	Passively wait forever
-	•	Accept unsolicited responses
-	•	Receive data without asking
-
-This asymmetry creates:
-	•	Clear boundaries
-	•	Clear responsibilities
-	•	Predictable failure modes
+The server does not choose when a request arrives, decide who connects, or push messages out of the blue. The client does not passively wait forever, accept unsolicited responses, or receive data without asking. This asymmetry creates clear boundaries, clear responsibilities, and predictable failure modes.
 
 ## 3) The Request–Response Cycle
 
-Every HTTP interaction follows the same basic cycle.
+Every HTTP interaction follows the same basic cycle. There are no exceptions.
 
-There are no exceptions.
+1. The client opens a connection to the server.
+2. The client sends a request.
+3. The server reads the request.
+4. The server processes the request.
+5. The server sends a response.
+6. The connection may close or remain open.
 
-One Complete Exchange
-	1.	The client opens a connection to the server
-	2.	The client sends a request
-	3.	The server reads the request
-	4.	The server processes the request
-	5.	The server sends a response
-	6.	The connection may close or remain open
+Example: your browser requests the voltage API on your coop dashboard. The server receives it, looks up the latest reading, returns success with JSON. One cycle complete. Same loop when an ESP32 asks the solar logger for today's production, or when your phone checks the electric poultry net energizer status, or when the drip irrigation controller fetches the daily schedule. Everything else—headers, cookies, sessions, REST, APIs—exists inside this loop.
 
-Example: your browser requests `GET /api/voltage HTTP/1.1`. The coop dashboard server receives it, looks up the latest reading, returns `200 OK` with JSON. One cycle complete.
-
-That’s the entire loop.
-
-Everything else—headers, cookies, sessions, REST, APIs—exists inside this loop.
-
-Nothing Happens Outside the Loop
-
-There is no:
-	•	“Server notification” without a request
-	•	“Background message” without a client
-	•	“Push” without a prior pull
-
-If something appears to violate this, it is:
-	•	A long-lived request
-	•	A queued response
-	•	A protocol layered on top
-	•	Or a workaround
-
-The loop still exists.
+Nothing happens outside the loop. There is no server notification without a request, no background message without a client, no push without a prior pull. Your freezer sensor API cannot spontaneously tell your dashboard that the temperature spiked. Your coop camera cannot push a frame to your phone. Something must ask first. If something appears to violate this—a live-updating dashboard, a real-time alert—it is a long-lived request (client opened a connection and keeps it open), a queued response (client asked and the server is streaming), a protocol layered on top (WebSockets, SSE), or a workaround (polling, brokers). The loop still exists.
 
 ## 4) Requests Initiate, Responses Terminate
 
-This rule is so important it deserves repetition.
+Requests initiate. Responses terminate. A request starts an interaction, carries intent, and defines what the server should do right now. A response ends that interaction, carries the result, and is always paired with a request.
 
-Requests initiate.
-Responses terminate.
-
-A request:
-	•	Starts an interaction
-	•	Carries intent
-	•	Defines what the server should do right now
-
-A response:
-	•	Ends that interaction
-	•	Carries the result
-	•	Is always paired with a request
-
-There is no such thing as:
-	•	A response without a request
-	•	A request without a response (even if the response is an error)
-
-If the server crashes, the attempted response still exists conceptually—it just failed.
+There is no response without a request. There is no request without a response—even if the response is an error. If the server crashes, the attempted response still exists conceptually; it just failed.
 
 ## 5) Servers Cannot Speak First
 
-This is one of the most misunderstood facts in web development.
+A server cannot decide to notify a client, push data at will, or speak without being spoken to. Your coop door API cannot tell your phone that the door just closed. Your solar logger cannot alert you when production drops. Your freezer sensor cannot push a warning when the temperature rises. To get any of that, something must ask—the phone, the dashboard, or a monitoring script. If a server “notifies” you, you asked it to wait (long-lived connection), or you keep asking it repeatedly (polling), or you opened a special long-lived channel (WebSocket, Server-Sent Events). The server never breaks the rule.
 
-A server cannot:
-	•	Decide to notify a client
-	•	Push data at will
-	•	Speak without being spoken to
-
-If a server “notifies” you:
-	•	You asked it to wait
-	•	Or you keep asking it repeatedly
-	•	Or you opened a special long-lived channel
-
-The server never breaks the rule.
-
-Why This Matters Later
-
-This constraint explains:
-	•	Why polling exists
-	•	Why long polling exists
-	•	Why WebSockets exist
-	•	Why Server-Sent Events exist
-	•	Why push notifications require brokers
-
-All of those are workarounds for the same rule:
-
-The server cannot initiate communication.
-
-Understanding this early prevents confusion later.
+This constraint explains why polling exists (client asks every N seconds), long polling (client asks and server holds until there’s something to say), WebSockets (client opens a connection that stays open for bidirectional flow), Server-Sent Events (client opens a one-way stream), and push notifications with brokers (a separate service the client has already connected to). All are workarounds for the same rule: the server cannot initiate communication. Understanding this early prevents confusion when you later add “live” features to a homestead dashboard.
 
 ## 6) One Server, Many Clients
 
-In most systems:
-	•	One server handles many clients
-	•	Each client has its own request–response exchanges
-	•	The server interleaves work between them
-
-Importantly:
-	•	The server does not “pause its life” for one client
-	•	The server does not wait for one response to finish before accepting another request
-	•	The server treats each request as an independent event
-
-This creates concurrency, but not shared state by default.
+In most systems, one server handles many clients. Your Raspberry Pi might serve a browser dashboard, a phone app, an ESP32 garden sensor, and a backup script—all at once. Each client has its own request–response exchanges. The server interleaves work between them. The server does not pause for one client, wait for one response to finish before accepting another request, or treat requests as dependent. When the dashboard requests coop temperature and the phone requests barn humidity at the same moment, the server handles both. Each request is an independent event. This creates concurrency, but not shared state by default. The server does not inherently know that the dashboard and the phone belong to the same user.
 
 ## 7) Independence of Requests
 
-A crucial property of HTTP is this:
-
-Each request is independent.
-
-By default, the server:
-	•	Does not remember previous requests
-	•	Does not know who you are
-	•	Does not assume continuity
-
-Even if:
-	•	Requests come from the same IP
-	•	They arrive milliseconds apart
-	•	They look similar
-
-Each request stands alone.
-
-This is statelessness, which will be covered deeply later—but it begins here.
+Each request is independent. By default, the server does not remember that you just asked for coop temperature, does not know that the next request for barn humidity is “from the same session,” and does not assume continuity. Even if requests come from the same IP, arrive milliseconds apart, or look similar, each request stands alone. The server has no built-in memory of prior requests. If you need continuity—logged-in state, a shopping cart, a multi-step config flow—you must build it explicitly (cookies, sessions, tokens). This is statelessness, covered deeply in Chapter 1.5, but it begins here. For a homestead API serving sensor readings, statelessness is often enough: each request for voltage or temperature is self-contained.
 
 ## 8) The Boundary Is the Request
 
-Phase 0.8 taught this principle:
+Section A Phase 1 Chapter 1.8 taught: validation lives at boundaries. In HTTP, the request is the boundary.
 
-Validation lives at boundaries.
+The server must assume the request could be malformed, the data could be wrong, the intent could be hostile, and the timing could be unexpected. Nothing inside the request is trusted by default: headers, paths, query parameters, body content, cookies.
 
-In HTTP, the request is the boundary.
-
-The server must assume:
-	•	The request could be malformed
-	•	The data could be wrong
-	•	The intent could be hostile
-	•	The timing could be unexpected
-
-Nothing inside the request is trusted by default.
-
-This includes:
-	•	Headers
-	•	Paths
-	•	Query parameters
-	•	Body content
-	•	Cookies
-
-Homestead example: a sensor API receives `GET /api/voltage?sensor=1`. Validate the path exists, the sensor ID is in range, the client is allowed. A malicious request might send `sensor=../../etc/passwd`—validate and reject.
-
-Everything must be validated as it crosses the boundary.
+Homestead example: a sensor API receives a request for temperature with a sensor ID in the query string. Validate the path exists, the sensor ID is in range (e.g., 1–8 for your eight barn sensors), and the client is allowed. A malicious or buggy request might send an out-of-range ID, a path traversal attempt, or malformed JSON. Validate and reject. Same logic for poultry net energizer status, drip irrigation commands, or coop door control—the request carries intent, and that intent crosses a boundary. Everything must be validated as it crosses the boundary.
 
 ## 9) The Response Is Also a Boundary
 
-Less obvious, but equally important:
-
-The response is also a boundary.
-
-From the client’s perspective:
-	•	The server might lie
-	•	The data might be wrong
-	•	The response might be incomplete
-	•	The response might arrive late
-
-Clients must also:
-	•	Validate responses
-	•	Handle errors
-	•	Expect failure
-
-Boundaries are symmetric in risk, even if roles are asymmetric in initiation.
+The response is also a boundary. From the client's perspective, the server might return stale data, the JSON structure might change without notice, the response might be truncated, or it might arrive after the client has already timed out. A dashboard requesting solar production might get a 200 OK with a body that doesn’t match the expected schema—wrong field names, wrong units, missing data. The client must validate responses, handle errors, and expect failure. Boundaries are symmetric in risk: both sides must defend themselves at the edge, even if roles are asymmetric in who initiates.
 
 ## 10) The Boundary Is Conceptual, Not Physical
 
-The client and server might be:
-	•	On different continents
-	•	On the same machine
-	•	In different containers
-	•	In the same process (during testing)
-
-The boundary still exists.
-
-HTTP does not care about distance.
-It cares about roles and messages.
-
-If one side initiates and the other responds, you have a client–server boundary.
+The client and server might be on different continents, on the same machine, in different containers, or in the same process during testing. Your browser and your Pi’s dashboard API might be on the same local network—or even on the same Pi if you’re testing with localhost. The boundary still exists. HTTP does not care about distance or topology. It cares about roles and messages. If one side initiates and the other responds, you have a client–server boundary. That separation is what lets you reason about validation, failure, and security regardless of where the code actually runs.
 
 ## 11) Timing Lives Outside the Protocol
 
-HTTP defines:
-	•	Message format
-	•	Message order
-	•	Message meaning
-
-It does not define:
-	•	How long something should take
-	•	When the response must arrive
-	•	How quickly the server should process
-
-That’s why:
-	•	Clients time out
-	•	Servers get overloaded
-	•	Networks feel “slow”
-
-Timing is real, but it is orthogonal to correctness.
-
-A slow response can be perfectly valid HTTP.
+HTTP defines message format, order, and meaning. It does not define how long something should take, when the response must arrive, or how quickly the server should process. That's why clients time out, servers get overloaded, and networks feel slow. A solar logger might respond slowly during peak production while it aggregates data. A fence monitor might time out when WiFi is spotty at the edge of your property. The HTTP exchange can be valid—correct format, correct semantics—and still fail in practice because of timing. Timing is real but orthogonal to protocol correctness. A slow response can be perfectly valid HTTP.
 
 ## 12) Failure Is Still a Response (Conceptually)
 
-If a request fails because:
-	•	The server crashes
-	•	The connection drops
-	•	The network disappears
-
-Homestead: the dashboard requests voltage from the Pi. The Pi is offline. WiFi blipped. No response. The client gets a timeout—not a 500, not a 404. The request was made; the response never arrived.
-
-From the client’s perspective:
-	•	The request was made
-	•	A response was expected
-	•	The response did not arrive
-
-This distinction matters later when we separate:
-	•	HTTP errors
-	•	Transport failures
-	•	Timeouts
-
-But the mental model starts here.
+If a request fails because the server crashes, the connection drops, or the network disappears, the client gets a timeout or connection error. The dashboard requests voltage from the Pi—the Pi is offline. The phone checks the electric poultry net—WiFi blipped. The irrigation controller fetches the schedule—the server is overloaded. No 500, no 404. The request was made; the response never arrived. From the client's perspective, a response was expected and did not arrive. The client must handle “no response” differently from “error response.” A 404 means the server answered and said “not found.” A timeout means the server never answered. This distinction matters when designing retry logic, user feedback, and error handling (Chapters 1.2, 1.12).
 
 ## 13) Why This Model Scales
 
-The request–response model scales because:
-	•	Servers don’t track clients unless explicitly designed to
-	•	Clients don’t depend on server memory
-	•	Failures are isolated
-	•	Work can be distributed
+The request–response model scales because servers don't track clients unless explicitly designed to, clients don't depend on server memory, failures are isolated, and work can be distributed. One Pi can serve a dashboard, an MQTT bridge, and a sensor API—each request is independent. If the coop camera feed drops, the solar logger keeps serving. If one client goes offline, the server doesn't need to clean up. No shared state means fewer failure modes. This simplicity is why HTTP survived decades of change and why it works for everything from a homestead monitoring setup to global CDNs.
 
-This simplicity is why HTTP survived decades of change.
+## 14) Mapping Back to Section A Phase 1
 
-## 14) Mapping Back to Phase 0
+Everything here maps to Section A Phase 1 concepts. Boundary (Chapter 1.8) becomes request and response—two crossing points where data enters and leaves. Input (Phase 2) becomes the request: the server reads it, validates it, and acts on it. Output becomes the response: the server sends it, and the client reads and validates it. Validation becomes parsing and checking—path, headers, body, schema. Failure (Chapter 1.6) becomes errors (4xx, 5xx), timeouts, and disconnects. State (Chapter 1.7) is not implicit; the server does not remember between requests unless you build sessions, cookies, or tokens. Nothing new was invented. The model was applied.
 
-Everything here maps directly to Phase 0 concepts:
-	•	Boundary → request / response
-	•	Input → request
-	•	Output → response
-	•	Validation → parsing and checking
-	•	Failure → errors, timeouts, disconnects
-	•	State → not implicit; must be built explicitly
+## Common Pitfalls
 
-Nothing new was invented.
-The model was applied.
+- **Assuming servers can push.** They cannot. Polling, WebSockets, and similar are client-initiated or long-lived client requests. “Live updates” always start with the client.
+- **Trusting request data.** Paths, headers, query params, and body content cross a boundary. Validate everything. A sensor ID, a path, a JSON body—all are untrusted until validated.
+- **Ignoring transport failures.** A timeout or connection drop is not an HTTP 500. The client must distinguish “no response” (timeout, network failure) from “error response” (4xx, 5xx). A 204 No Content is a response; a timeout is not.
 
-## Reflection
+## Summary
 
-Think about a real system—battery monitor, coop controller, poultry net, solar logger, homestead dashboard. Ask yourself:
-	•	When you load a webpage, who speaks first?
-	•	When you call an API, who initiates?
-	•	When something “updates live,” how did the server get permission to talk?
-	•	Where is the boundary?
-	•	What crosses it?
-	•	What assumptions are safe—and which are not?
+- The client initiates. The server responds.
+- Every HTTP interaction is request then response.
+- Servers cannot speak first. That asymmetry is the foundation of the web.
+- Request and response are both boundaries. Validate at both.
 
-Consider failure modes:
-	•	What if the client never gets a response? (Transport failure—timeout, WiFi drop, Pi offline. Chapter 2.2, 2.12.)
-	•	What if the server receives a malformed request? (Validate at the boundary—bad path, invalid JSON, hostile headers. Phase 0.8.)
-	•	What if the server returns 200 but the body is wrong? (Client must validate the response too—Section 9.)
+## Next
 
-If you can answer those questions cleanly, the model is landing.
-
-## Core Understanding
-
-Say this until it feels boring:
-
-The client initiates.
-The server responds.
-Every HTTP interaction is request → response.
-Servers cannot speak first.
-
-That asymmetry is not incidental.
-It is the foundation of the web.
-
-This chapter is the foundation for Phase 2. Next: Chapter 2.2 — Where HTTP Lives, where we see how HTTP rides on TCP, what the transport guarantees, and what happens when the transport fails.
-
+This chapter is the foundation for Section B Phase 1. Next: **Chapter 1.2 — Where HTTP Lives**, where we see how HTTP rides on TCP, what the transport guarantees, and what happens when the transport fails.

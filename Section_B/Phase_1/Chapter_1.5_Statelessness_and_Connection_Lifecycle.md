@@ -1,443 +1,77 @@
-# Phase 2 · Chapter 2.5: Statelessness and Connection Lifecycle
+# Section B Phase 1 · Chapter 1.5: Statelessness and Connection Lifecycle
 
-One of the most common sources of confusion in HTTP is this sentence:
+Statelessness and connection lifecycle: two concepts often confused. HTTP is stateless; connections can persist. Separating them changes how you debug and design.
 
-“HTTP is stateless.”
+## Learning Objectives
 
-People hear that and assume:
-	•	There is no memory at all
-	•	Connections don’t persist
-	•	Servers forget everything immediately
-	•	The web is somehow “dumb”
+By the end of this chapter, you should be able to:
+- Explain what statelessness means: each request is independent; the server does not remember previous requests by default.
+- Distinguish connection lifecycle (transport layer) from statelessness (application layer).
+- Describe where state must live if HTTP is stateless: URLs, headers, bodies.
+- Explain why connection reuse does not imply server memory.
 
-None of that is quite right.
+## Key Terms
 
-HTTP is stateless, but it runs over stateful connections.
-Those are two different layers.
-Confusing them leads to broken mental models, fragile systems, and subtle bugs.
+- **Stateless** — Each request is processed independently. The server does not automatically remember previous requests, responses, or decisions.
+- **Connection** — A bidirectional byte stream (usually TCP) established before HTTP messages are sent. Belongs to the transport layer.
+- **Keep-alive** — Persistent connections in HTTP/1.1. One connection can carry multiple request-response pairs.
 
-This chapter separates them cleanly. Chapter 2.1 established request-response. Chapter 2.2 showed HTTP on TCP. Chapter 2.3 defined what HTTP is. Chapter 2.4 showed the text format. This chapter adds the time dimension: statelessness and connection lifecycle. Whether you're building a Pi sensor API, a coop controller, or a solar logger—statelessness and connections work the same way.
+People hear "HTTP is stateless" and assume there is no memory at all, connections do not persist, servers forget everything immediately, or the web is somehow dumb. None of that is quite right. HTTP is stateless, but it runs over stateful connections. Those are two different layers. Confusing them leads to broken mental models, fragile systems, and subtle bugs.
 
+Chapter 1.1 established request-response. Chapter 1.2 showed HTTP on TCP. Chapter 1.3 defined what HTTP is. Chapter 1.4 showed the text format. This chapter adds the time dimension: statelessness and connection lifecycle. Whether you are building a Pi sensor API, a coop controller, or a solar logger, statelessness and connections work the same way.
 
 ## 1) What Statelessness Actually Means
 
-When we say HTTP is stateless, we mean something very specific:
+When we say HTTP is stateless, we mean something very specific: each request is processed independently of all other requests. The server does not automatically remember previous requests, previous responses, previous decisions, previous failures, or previous successes. Every request must carry everything the server needs to understand it. If the server appears to remember something—that your dashboard fetched voltage five seconds ago, that the coop controller authenticated earlier, that you queried the solar logger before—it is because state was explicitly carried in that request. State is not implicit.
 
-Each request is processed independently of all other requests.
+Statelessness is not a server limitation, a hardware constraint, or a performance optimization. It is a protocol design choice. HTTP was designed so that any request can be handled in isolation, any server instance can handle any request, requests can be retried safely, and failures do not corrupt shared memory. Statelessness is what makes the web scale.
 
-That means the server does not automatically remember:
-	•	Previous requests
-	•	Previous responses
-	•	Previous decisions
-	•	Previous failures
-	•	Previous successes
+## 2) Where State Must Live
 
-Every request must carry everything the server needs to understand it.
+If the server does not remember state implicitly, state must be carried explicitly. Common places state lives: URLs (query parameters, path segments), headers (cookies, authorization tokens), and request bodies (JSON payloads, form data). Nothing is remembered unless it crosses the boundary. This connects to Section A Phase 1 Chapter 1.8 (Boundaries): boundaries are where data must be explicit.
 
+Statelessness does not mean no sessions. Sessions exist. Authentication exists. Stateful APIs exist—coop controllers, sensor aggregators, solar loggers. But they are implemented on top of HTTP, not inside it. HTTP provides a request, a response, and no memory. Everything else is layered above. The client carries the memory. The server simply reads it. A freezer sensor API that tracks which sensors have reported today stores that state in a database or cache. HTTP does not know about that state. Each request for sensor data carries the sensor ID. The server looks up the state from storage. State is explicit.
 
-## 2) Statelessness Is a Property of the Protocol
+## 3) Connections Are a Separate Concern
 
-Statelessness is not a server limitation.
-It is not a hardware constraint.
-It is not a performance optimization.
+Connections are not HTTP. Connections belong to the transport layer, usually TCP. A connection is a bidirectional byte stream established before HTTP messages are sent and torn down after communication ends. HTTP messages are sent through connections. They do not define them. Connections exist to establish a path between client and server, handle packet ordering, handle retransmission, and provide reliable delivery. HTTP does not do any of that. It assumes the connection already exists.
 
-It is a protocol design choice.
+Historically, HTTP/1.0 worked like this: client opens a TCP connection, sends one request, server sends one response, connection closes. Every request required a new connection. This worked but was slow. HTTP/1.1 introduced persistent connections, commonly called keep-alive. With keep-alive, the client opens a connection, sends a request, receives a response, and the connection stays open. The client can send another request on the same connection, and another, until the connection closes. Example: your dashboard polls the Pi every few seconds for voltage, then temp, then fence status. With keep-alive, all three requests can use one TCP connection. The connection stays open. The requests remain independent—each must carry its own auth token, each gets its own response.
 
-HTTP was designed so that:
-	•	Any request can be handled in isolation
-	•	Any server instance can handle any request
-	•	Requests can be retried safely
-	•	Failures do not corrupt shared memory
+## 4) Connection Reuse Is About Efficiency
 
-Statelessness is what makes the web scale.
+Connection reuse exists for one reason: efficiency. Opening a TCP connection is expensive—handshake, latency, resource allocation. Reusing a connection reduces overhead, improves performance, lowers latency. It does not create memory. Even if the same TCP connection is reused, requests arrive seconds apart, and the same socket is used, the server still treats each request as stateless. The pipe being reused does not imply identity, continuity, trust, or memory. It only implies efficiency.
 
+Many beginners think the server remembered them because it was the same connection. That is false. What actually happened: the dashboard sent an API key again, or the ESP32 sensor sent its device ID again, or the coop controller included its auth token again. The client carried the memory. The server simply read it.
 
-## 3) What the Server Does Not Remember by Default
+## 5) The Connection Lifecycle
 
-By default, an HTTP server does not remember:
-	•	That your dashboard fetched voltage five seconds ago
-	•	That the coop controller authenticated earlier
-	•	That you queried the solar logger before
-	•	That a sensor reading failed last time
-	•	That the poultry net status was checked previously
+The connection lifecycle proceeds in steps. First, the client resolves the hostname, opens a TCP connection, and completes the handshake. No HTTP yet—just a pipe. Second, the client sends the request: request line, headers, blank line, optional body. All as text, all over the connection. Third, the server reads the request, parses it, validates headers (checks auth token, extracts device ID), processes the request, and generates a response. No assumptions about prior requests. Even if this is the hundredth request on this connection, the server treats it as if it is the first. Fourth, the server sends the response: status line, headers, blank line, optional body. Again, text over the connection. Fifth, a decision point: close the connection or keep it open. This depends on headers, server configuration, timeouts, and resource availability.
 
-If the server appears to remember these things, it is because state was explicitly carried.
+Connections close immediately when HTTP/1.0 is used by default, when either side sends a header indicating close, or when the server decides not to keep it alive. Closure is normal. Clients must be prepared for it. Connections stay open when HTTP/1.1 is used, neither side requests closure, and timeouts have not expired. The client may then send another request. Connections do not stay forever. Servers impose idle timeouts, maximum request counts, and resource limits. Clients must assume the connection may disappear at any time, without warning, without an HTTP response. Your coop controller might make three requests on one connection. The third fails. The connection is still open. Why? The server hit a resource limit or timeout—connection reuse does not guarantee success. Each request is still independent.
 
+## 6) Connection Failure vs Statelessness Failure
 
-## 4) Where State Must Live If HTTP Is Stateless
+These are different failures. Connection failure: no response, timeout, reset. Example: Pi went offline, network dropped. That is transport-level. Statelessness issue: missing cookies, missing headers, missing tokens. Example: dashboard forgot to send the API key. That is application-level. Your dashboard gets 401 Unauthorized. Is the connection broken? No—HTTP delivered a response. The statelessness layer failed: missing or invalid auth token. Your dashboard fetches voltage twice. First succeeds, second gets 401. Same connection. What changed? The auth token expired—statelessness means each request must carry valid credentials. Confusing transport failures with statelessness issues leads to bad debugging.
 
-If the server does not remember state implicitly, state must be carried explicitly.
+## 7) Retry Safety and Statelessness
 
-Common places state lives:
-	•	URLs (query parameters, path segments, e.g., `/api/voltage?sensor=1`)
-	•	Headers (cookies, authorization tokens, e.g., `Authorization: Bearer xyz`)
-	•	Request bodies (JSON payloads, form data, e.g., `{"device_id": "esp32_coop"}`)
+Statelessness enables retries. If a request fails mid-flight because the connection drops, never reaches the server because of timeout, or loses the response because of a network hiccup, the client can retry safely if the request is designed correctly. Example: your ESP32 sensor sends a temperature reading. The connection drops. Retry the same request—the server does not know it was attempted before. Safe. Stateful servers make retries dangerous. Stateless servers make retries normal. Some HTTP methods are safe to retry; some are not. Statelessness plus retries requires careful design. Idempotency will matter more in later chapters.
 
-Nothing is remembered unless it crosses the boundary.
+## 8) The Mental Model
 
-This is Phase 0.8 again:
-boundaries are where data must be explicit.
+Lock this in: connection equals pipe, request equals message, statelessness equals no memory between messages. The pipe can stay. The memory does not. Browsers automatically resend cookies, attach headers, follow redirects, and reuse connections. This creates the illusion of continuity. Underneath, it is still stateless text exchanges.
 
+When you build APIs, you must assume every request stands alone, validate every request fully, and not rely on prior calls. APIs that rely on what happened before break under load. Because requests are independent, any server instance can handle any request, load balancers can distribute traffic freely, and crashed servers do not corrupt shared state. This is not accidental. This is why HTTP won. Statelessness forces discipline: explicit inputs, explicit validation, explicit identity, explicit state transfer. This discipline produces resilient systems, scalable systems, debuggable systems.
 
-## 5) Statelessness Does Not Mean “No Sessions”
+## Common Pitfalls
 
-Sessions exist.
-Authentication exists.
-Stateful APIs exist (coop controllers, sensor aggregators, solar loggers).
+Confusing connection reuse with server memory: the same connection does not mean the server remembers you. The client carries state. Assuming statelessness means no state: state exists but must be explicit in URLs, headers, or bodies. Blaming transport for application failures: 401 means HTTP delivered a response—the auth token failed. No response means transport failed. Treating connection persistence as guaranteed: connections can close at any time. Clients must be prepared.
 
-But they are implemented on top of HTTP, not inside it.
+## Summary
 
-HTTP provides:
-	•	A request
-	•	A response
-	•	No memory
+HTTP is stateless: each request is independent, no memory is implicit, state must be carried explicitly. Connections are stateful pipes: they may be reused for efficiency, they may close at any time, they do not create memory. Connection reuse does not imply identity or continuity. Confusing the two leads to broken systems.
 
-Everything else is layered above.
+## Next
 
-
-## 6) Connections Are a Separate Concern
-
-Now we introduce the second concept:
-
-Connections
-
-Connections are not HTTP.
-Connections belong to the transport layer (usually TCP).
-
-A connection is:
-	•	A bidirectional byte stream
-	•	Established before HTTP messages are sent
-	•	Torn down after communication ends
-
-HTTP messages are sent through connections.
-They do not define them.
-
-
-## 7) Why Connections Exist at All
-
-Connections exist to:
-	•	Establish a path between client and server
-	•	Handle packet ordering
-	•	Handle retransmission
-	•	Provide reliable delivery
-
-HTTP does not do any of that.
-It assumes the connection already exists.
-
-
-## 8) HTTP/1.0: One Request per Connection
-
-Historically, HTTP/1.0 worked like this:
-	1.	Client opens a TCP connection
-	2.	Client sends one request
-	3.	Server sends one response
-	4.	Connection closes
-
-Every request required a new connection.
-
-This worked, but it was slow.
-
-
-## 9) HTTP/1.1: Connection Reuse (Keep-Alive)
-
-HTTP/1.1 introduced persistent connections, commonly called keep-alive.
-
-With keep-alive:
-	1.	Client opens a TCP connection
-	2.	Client sends request #1
-	3.	Server sends response #1
-	4.	Connection stays open
-	5.	Client sends request #2
-	6.	Server sends response #2
-	7.	Repeat until closed
-
-Example: Your dashboard polls the Pi every 5 seconds for voltage, then temp, then fence status. With keep-alive, all three requests use one TCP connection. The connection stays open. The requests remain independent—each must carry its own auth token, each gets its own response.
-
-
-## 10) Connection Reuse Is About Efficiency
-
-Connection reuse exists for one reason:
-
-Efficiency
-
-Opening a TCP connection is expensive:
-	•	Handshake
-	•	Latency
-	•	Resource allocation
-
-Reusing a connection:
-	•	Reduces overhead
-	•	Improves performance
-	•	Lowers latency
-
-It does not create memory.
-
-
-## 11) Reused Connection ≠ Remembered Client
-
-This is the most important distinction in this chapter.
-
-Even if:
-	•	The same TCP connection is reused
-	•	Requests arrive seconds apart
-	•	The same socket is used
-
-The server still treats each request as stateless.
-
-The pipe being reused does not imply:
-	•	Identity
-	•	Continuity
-	•	Trust
-	•	Memory
-
-It only implies efficiency.
-
-
-## 12) The Illusion of Memory
-
-Many beginners think:
-
-“The server remembered me because it was the same connection.”
-
-That is false.
-
-What actually happened:
-	•	The dashboard sent an API key again
-	•	Or the ESP32 sensor sent its device ID again
-	•	Or the coop controller included its auth token again
-
-The client carried the memory.
-The server simply read it.
-
-
-## 13) Statelessness Enables Horizontal Scaling
-
-Because requests are independent:
-	•	Any server instance can handle any request
-	•	Load balancers can distribute traffic freely
-	•	Crashed servers do not corrupt shared state
-
-This is not accidental.
-This is the reason HTTP won.
-
-Stateful protocols do not scale this easily.
-
-
-## 14) The Connection Lifecycle, Step by Step
-
-Let’s walk through the lifecycle carefully.
-
-Step 1: Connection Establishment
-
-The client (your dashboard, ESP32 sensor, or coop controller):
-	•	Resolves DNS (e.g., `pi.local` → IP address)
-	•	Opens a TCP connection to the server
-	•	Completes the handshake
-
-No HTTP yet.
-Just a pipe.
-
-
-Step 2: Request Transmission
-
-The client sends:
-	•	Request line (e.g., `GET /api/voltage HTTP/1.1`)
-	•	Headers (e.g., `Host: pi.local`, `Authorization: Bearer token123`)
-	•	Blank line
-	•	Optional body
-
-All as text.
-All over the connection.
-
-
-Step 3: Server Processing
-
-The server (Pi, coop controller, solar logger):
-	•	Reads the request
-	•	Parses the text
-	•	Validates headers (checks auth token, extracts device ID)
-	•	Processes the request (reads sensor, queries database)
-	•	Generates a response
-
-No assumptions about prior requests. Even if this is the 100th request on this connection, the server treats it as if it's the first.
-
-
-Step 4: Response Transmission
-
-The server sends:
-	•	Status line
-	•	Headers
-	•	Blank line
-	•	Optional body
-
-Again, text over the connection.
-
-
-Step 5: Connection Decision
-
-Now a decision point:
-	•	Close the connection
-	•	Or keep it open
-
-This decision depends on:
-	•	Headers
-	•	Server configuration
-	•	Timeouts
-	•	Resource availability
-
-
-## 15) When Connections Close Immediately
-
-Connections close immediately when:
-	•	HTTP/1.0 is used (by default)
-	•	Either side sends Connection: close
-	•	The server decides not to keep it alive
-
-Closure is normal.
-Clients must be prepared for it.
-
-
-## 16) When Connections Stay Open
-
-Connections stay open when:
-	•	HTTP/1.1 is used
-	•	Neither side requests closure
-	•	Timeouts have not expired
-
-The client may then send another request.
-
-
-## 17) Idle Timeouts Exist
-
-Connections do not stay open forever.
-
-Servers impose:
-	•	Idle timeouts
-	•	Maximum request counts
-	•	Resource limits
-
-Clients must assume:
-	•	The connection may disappear at any time
-	•	Without warning
-	•	Without an HTTP response
-
-
-## 18) Connection Failure vs Statelessness Failure
-
-These are different failures:
-	•	Connection failure: no response, timeout, reset (e.g., Pi went offline, network dropped)
-	•	Statelessness issue: missing cookies, missing headers, missing tokens (e.g., dashboard forgot to send API key)
-
-One is transport-level.
-The other is application-level.
-
-Example: Your dashboard gets `401 Unauthorized`. Is the connection broken? No—HTTP delivered a response. The statelessness layer failed: missing or invalid auth token. Confusing them leads to bad debugging.
-
-
-## 19) Retry Safety and Statelessness
-
-Statelessness enables retries.
-
-If a request:
-	•	Fails mid-flight (connection drops)
-	•	Never reaches the server (timeout)
-	•	Loses the response (network hiccup)
-
-The client can retry safely if the request is designed correctly. Example: Your ESP32 sensor sends a temperature reading. The connection drops. Retry the same request—the server doesn't know it was attempted before. Safe.
-
-Stateful servers make retries dangerous.
-Stateless servers make retries normal.
-
-
-## 20) Why Idempotency Matters Here
-
-Some HTTP methods are safe to retry.
-Some are not.
-
-This matters because:
-	•	Connections can drop
-	•	Requests can be lost
-	•	Responses can disappear
-
-Statelessness + retries requires careful design.
-This will matter more in later chapters.
-
-
-## 21) Mental Model: Pipe vs Memory
-
-Lock this model in:
-	•	Connection = pipe
-	•	Request = message
-	•	Statelessness = no memory between messages
-
-The pipe can stay.
-The memory does not.
-
-
-## 22) How Browsers Make Statelessness Feel Stateful
-
-Browsers:
-	•	Automatically resend cookies
-	•	Automatically attach headers
-	•	Automatically follow redirects
-	•	Automatically reuse connections
-
-This creates the illusion of continuity.
-
-Underneath, it is still stateless text exchanges.
-
-
-## 23) Why This Matters for APIs
-
-When you build APIs:
-	•	You must assume every request stands alone
-	•	You must validate every request fully
-	•	You must not rely on prior calls
-
-APIs that rely on “what happened before” break under load.
-
-
-## 24) Statelessness Is a Constraint, Not a Limitation
-
-Statelessness forces discipline:
-	•	Explicit inputs
-	•	Explicit validation
-	•	Explicit identity
-	•	Explicit state transfer
-
-This discipline produces:
-	•	Resilient systems
-	•	Scalable systems
-	•	Debuggable systems
-
-
-## Reflection
-
-Think about a real system—your dashboard polling the Pi, an ESP32 sensor reporting readings, a coop controller checking status.
-	•	If HTTP is stateless, why does your dashboard "remember" you're logged in?
-	•	If connections can be reused, why might two identical requests behave differently?
-	•	If the connection stays open, does that mean the server remembers you?
-
-Consider failure modes:
-	•	Your dashboard fetches `/api/voltage` twice. First succeeds, second gets `401 Unauthorized`. Same connection. What changed? The auth token expired—statelessness means each request must carry valid credentials.
-	•	Your ESP32 sensor sends a reading. No response. Connection timeout. Was it transport (connection broke) or application (server crashed)? Check: did you get any HTTP response at all?
-	•	Your coop controller makes three requests on one connection. The third fails. The connection is still open. Why? The server hit a resource limit or timeout—connection reuse doesn't guarantee success.
-
-These distinctions matter when debugging.
-
-
-## Core Understanding
-
-HTTP is stateless:
-	•	Each request is independent
-	•	No memory is implicit
-	•	State must be carried explicitly
-
-Connections are stateful pipes:
-	•	They may be reused
-	•	They may close at any time
-	•	They do not create memory
-
-Confusing the two leads to broken systems.
-
-This chapter builds on Chapter 2.1 (request-response), 2.2 (HTTP on TCP), 2.3 (what HTTP is), and 2.4 (HTTP as text). Next: Chapter 2.6 — Request Structure, where we dissect requests piece by piece: method, path, version, headers, body.
+This chapter builds on Chapters 1.1 through 1.4. Next: **Chapter 1.6 — Request Structure**, where we dissect requests piece by piece: method, path, version, headers, body.

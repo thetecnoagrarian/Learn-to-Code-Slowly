@@ -1,441 +1,73 @@
-# Phase 2 · Chapter 2.4: HTTP as Text
+# Section B Phase 1 · Chapter 1.4: HTTP as Text
 
-HTTP is not abstract.
+The raw form of HTTP: lines of text crossing a boundary. Start line, headers, blank line, body. The exact format that makes everything else mechanical.
 
-It is not magical.
-It is not hidden.
-It is not “what the browser does.”
+## Learning Objectives
 
-HTTP is text sent over a connection.
+By the end of this chapter, you should be able to:
+- Describe the four-part structure of an HTTP message: start line, headers, blank line, body.
+- Explain why the blank line matters and what it separates.
+- Identify the request line and status line and what each carries.
+- Recognize that HTTP is line-oriented text with explicit boundaries.
 
-If you understand the text format, everything else becomes mechanical:
-	•	Requests stop feeling mysterious
-	•	Responses stop feeling opaque
-	•	Headers stop feeling like incantations
-	•	Debugging becomes inspection, not guessing
+## Key Terms
 
-This chapter strips HTTP down to its rawest form: lines of text crossing a boundary. Chapter 2.3 defined what HTTP is; this chapter shows the exact format. Whether you're debugging a Pi sensor API or a homestead dashboard—the wire is the same.
+- **Request line** — First line of a request: method, path, version. Tells the server what you want to do and to what resource.
+- **Status line** — First line of a response: version, status code, reason phrase. Tells the client whether the request succeeded.
+- **CRLF** — Carriage Return plus Line Feed. The line ending HTTP uses. Defines where lines end and where metadata stops.
+
+Chapter 1.3 defined what HTTP is. This chapter shows the exact format. HTTP is not abstract, magical, or hidden. It is text sent over a connection. If you understand the text format, requests stop feeling mysterious, responses stop feeling opaque, and debugging becomes inspection instead of guessing. Whether you are debugging a Pi sensor API, a coop dashboard, or a solar logger, the wire format is the same.
 
 ## 1) HTTP Is Line-Oriented Text
 
-HTTP messages are composed of lines.
+HTTP messages are composed of lines. Each line is a sequence of characters ending with a line terminator and has semantic meaning based on position. HTTP is not a blob or free-form text. It is structured, line-based text. That structure is what allows parsers to work, humans to read, and tools to interoperate.
 
-Each line:
-	•	Is a sequence of characters
-	•	Ends with a line terminator
-	•	Has semantic meaning based on position
+HTTP lines end with carriage return followed by line feed. That pair defines where a line ends, where headers end, and where metadata stops and content begins. Many systems tolerate just a line feed, but HTTP itself is defined in terms of this pair. It is historical—from early network protocols and cross-platform compatibility—but it is what the protocol specifies.
 
-HTTP is not a blob.
-It is not free-form text.
-It is structured, line-based text.
+## 2) The Four-Part Structure
 
-That structure is what allows:
-	•	Parsers to work
-	•	Humans to read
-	•	Tools to interoperate
+Every HTTP message is a block of text with four conceptual parts: a start line, zero or more header lines, a blank line, and an optional body. No hidden sections, no invisible metadata, no implicit boundaries. Everything is visible in the raw text.
 
-## 2) Line Endings: CRLF, Not Just Newline
+The blank line is the most important boundary. It is exactly one empty line: the delimiter between metadata and content. Before the blank line: control information, instructions, metadata. After the blank line: raw content, payload, the thing being transferred. Confusing this boundary breaks everything.
 
-HTTP lines end with:
+## 3) Request Messages
 
-\r\n
+A request starts with a request line. The request line always contains three parts separated by spaces: method, path, and HTTP version. This line tells the server what you want to do, to what resource, and using which version of HTTP. Nothing else in the request makes sense without it. Example: a dashboard asking the Pi for voltage would send a request line with GET, the path to the voltage endpoint, and HTTP/1.1.
 
-This is:
-	•	Carriage Return (\r)
-	•	Line Feed (\n)
+After the request line come headers. Headers are one per line, key-value pairs with a colon as separator. Headers provide context, modify meaning, supply metadata. They do not carry the primary intent—that is the request line's job. Host, Accept, User-Agent—each adds information. Header names are case-insensitive. Different systems format differently; parsers normalize internally. The protocol defines meaning, not typography. Headers appear in an order, but that order usually does not matter. Meaning comes from header name and value, not position.
 
-Together: CRLF
+Headers end when the message encounters a blank line—two line endings in a row. From that point on, everything is body until the message ends. This explicit boundary is what allows streaming and parsing. The request body is optional. GET requests usually do not have bodies. POST, PUT, PATCH often do. If a body exists, it starts immediately after the blank line, may contain arbitrary bytes, and HTTP itself does not interpret it. HTTP only cares that a body exists, not what it means.
 
-This matters because:
-	•	It is part of the protocol definition
-	•	It defines where a line ends
-	•	It defines where headers end
-	•	It defines where metadata stops and content begins
+## 4) Response Messages
 
-Many systems tolerate just \n.
-But HTTP itself is defined in terms of CRLF.
+Responses mirror requests structurally. A response starts with a status line: HTTP version, status code, and reason phrase. The status line tells the client which HTTP version responded, whether the request succeeded, and how to interpret the response. It is the server's primary signal. Example: the Pi replying with voltage would send a status line with HTTP/1.1, 200, and OK, followed by headers like Content-Type and Content-Length, then a blank line, then the body with the voltage value.
 
-## 3) Why CRLF Exists at All
+The reason phrase (OK, Not Found, and so on) is human-readable and optional in meaning. Clients rely on the numeric status code, not the text phrase. The phrase exists for readability, not logic. Response headers follow the status line. They describe the body, control caching, set cookies, signal content type, and modify client behavior. Like request headers, they are one per line, key-value pairs, case-insensitive.
 
-CRLF is historical.
+The response body is optional. 204 No Content has no body. 304 Not Modified has no body. Some error responses include bodies, some do not. The presence of a body is defined by status code, headers, and context. Again, HTTP defines structure, not meaning.
 
-It comes from:
-	•	Early network protocols
-	•	Cross-platform compatibility
-	•	Systems where carriage return and line feed were distinct actions
+## 5) HTTP Does Not Interpret the Body
 
-HTTP inherited this convention.
-It kept it for consistency and backward compatibility.
+HTTP does not understand HTML, JSON, images, or binary data. HTTP only transfers bytes, labels them via headers like Content-Type and Content-Encoding, and delivers them intact. Meaning lives above HTTP. The client decides how to parse the body, how to render it, how to decode it, based on headers. HTTP itself remains neutral. This separation is intentional. If the response body is HTML but Content-Type says application/json, the structure is valid HTTP—the semantics are wrong. Parse with care. If a header is malformed, the parser breaks at the blank line. Knowing the format helps you pinpoint where.
 
-You don’t need to like it.
-You just need to recognize it.
+## 6) Seeing HTTP as a Boundary
 
-## 4) HTTP Messages Are Text Blocks with Structure
+HTTP messages are boundary crossings. Request: client to server. Response: server to client. The text format is the contract, the validation surface, the explicit interface. Nothing crosses implicitly. Everything is written down. This connects to Section A Phase 1 Chapter 1.8 (Boundaries): validation lives at edges. The raw HTTP format is that edge. A coop dashboard requesting temperature, a solar logger serving production data, a poultry net status API—all use the same format. The path and body content change; the structure does not.
 
-Every HTTP message is a block of text with four conceptual parts:
-	1.	A start line
-	2.	Zero or more header lines
-	3.	A blank line
-	4.	An optional body
+## 7) Why This Mental Model Matters
 
-That’s it.
+If you understand HTTP as text, you stop blaming the network blindly. You can read raw logs, debug with curl, reason about failures, and build servers from scratch if needed. Libraries assemble request lines, add headers, and parse responses into objects. That is useful. But when something goes wrong, you debug the raw text, inspect the wire format, reason about boundaries. Understanding the text keeps you grounded. Abstractions become optional, not required.
 
-No hidden sections.
-No invisible metadata.
-No implicit boundaries.
+When you see raw HTTP, ask: what is the start line? Where do headers end? Is there a body? What headers describe that body? What crossed the boundary? This works for requests, responses, logs, proxies, and debug traces.
 
-Everything is visible if you look at the raw text.
+## Common Pitfalls
 
-## 5) The Blank Line Is Not Optional
+Assuming headers are ordered: header order usually does not matter; meaning comes from name and value. Forgetting the blank line: metadata and body are separated by exactly one blank line. Malformed headers (missing colon) break parsing at that boundary. Trusting Content-Type blindly: HTTP delivers bytes; the server can lie about Content-Type. Validate and parse defensively. Confusing structure with meaning: HTTP defines structure. JSON, HTML, and image decoding are the client's job.
 
-The blank line is the most important boundary in HTTP.
+## Summary
 
-It is:
-	•	Exactly one empty line
-	•	Represented by \r\n\r\n
-	•	The delimiter between metadata and content
+HTTP is plain text, line-based, explicitly structured, separated by CRLF. Every message has a start line, headers, a blank line, and an optional body. The blank line separates metadata from content. The request line carries method, path, version. The status line carries version, code, reason phrase. HTTP transfers bytes; it does not interpret them. Meaning lives above HTTP.
 
-Before the blank line:
-	•	Control information
-	•	Instructions
-	•	Metadata
+## Next
 
-After the blank line:
-	•	Raw content
-	•	Payload
-	•	The thing being transferred
-
-Confusing this boundary breaks everything.
-
-## 6) Request Messages: The General Shape
-
-A request message looks like this:
-
-```
-METHOD path HTTP/version
-Header-Name: value
-Another-Header: value
-
-[optional body]
-```
-
-Concrete example—your dashboard asking the Pi for voltage:
-
-```
-GET /api/voltage HTTP/1.1
-Host: pi.local
-Accept: application/json
-
-```
-
-Visually simple.
-Structurally rigid.
-
-Every part has a role.
-Every line has meaning.
-
-## 7) The Request Line Comes First
-
-The first line of a request is special.
-
-It is called the request line.
-
-It always contains three parts, separated by spaces:
-
-METHOD path HTTP/version
-
-This line tells the server:
-	•	What you want to do
-	•	To what resource
-	•	Using which version of HTTP
-
-Nothing else in the request makes sense without this line.
-
-## 8) Headers Follow the Request Line
-
-After the request line come headers.
-
-Headers:
-	•	Are one per line
-	•	Are key–value pairs
-	•	Use a colon as a separator
-
-Example:
-
-Host: pi.local
-User-Agent: HomesteadDashboard/1.0
-Accept: application/json
-
-Headers provide context.
-They modify meaning.
-They supply metadata.
-
-They do not carry the primary intent—that’s the request line’s job.
-
-## 9) Headers Are Case-Insensitive
-
-Header names are case-insensitive.
-
-These are equivalent:
-
-Content-Type
-content-type
-CONTENT-TYPE
-
-This matters because:
-	•	Different systems format differently
-	•	Parsers normalize internally
-	•	You should not rely on casing
-
-The protocol defines meaning, not typography.
-
-## 10) Headers Are Not Ordered (Semantically)
-
-Headers appear in an order, but that order does not usually matter.
-
-Meaning is derived from:
-	•	Header name
-	•	Header value
-
-Not position.
-
-(Some rare exceptions exist, but they are advanced and rare.)
-
-## 11) The End of Headers Is Explicit
-
-Headers end when the server encounters:
-
-\r\n\r\n
-
-That double CRLF means:
-	•	One CRLF to end the last header line
-	•	One CRLF to represent a blank line
-
-From that point on:
-	•	Everything is body
-	•	Until the message ends
-
-This explicit boundary is what allows streaming and parsing.
-
-## 12) The Request Body Is Optional
-
-Not all requests have bodies.
-
-Common examples:
-	•	GET requests usually do not
-	•	POST, PUT, PATCH often do
-
-If a body exists:
-	•	It starts immediately after the blank line
-	•	It may contain arbitrary bytes
-	•	HTTP itself does not interpret it
-
-HTTP only cares that a body exists, not what it means.
-
-## 13) Responses Have the Same Overall Shape
-
-Responses mirror requests structurally.
-
-A response looks like:
-
-```
-HTTP/version status_code reason_phrase
-Header-Name: value
-Another-Header: value
-
-[optional body]
-```
-
-Concrete example—the Pi replying with voltage:
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Length: 24
-
-{"voltage": 12.4}
-```
-
-Same components.
-Same blank line.
-Same separation of metadata and content.
-
-The difference is in the start line.
-
-## 14) The Status Line Comes First in Responses
-
-The first line of a response is the status line.
-
-It contains:
-
-HTTP/version status_code reason_phrase
-
-This line tells the client:
-	•	Which HTTP version responded
-	•	Whether the request succeeded
-	•	How to interpret the response
-
-The status line is the server’s primary signal.
-
-## 15) The Reason Phrase Is Informational
-
-The reason phrase (e.g., “OK”, “Not Found”) is:
-	•	Human-readable
-	•	Optional in meaning
-	•	Not machine-critical
-
-Clients rely on:
-	•	The numeric status code
-	•	Not the text phrase
-
-The phrase exists for readability, not logic.
-
-## 16) Response Headers Follow the Status Line
-
-After the status line come headers.
-
-These headers:
-	•	Describe the body
-	•	Control caching
-	•	Set cookies
-	•	Signal content type
-	•	Modify client behavior
-
-Just like request headers, they are:
-	•	One per line
-	•	Key–value pairs
-	•	Case-insensitive
-
-## 17) The Response Body Is Optional
-
-Not all responses have bodies.
-
-Examples:
-	•	204 No Content has no body
-	•	304 Not Modified has no body
-	•	Some error responses include bodies, some don’t
-
-The presence of a body is defined by:
-	•	Status code
-	•	Headers
-	•	Context
-
-Again: HTTP defines structure, not meaning.
-
-## 18) HTTP Does Not Care What the Body Contains
-
-This is crucial.
-
-HTTP does not understand:
-	•	HTML
-	•	JSON
-	•	Images
-	•	Binary data
-
-HTTP only:
-	•	Transfers bytes
-	•	Labels them via headers
-	•	Delivers them intact
-
-Meaning lives above HTTP.
-
-This separation is intentional.
-
-## 19) Content Is Interpreted by the Client
-
-The client decides:
-	•	How to parse the body
-	•	How to render it
-	•	How to decode it
-
-Based on headers like:
-	•	Content-Type
-	•	Content-Encoding
-
-HTTP itself remains neutral.
-
-## 20) Seeing HTTP as a Boundary
-
-Reconnect to Phase 0.8.
-
-HTTP messages are boundary crossings.
-	•	Request: client → server
-	•	Response: server → client
-
-The text format is:
-	•	The contract
-	•	The validation surface
-	•	The explicit interface
-
-Nothing crosses implicitly.
-Everything is written down.
-
-## 21) Why This Mental Model Matters
-
-If you understand HTTP as text:
-	•	You stop blaming “the network” blindly
-	•	You can read raw logs
-	•	You can debug with curl
-	•	You can reason about failures
-	•	You can build servers from scratch if needed
-
-Abstractions become optional, not required.
-
-## 22) What Libraries Hide (And Why You Still Need This)
-
-Libraries:
-	•	Assemble request lines for you
-	•	Add headers automatically
-	•	Parse responses into objects
-
-That’s useful.
-
-But when something goes wrong:
-	•	You debug the raw text
-	•	You inspect the wire format
-	•	You reason about boundaries
-
-Understanding the text keeps you grounded.
-
-## 23) Mental Checklist for Any HTTP Message
-
-When you see raw HTTP, ask:
-	1.	What is the start line?
-	2.	Where do headers end?
-	3.	Is there a body?
-	4.	What headers describe that body?
-	5.	What crossed the boundary?
-
-This checklist works for:
-	•	Requests
-	•	Responses
-	•	Logs
-	•	Proxies
-	•	Debug traces
-
-## Reflection
-
-Think about a real exchange—your dashboard fetching from the Pi, or curl hitting an API.
-	•	Can you identify the CRLFs?
-	•	Can you find the blank line?
-	•	Can you separate headers from body?
-	•	Can you explain each line’s role?
-
-Consider failure modes:
-	•	The response body is HTML but Content-Type says application/json. The structure is valid HTTP—the semantics are wrong. Parse with care.
-	•	A header is malformed (missing colon). The parser breaks at the blank line. Knowing the format helps you pinpoint where.
-
-If yes, HTTP will never feel opaque again.
-
-## Core Understanding
-
-HTTP is:
-	•	Plain text
-	•	Line-based
-	•	Explicitly structured
-	•	Separated by CRLF
-	•	Divided into start line, headers, blank line, and body
-
-Everything else builds on this.
-
-This chapter builds on Chapter 2.3 (what HTTP is). Next: Chapter 2.5 — Statelessness and Connection Lifecycle, where we add the time dimension: how requests relate over time, what a connection means, and why statelessness changes everything.
+This chapter builds on Chapter 1.3 (what HTTP is). Next: **Chapter 1.5 — Statelessness and Connection Lifecycle**, where we add the time dimension: how requests relate over time, what a connection means, and why statelessness changes everything.

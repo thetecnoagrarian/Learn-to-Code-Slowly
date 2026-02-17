@@ -7,9 +7,9 @@ Undoing in Git is powerful. It is also dangerous. This chapter teaches you how t
 ## Learning Objectives
 
 By the end of this chapter, you should be able to:
-- Use `git reset --soft`, `--mixed`, and `--hard` and understand what each changes.
-- Use `git revert` to safely undo commits in shared history.
-- Recover seemingly lost commits using `git reflog`.
+- Use git reset with soft, mixed, and hard modes and understand what each changes.
+- Use git revert to safely undo commits in shared history.
+- Recover seemingly lost commits using git reflog.
 - Choose reset vs revert based on whether history has been shared.
 - Act with discipline when rewriting history.
 
@@ -17,119 +17,59 @@ By the end of this chapter, you should be able to:
 
 ## 1) git reset — Three Modes
 
-`git reset` moves the branch pointer (HEAD). It can also change the staging area (index) and the working directory. Understanding reset requires the three-area model: repository (commits), staging area (index), and working directory. Reset affects these areas differently depending on the mode.
+git reset moves the branch pointer (HEAD). It can also change the staging area (index) and the working directory. Understanding reset requires the three-area model: repository (commits), staging area (index), and working directory. Reset affects these areas differently depending on the mode.
 
 ### HEAD and What Reset Really Does
 
 HEAD points to the current branch. The branch points to a commit. When you reset, you move the branch pointer and change what commit is considered "current."
 
-**Example:**
-
-```
-A -- B -- C -- D  (main)
-                 ↑
-                HEAD
-```
-
-If you run `git reset C`, now:
-
-```
-A -- B -- C  (main)
-```
-
-Commit D is no longer pointed to. But it is not immediately deleted. It still exists in history (for now).
+If your branch has commits A, B, C, D, and HEAD points to D, running git reset to commit C moves HEAD to C. Commit D is no longer pointed to. But it is not immediately deleted. It still exists in history (for now).
 
 ### `git reset --soft`
 
-Soft reset:
-- Moves HEAD
-- Leaves staging area unchanged
-- Leaves working directory unchanged
+Soft reset moves HEAD, leaves staging area unchanged, and leaves working directory unchanged.
 
-Example: `git reset --soft HEAD~1`. This removes the last commit but keeps all changes staged. It is useful when you want to redo a commit message, combine commits, or committed too early. Your changes are still ready to commit.
+Example: use git reset with the soft flag and HEAD tilde one. This removes the last commit but keeps all changes staged. It is useful when you want to redo a commit message, combine commits, or committed too early. Your changes are still ready to commit.
 
 ### `git reset --mixed` (Default)
 
-Mixed reset:
-- Moves HEAD
-- Resets staging area
-- Leaves working directory unchanged
+Mixed reset moves HEAD, resets staging area, and leaves working directory unchanged.
 
-This is the default: `git reset HEAD~1`. What happens: the last commit disappears, changes become unstaged, files remain modified. This is useful when you committed too early or want to adjust what gets staged. It moves changes back to working state.
+This is the default: git reset HEAD tilde one. What happens: the last commit disappears, changes become unstaged, files remain modified. This is useful when you committed too early or want to adjust what gets staged. It moves changes back to working state.
 
 ### `git reset --hard`
 
-Hard reset:
-- Moves HEAD
-- Resets staging area
-- Resets working directory
+Hard reset moves HEAD, resets staging area, and resets working directory.
 
-Everything becomes exactly like the target commit. Example: `git reset --hard HEAD~1`. This deletes the last commit, discards staged changes, and discards working directory changes. This is destructive.
+Everything becomes exactly like the target commit. Example: use git reset with the hard flag and HEAD tilde one. This deletes the last commit, discards staged changes, and discards working directory changes. This is destructive.
 
 Use it only when you are certain you do not need those changes, you are cleaning local work, or you have a backup (branch or stash).
 
 ### `git reset HEAD~1` vs `git reset <hash>`
 
-`HEAD~1` means the parent of the current commit. You can also reset to a specific commit: `git reset --hard 3f2a9b7`. This moves the branch to that exact commit. Be careful: the further back you reset, the more history you rewrite.
+HEAD tilde one means the parent of the current commit. You can also reset to a specific commit by providing the commit hash. This moves the branch to that exact commit. Be careful: the further back you reset, the more history you rewrite.
 
 ### Danger of `--hard`
 
-`--hard` destroys working state. Before using it, ask: Is this pushed? Is this shared? Do I need this work later? If unsure, create a branch or use `git stash`. Safety first.
+The hard flag destroys working state. Before using it, ask: Is this pushed? Is this shared? Do I need this work later? If unsure, create a branch or use git stash. Safety first.
 
 ### Homestead Example: Soft Reset to Fix Commit Message
 
-You committed with a poor message:
+You committed with a poor message like "fix". Fix it with soft reset: use git reset with the soft flag and HEAD tilde one.
 
-```bash
-git commit -m "fix"
-```
-
-Fix it with soft reset:
-
-```bash
-git reset --soft HEAD~1
-```
-
-The commit is gone, but your changes are still staged. Commit again with a better message:
-
-```bash
-git commit -m "Fix coop door timer DST calculation"
-```
+The commit is gone, but your changes are still staged. Commit again with a better message like "Fix coop door timer DST calculation".
 
 ### Homestead Example: Mixed Reset to Restage
 
-You committed changes to `solar_logger.py` and `config.json` together, but you realize they should be separate commits:
+You committed changes to solar_logger.py and config.json together, but you realize they should be separate commits. Use git reset HEAD tilde one.
 
-```bash
-git reset HEAD~1
-```
-
-The commit is gone, changes are unstaged. Stage and commit separately:
-
-```bash
-git add solar_logger.py
-git commit -m "Fix solar aggregation bug"
-
-git add config.json
-git commit -m "Update solar config for new sensor"
-```
+The commit is gone, changes are unstaged. Stage and commit separately: stage solar_logger.py and commit with "Fix solar aggregation bug", then stage config.json and commit with "Update solar config for new sensor".
 
 ### Homestead Example: Hard Reset (Dangerous)
 
-You made experimental changes that broke everything. You want to discard them completely:
+You made experimental changes that broke everything. You want to discard them completely. Use git reset with the hard flag and HEAD tilde one.
 
-```bash
-git reset --hard HEAD~1
-```
-
-**Warning:** This destroys your changes. Only do this if you're certain you don't need them. Consider stashing or creating a branch first:
-
-```bash
-git stash  # or
-git switch -c experiment-backup
-git switch main
-git reset --hard HEAD~1
-```
+**Warning:** This destroys your changes. Only do this if you're certain you don't need them. Consider stashing or creating a branch first: stash your work, or create a branch called experiment-backup, switch back to main, then reset with hard flag.
 
 Now you can recover from the stash or branch if needed.
 
@@ -137,29 +77,13 @@ Now you can recover from the stash or branch if needed.
 
 ## 2) git revert — Safe Undo for Shared History
 
-`git revert` does not rewrite history. It creates a new commit that undoes another commit. This is critical.
+git revert does not rewrite history. It creates a new commit that undoes another commit. This is critical.
 
 ### What Revert Does
 
-**Example history:**
+If your history has commits A, B, C, D, and commit D introduced a bug, use git revert followed by the commit hash for D.
 
-```
-A -- B -- C -- D  (main)
-```
-
-If commit D introduced a bug:
-
-```bash
-git revert D
-```
-
-Git creates:
-
-```
-A -- B -- C -- D -- E  (main)
-```
-
-Where E reverses the changes in D. History remains intact. Nothing is removed.
+Git creates a new commit E that reverses the changes in D. History remains intact. Nothing is removed. The history now shows A, B, C, D, E where E undoes D.
 
 ### Why Revert Is Safe
 
@@ -171,24 +95,15 @@ Use revert when the commit is already on remote, others may have pulled it, or y
 
 ### Homestead Example: Reverting a Bad Deploy
 
-You deployed a change to the solar logger that broke production. The commit is already pushed and deployed:
-
-```bash
-git revert <bad-commit-hash>
-git push
-```
+You deployed a change to the solar logger that broke production. The commit is already pushed and deployed. Use git revert followed by the bad commit hash, then push.
 
 This creates a new commit that undoes the bad change. Production is fixed, history is preserved, and anyone who pulled the bad commit can pull the revert commit. No one needs to reset or reconcile.
 
 ### Homestead Example: Reverting Multiple Commits
 
-You need to revert several commits:
+You need to revert several commits. Use git revert followed by multiple commit hashes.
 
-```bash
-git revert <commit1> <commit2> <commit3>
-```
-
-Git creates three revert commits, one for each original commit. History shows what was done and what was undone, maintaining a clear audit trail.
+Git creates multiple revert commits, one for each original commit. History shows what was done and what was undone, maintaining a clear audit trail.
 
 ---
 
@@ -198,83 +113,33 @@ Sometimes you reset too far. Sometimes you rebase incorrectly. Sometimes you pan
 
 ### What reflog Is
 
-`git reflog` shows where HEAD has been and where branch tips have been, even after reset or rebase.
+git reflog shows where HEAD has been and where branch tips have been, even after reset or rebase.
 
-**Example:**
+Use git reflog to see a list of recent actions. The output shows entries like: reset moving to HEAD tilde one, commit with message "Added sensor validation", commit with message "Initial API setup".
 
-```bash
-git reflog
-```
-
-Output might show:
-
-```
-a1b2c3d HEAD@{0}: reset: moving to HEAD~1
-d4e5f6g HEAD@{1}: commit: Added sensor validation
-h7i8j9k HEAD@{2}: commit: Initial API setup
-```
-
-Even if you reset, the commit hash still exists.
+Even if you reset, the commit hash still exists in reflog.
 
 ### Recovering After Mistaken Reset
 
-If you accidentally ran `git reset --hard HEAD~3`, you can:
+If you accidentally ran git reset with the hard flag and HEAD tilde three, you can use git reflog to find the old commit hash, then reset with the hard flag to that hash.
 
-```bash
-git reflog
-```
-
-Find the old commit hash. Then:
-
-```bash
-git reset --hard <hash>
-```
-
-Or:
-
-```bash
-git checkout -b recovery <hash>
-```
+Or create a branch from that commit hash to recover your work safely.
 
 You are restored.
 
 ### Recovering After Bad Rebase
 
-Same principle. Use reflog. Find commit before rebase. Reset back. Reflog entries expire after ~90 days by default. Git keeps history longer than you think.
+Same principle. Use reflog. Find commit before rebase. Reset back. Reflog entries expire after about 90 days by default. Git keeps history longer than you think.
 
 ### Homestead Example: Recovering Lost Work
 
-You accidentally reset your feature branch:
+You accidentally reset your feature branch with git reset using the hard flag and HEAD tilde five.
 
-```bash
-git reset --hard HEAD~5
-```
+You realize you lost important commits. Check reflog using git reflog.
 
-You realize you lost important commits. Check reflog:
+You see entries showing: reset moving to HEAD tilde five, commit "Add pig barn monitoring", commit "Fix solar aggregation".
 
-```bash
-git reflog
-```
-
-You see:
-
-```
-abc123 HEAD@{0}: reset: moving to HEAD~5
-def456 HEAD@{1}: commit: Add pig barn monitoring
-ghi789 HEAD@{2}: commit: Fix solar aggregation
-```
-
-Recover by resetting to the commit before the reset:
-
-```bash
-git reset --hard def456
-```
-
-Or create a branch from that commit to be safe:
-
-```bash
-git switch -c recovered-work def456
-```
+Recover by resetting with the hard flag to the commit hash before the reset, or create a branch from that commit to be safe.
 
 Your work is restored.
 
@@ -286,7 +151,7 @@ Undoing is powerful. Discipline prevents disaster.
 
 ### Prefer Revert for Shared History
 
-If commit is on remote, on main, or pulled by teammates, use `git revert`. Never rewrite shared history casually.
+If commit is on remote, on main, or pulled by teammates, use git revert. Never rewrite shared history casually.
 
 ### Use Reset for Local Cleanup
 
@@ -294,7 +159,7 @@ Reset is appropriate when working alone, cleaning local commits, fixing staging 
 
 ### Avoid `--hard` Unless Certain
 
-Before `--hard`, stash if unsure, branch if unsure, check reflog after if needed. Never use `--hard` casually.
+Before using the hard flag, stash if unsure, branch if unsure, check reflog after if needed. Never use the hard flag casually.
 
 ### Communicate When Rewriting
 
@@ -304,23 +169,13 @@ If you must rewrite shared history, notify team, coordinate force pushes, and en
 
 **Local cleanup (safe to reset):**
 
-You're working on `feature/coop-automation` locally. You haven't pushed yet. You made a messy commit and want to fix it:
-
-```bash
-git reset --soft HEAD~1
-# fix the commit, recommit
-```
+You're working on feature/coop-automation locally. You haven't pushed yet. You made a messy commit and want to fix it. Use git reset with the soft flag and HEAD tilde one, fix the commit, then recommit.
 
 This is safe because no one else has these commits.
 
 **Shared history (use revert):**
 
-You pushed a bug fix to `main` and it's deployed. The fix actually broke something. Use revert:
-
-```bash
-git revert <bad-commit>
-git push
-```
+You pushed a bug fix to main and it's deployed. The fix actually broke something. Use git revert followed by the bad commit hash, then push.
 
 This is safe because it doesn't rewrite history that others depend on.
 
@@ -328,32 +183,21 @@ This is safe because it doesn't rewrite history that others depend on.
 
 ## 5) Reset vs Revert — Quick Comparison
 
-| Command | Rewrites History | Safe for Shared Branch | Removes Commit | Creates New Commit |
-|---------|------------------|------------------------|----------------|-------------------|
-| reset   | Yes              | No                     | Yes            | No                |
-| revert  | No               | Yes                    | No             | Yes               |
+Reset rewrites history, is not safe for shared branches, removes commits, and does not create new commits.
 
-Remember: Reset = move pointer backward. Revert = add opposite change forward.
+Revert does not rewrite history, is safe for shared branches, does not remove commits, and creates new commits.
+
+Remember: Reset equals move pointer backward. Revert equals add opposite change forward.
 
 ### Homestead Example: Choosing Reset vs Revert
 
 **Scenario 1: Local commit, not pushed**
 
-You committed with a typo in the message. Reset to fix it:
-
-```bash
-git reset --soft HEAD~1
-git commit -m "Fix coop door timer DST calculation"
-```
+You committed with a typo in the message. Reset with the soft flag and HEAD tilde one to fix it, then commit again with the corrected message "Fix coop door timer DST calculation".
 
 **Scenario 2: Commit already pushed**
 
-You pushed a commit that breaks production. Revert it:
-
-```bash
-git revert <bad-commit>
-git push
-```
+You pushed a commit that breaks production. Revert it using git revert followed by the bad commit hash, then push.
 
 The revert commit fixes production without rewriting history.
 
@@ -361,39 +205,23 @@ The revert commit fixes production without rewriting history.
 
 ## 6) Advanced: `git restore`
 
-Modern Git (2.23+) provides `git restore` as a safer alternative to some reset operations.
+Modern Git (version 2.23 and later) provides git restore as a safer alternative to some reset operations.
 
 ### Restoring Files
 
-Restore a file from the last commit:
+Restore a file from the last commit using git restore followed by the filename.
 
-```bash
-git restore file.js
-```
+Restore a file from a specific commit using git restore with the source flag set to HEAD tilde two, followed by the filename.
 
-Restore a file from a specific commit:
-
-```bash
-git restore --source=HEAD~2 file.js
-```
-
-Restore staged changes (unstage):
-
-```bash
-git restore --staged file.js
-```
+Restore staged changes (unstage) using git restore with the staged flag, followed by the filename.
 
 ### Why Restore Exists
 
-`git restore` is more explicit than `git reset` for file-level operations. It's clearer that you're restoring a file, not moving branch pointers. Use `restore` for files, `reset` for branch pointers.
+git restore is more explicit than git reset for file-level operations. It's clearer that you're restoring a file, not moving branch pointers. Use restore for files, reset for branch pointers.
 
 ### Homestead Example: Restoring a File
 
-You accidentally modified `config.json` and want to discard the changes:
-
-```bash
-git restore config.json
-```
+You accidentally modified config.json and want to discard the changes. Use git restore followed by config.json.
 
 The file is restored to match the last commit. Your other changes remain untouched.
 
@@ -411,11 +239,11 @@ The file is restored to match the last commit. Your other changes remain untouch
 
 ### Mistake: Using `--hard` Without Backup
 
-**Symptom:** You run `git reset --hard` and lose work you needed.
+**Symptom:** You run git reset with the hard flag and lose work you needed.
 
 **Fix:** Check reflog to recover the lost commits.
 
-**Prevention:** Before `--hard`, stash or create a branch. Only use `--hard` when absolutely certain.
+**Prevention:** Before using the hard flag, stash or create a branch. Only use the hard flag when absolutely certain.
 
 ### Mistake: Confusing Reset and Revert
 
@@ -429,9 +257,9 @@ The file is restored to match the last commit. Your other changes remain untouch
 
 **Symptom:** You reset without checking what commits will be affected.
 
-**Fix:** Use `git log` to see what commits will be lost. Use `git reflog` to recover if needed.
+**Fix:** Use git log to see what commits will be lost. Use git reflog to recover if needed.
 
-**Prevention:** Always check `git log` before resetting. Understand what commits will be affected.
+**Prevention:** Always check git log before resetting. Understand what commits will be affected.
 
 ---
 
@@ -439,91 +267,37 @@ The file is restored to match the last commit. Your other changes remain untouch
 
 ### Example: Fixing a Bad Commit Message
 
-You committed with "fix bug" but want a better message:
-
-```bash
-git reset --soft HEAD~1
-git commit -m "Fix solar aggregation off-by-one error during DST transitions"
-```
+You committed with "fix bug" but want a better message. Use git reset with the soft flag and HEAD tilde one, then commit again with "Fix solar aggregation off-by-one error during DST transitions".
 
 The commit is rewritten with a better message.
 
 ### Example: Undoing a Deployed Bug
 
-You deployed a change that broke the fence monitor. It's already on `main` and deployed:
-
-```bash
-git revert <bad-commit-hash>
-git push
-```
+You deployed a change that broke the fence monitor. It's already on main and deployed. Use git revert followed by the bad commit hash, then push.
 
 Production is fixed, history shows what happened and when it was reverted.
 
 ### Example: Recovering After Accidental Reset
 
-You accidentally reset too far:
+You accidentally reset too far using git reset with the hard flag and HEAD tilde five.
 
-```bash
-git reset --hard HEAD~5
-```
+Check reflog using git reflog.
 
-Check reflog:
+Find the commit before the reset and recover by resetting with the hard flag to that old commit hash.
 
-```bash
-git reflog
-```
-
-Find the commit before the reset and recover:
-
-```bash
-git reset --hard <old-commit-hash>
-```
-
-Or create a branch to be safe:
-
-```bash
-git switch -c recovered <old-commit-hash>
-```
+Or create a branch from that commit to be safe.
 
 ### Example: Discarding Experimental Changes
 
-You tried a refactor that didn't work. Discard it:
+You tried a refactor that didn't work. Discard it by first saving it just in case: stash your work, or create a branch called experiment-backup.
 
-```bash
-# First, save it just in case
-git stash
-# or
-git switch -c experiment-backup
-
-# Then reset
-git reset --hard HEAD~1
-```
+Then reset with the hard flag and HEAD tilde one.
 
 If you need it later, recover from stash or the backup branch.
 
 ---
 
-## 9) Review: Undoing and Recovering in One Page
-
-Before moving on, you should be able to state in your own words:
-
-1. **What does reset do?** Moves the branch pointer (HEAD) and optionally resets staging area and working directory. Three modes: `--soft` (HEAD only), `--mixed` (HEAD + staging), `--hard` (everything).
-
-2. **What does revert do?** Creates a new commit that undoes a previous commit. Doesn't rewrite history—safe for shared branches.
-
-3. **When should you use reset?** For local, unpublished work. Never for shared history.
-
-4. **When should you use revert?** For shared history, commits that are pushed, or when others might depend on the commits.
-
-5. **How do you recover lost commits?** Use `git reflog` to find where HEAD was, then reset or create a branch from that commit.
-
-6. **What's the danger of `--hard`?** It destroys working directory changes. Only use when certain you don't need them.
-
-If any of these is fuzzy, revisit that section. The next chapter assumes you understand how to undo mistakes safely.
-
----
-
-## 10) Bridge to Section A Phase 1 Chapter 1.7 — Time and State Changes
+## 9) Bridge to Section A Phase 1 Chapter 1.7 — Time and State Changes
 
 In Section A Phase 1 Chapter 1.7 you learned that state changes over time, and that we can observe and name those transitions. With reset and revert, you're not just observing time—you're navigating it.
 
@@ -535,15 +309,15 @@ The discipline is knowing when it's safe to rewrite time (local, unpublished) an
 
 ## Summary
 
-- `git reset` moves HEAD and optionally staging/working tree.
-- `--soft`: move HEAD only
-- `--mixed`: reset staging (default)
-- `--hard`: reset everything (destructive)
-- `git revert` creates a new commit that undoes a previous one—safe for shared branches.
-- `git reflog` lets you recover "lost" commits.
+- git reset moves HEAD and optionally staging/working tree.
+- Soft mode: move HEAD only
+- Mixed mode: reset staging (default)
+- Hard mode: reset everything (destructive)
+- git revert creates a new commit that undoes a previous one—safe for shared branches.
+- git reflog lets you recover "lost" commits.
 - Prefer revert for shared history.
 - Use reset only for local, unpublished cleanup.
-- Avoid `--hard` unless absolutely certain.
+- Avoid the hard flag unless absolutely certain.
 
 Undoing is not destruction. It is time navigation. The next chapter shows how to mark important points in time with tags.
 

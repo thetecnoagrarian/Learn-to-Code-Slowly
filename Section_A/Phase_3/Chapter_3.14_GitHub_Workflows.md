@@ -21,59 +21,27 @@ Pull Requests (PRs) are GitHub's code review feature. They're built on Git branc
 
 ### What a Pull Request Is
 
-A Pull Request (PR) is a proposal:
-- "Here is a set of commits on a branch."
-- "I want to merge them into another branch (usually main)."
-- "Before that happens, humans (and automation) should look at it."
+A Pull Request (PR) is a proposal: "Here is a set of commits on a branch. I want to merge them into another branch (usually main). Before that happens, humans (and automation) should look at it."
 
 Git can merge branches without GitHub. GitHub adds a structured place to review and discuss the merge before it happens.
 
 ### What a PR Contains
 
-A PR is basically:
-- A base branch (where you want to land), usually `main`
-- A compare branch (your feature/fix branch)
-- A diff (what changed)
-- A discussion timeline (why, tradeoffs, questions, decisions)
-- Review state (approve / request changes)
-- Status checks (tests, lint, build, security scans)
-- Merge controls (merge / squash / rebase options)
+A PR is basically: a base branch (where you want to land, usually main), a compare branch (your feature/fix branch), a diff (what changed), a discussion timeline (why, tradeoffs, questions, decisions), review state (approve or request changes), status checks (tests, lint, build, security scans), and merge controls (merge, squash, rebase options).
 
 ### The Core PR Mental Model
 
-A PR is a boundary:
-- On one side: work-in-progress on a feature branch
-- On the other side: the stable line (`main`)
-- The PR is the gate where you decide what crosses that boundary
+A PR is a boundary: on one side is work-in-progress on a feature branch, on the other side is the stable line (main). The PR is the gate where you decide what crosses that boundary.
 
-If you treat `main` as "deployable," then a PR is how you protect it.
+If you treat main as "deployable," then a PR is how you protect it.
 
 ### Homestead Example: Creating a Pull Request
 
-You're adding a new feature to your solar logger:
+You're adding a new feature to your solar logger. Create a branch called feature/low-battery-alert, make changes, stage and commit with "Add low battery alert threshold", then push your branch to origin.
 
-```bash
-# Create branch
-git switch -c feature/low-battery-alert
+On GitHub: navigate to your repository. GitHub shows that your feature branch had recent pushes. Click "Compare & pull request". Enter a title like "Add low battery alert threshold". Add a description like "Adds alert when battery voltage drops below 11.5V. Closes #42." Click "Create pull request".
 
-# Make changes
-# ... edit code ...
-git add .
-git commit -m "Add low battery alert threshold"
-
-# Push branch
-git push origin feature/low-battery-alert
-```
-
-On GitHub:
-1. Navigate to your repository
-2. GitHub shows "feature/low-battery-alert had recent pushes"
-3. Click "Compare & pull request"
-4. Title: "Add low battery alert threshold"
-5. Description: "Adds alert when battery voltage drops below 11.5V. Closes #42."
-6. Click "Create pull request"
-
-Now others can review your changes before they merge into `main`.
+Now others can review your changes before they merge into main.
 
 ---
 
@@ -92,7 +60,7 @@ This is the "default shape" used almost everywhere:
 
 ### Practical Discipline That Makes This Work
 
-**One branch = one intent:**
+**One branch equals one intent:**
 - "Add low battery alert"
 - "Fix timeout retry logic"
 - Not: "misc changes"
@@ -111,59 +79,23 @@ If your PR doesn't explain "why," the commit history loses meaning.
 
 ### Homestead Example: Complete PR Workflow
 
-You're adding email alerts to your solar logger:
+You're adding email alerts to your solar logger.
 
-```bash
-# 1. Start from main
-git switch main
-git pull origin main
+Start from main: switch to main and pull the latest changes from origin main.
 
-# 2. Create feature branch
-git switch -c feature/email-alerts
+Create feature branch: create and switch to a branch called feature/email-alerts.
 
-# 3. Make changes, commit frequently
-git add .
-git commit -m "Add email configuration to config.json"
+Make changes, commit frequently: stage and commit with "Add email configuration to config.json". Make more changes, stage and commit with "Implement email sending on low battery". Make more changes, stage and commit with "Add tests for email alerts".
 
-git add .
-git commit -m "Implement email sending on low battery"
+Push branch: push your feature branch to origin.
 
-git add .
-git commit -m "Add tests for email alerts"
+Open PR on GitHub with a title like "Add email alerts for low battery" and a description explaining: adds SMTP email alerts when battery voltage drops below threshold, changes include adding email config to config.json, implementing email sending function, adding tests, closes issue #25, and how to verify by setting battery threshold to current voltage plus one volt, waiting for reading, then checking email inbox.
 
-# 4. Push branch
-git push origin feature/email-alerts
+Review happens: reviewer comments "Consider adding retry logic". You add retry logic and push an update. Reviewer approves.
 
-# 5. Open PR on GitHub
-# Title: "Add email alerts for low battery"
-# Description:
-#   Adds SMTP email alerts when battery voltage drops below threshold.
-#   
-#   Changes:
-#   - Add email config to config.json
-#   - Implement email sending function
-#   - Add tests
-#   
-#   Closes #25
-#   
-#   How to verify:
-#   1. Set battery threshold to current voltage + 1V
-#   2. Wait for reading
-#   3. Check email inbox
+Merge on GitHub: click "Merge pull request".
 
-# 6. Review happens
-# Reviewer comments: "Consider adding retry logic"
-# You add retry logic, push update
-# Reviewer approves
-
-# 7. Merge on GitHub
-# Click "Merge pull request"
-
-# 8. Clean up locally
-git switch main
-git pull origin main
-git branch -d feature/email-alerts
-```
+Clean up locally: switch to main, pull the latest changes, then delete your feature branch.
 
 ---
 
@@ -173,18 +105,11 @@ A PR review is not "judging." It's threat-modeling and maintainability work.
 
 ### What to Check in a Review
 
-A solid review pass checks:
-- **Correctness:** Does it do what it claims?
-- **Boundaries:** Are inputs validated? Are assumptions explicit?
-- **Failure modes:** What happens when dependencies fail?
-- **Clarity:** Can future-you understand it in six months?
-- **Scope creep:** Is this PR trying to do too many things?
-- **Security:** Does it introduce secrets, unsafe parsing, or risky changes?
-- **Testability:** Is there a way to verify behavior?
+A solid review pass checks correctness (does it do what it claims?), boundaries (are inputs validated? are assumptions explicit?), failure modes (what happens when dependencies fail?), clarity (can future-you understand it in six months?), scope creep (is this PR trying to do too many things?), security (does it introduce secrets, unsafe parsing, or risky changes?), and testability (is there a way to verify behavior?).
 
 ### Types of Feedback That Are Actually Useful
 
-- "This function mixes parsing + business logic—can we split it?"
+- "This function mixes parsing and business logic—can we split it?"
 - "What happens if the sensor returns malformed JSON?"
 - "Can we rename this to match the rest of the codebase vocabulary?"
 - "This adds a new config option—where is it documented?"
@@ -197,17 +122,9 @@ Approval is not "perfect code." It's "safe enough to merge into the stable line"
 
 Someone opens a PR adding a new sensor type. You review it:
 
-1. **Read the description:** Understand what the PR does
-2. **Review the diff:** Check the code changes
-3. **Add comments:**
-   - "Consider adding error handling here"
-   - "This function is too long—can we split it?"
-   - "Missing docstring"
-4. **Request changes:** Ask for improvements
-5. **Re-review:** After changes, approve
-6. **Merge:** Merge when approved
+Read the description to understand what the PR does. Review the diff to check the code changes. Add comments like "Consider adding error handling here", "This function is too long—can we split it?", "Missing docstring". Request changes and ask for improvements. Re-review after changes and approve. Merge when approved.
 
-The PR ensures code quality before it reaches `main`.
+The PR ensures code quality before it reaches main.
 
 ---
 
@@ -225,17 +142,7 @@ Issues are not "bugs only." Issues are "tracked intent." If commits are a histor
 
 ### Good Issue Structure
 
-A good Issue includes:
-- A title that can survive being read alone
-- Clear description
-- For bugs:
-  - Reproduction steps
-  - Expected vs actual behavior
-  - Environment details (versions, device, OS)
-- For features:
-  - The problem it solves
-  - Constraints
-  - Acceptance criteria ("done means…")
+A good Issue includes: a title that can survive being read alone, clear description. For bugs: reproduction steps, expected vs actual behavior, environment details (versions, device, OS). For features: the problem it solves, constraints, acceptance criteria ("done means…").
 
 Issues are "future-proof memory." If it's not written down, it's not real.
 
@@ -243,99 +150,35 @@ Issues are "future-proof memory." If it's not written down, it's not real.
 
 **Bug report:**
 
-Title: "ESP32 sensor reading timeout"
-Description:
-```
-**Describe the bug**
-Sensor readings timeout after 30 seconds, causing data gaps.
-
-**To reproduce**
-1. Start sensor logger
-2. Wait 30 seconds
-3. Check logs - timeout error
-
-**Expected behavior**
-Sensor should retry and log data continuously.
-
-**Environment**
-- ESP32 firmware v1.2.0
-- Python 3.9
-- Raspberry Pi 4
-```
+Title: "ESP32 sensor reading timeout". Description: describe the bug (sensor readings timeout after 30 seconds, causing data gaps), to reproduce (start sensor logger, wait 30 seconds, check logs for timeout error), expected behavior (sensor should retry and log data continuously), environment (ESP32 firmware v1.2.0, Python 3.9, Raspberry Pi 4).
 
 **Feature request:**
 
-Title: "Add email alerts for low battery"
-Description:
-```
-**Feature description**
-Send email alerts when battery voltage drops below threshold.
-
-**Use case**
-Monitor battery health remotely when away from homestead.
-
-**Proposed solution**
-Add email configuration to config.json, send alert via SMTP when threshold reached.
-
-**Acceptance criteria**
-- [ ] Email config added to config.json
-- [ ] Email sent when voltage < threshold
-- [ ] Tests added
-- [ ] Documentation updated
-```
+Title: "Add email alerts for low battery". Description: feature description (send email alerts when battery voltage drops below threshold), use case (monitor battery health remotely when away from homestead), proposed solution (add email configuration to config.json, send alert via SMTP when threshold reached), acceptance criteria (email config added to config.json, email sent when voltage below threshold, tests added, documentation updated).
 
 ---
 
 ## 5) Linking Issues and Pull Requests
 
-This is where GitHub becomes a coherence machine. The relationship map:
-- Issue: "We should do X."
-- Branch: "I'm doing X in isolation."
-- Commits: "Here are the steps I took to do X."
-- PR: "Please review and merge X."
-- Merge: "X is now part of main."
-- Closed Issue: "The intent is satisfied."
+This is where GitHub becomes a coherence machine. The relationship map: Issue ("We should do X"), Branch ("I'm doing X in isolation"), Commits ("Here are the steps I took to do X"), PR ("Please review and merge X"), Merge ("X is now part of main"), Closed Issue ("The intent is satisfied").
 
 ### Auto-Closing Issues
 
-GitHub can close an Issue when a PR merges if your PR description includes a closing keyword like:
-- `Fixes #15`
-- `Closes #15`
-- `Resolves #15`
+GitHub can close an Issue when a PR merges if your PR description includes a closing keyword like "Fixes #15", "Closes #15", or "Resolves #15".
 
 That turns "work" into a traced thread: problem → solution → merge → closure. Use that. It's free clarity.
 
 ### Homestead Example: Linking Work
 
-You create an Issue:
+You create an Issue: Issue #15 "Add solar panel efficiency calculation".
 
-**Issue #15:** "Add solar panel efficiency calculation"
-
-Later, you create a PR that implements it:
-
-**PR description:**
-```
-Adds solar panel efficiency calculation based on voltage and current readings.
-
-Implements #15
-```
+Later, you create a PR that implements it. PR description: adds solar panel efficiency calculation based on voltage and current readings, implements issue #15.
 
 When the PR merges, Issue #15 automatically closes. The connection is clear: the PR solved the issue.
 
 ### Homestead Example: Multiple Issues in One PR
 
-Sometimes one PR addresses multiple issues:
-
-**PR description:**
-```
-Fixes multiple sensor reading issues.
-
-- Fixes #42 (timeout handling)
-- Fixes #43 (malformed JSON parsing)
-- Closes #44 (error logging)
-
-All related to sensor reading reliability.
-```
+Sometimes one PR addresses multiple issues. PR description: fixes multiple sensor reading issues, fixes issue #42 (timeout handling), fixes issue #43 (malformed JSON parsing), closes issue #44 (error logging), all related to sensor reading reliability.
 
 When merged, all three issues close automatically.
 
@@ -348,75 +191,39 @@ Actions are event-driven workflows attached to the repo. Think of Actions as "ro
 ### Common Triggers
 
 - Push to a branch
-- PR opened / updated
+- PR opened or updated
 - Tag created (release)
 - On a schedule (nightly checks)
 
 ### What Actions Typically Do
 
 - Run tests
-- Run linters / formatters
+- Run linters and formatters
 - Build artifacts
 - Scan dependencies
 - Deploy (when you're ready for that)
 
 ### The Key Mental Model
 
-Actions are part of your boundary discipline:
-- A PR is a human gate
-- Actions are an automated gate
-- Branch protection can require both
+Actions are part of your boundary discipline: a PR is a human gate, Actions are an automated gate, branch protection can require both.
 
 ### Homestead Example: GitHub Actions for Testing
 
-Your solar logger has tests. Add a workflow:
+Your solar logger has tests. Add a workflow file in the .github/workflows directory called test.yml that runs on push and pull request events.
 
-**.github/workflows/test.yml:**
-
-```yaml
-name: Test Solar Logger
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: pytest
-      - name: Check code style
-        run: flake8 .
-```
+The workflow runs on Ubuntu, checks out the code, sets up Python version 3.9, installs dependencies from requirements.txt, runs tests using pytest, and checks code style using flake8.
 
 Now every PR shows test results. You can't merge if tests fail (if you configure branch protection).
 
 ### Skeptical Note
 
-Automation can lie if:
-- Tests are weak
-- "Green build" doesn't cover real behavior
-- Secrets are misconfigured
-- The workflow is skipped or not required
+Automation can lie if tests are weak, "green build" doesn't cover real behavior, secrets are misconfigured, or the workflow is skipped or not required.
 
 So: Actions help, but they don't replace thinking.
 
 ### Homestead Example: Actions That Can Fail
 
-**Weak test:**
-
-```python
-def test_sensor_reading():
-    assert True  # Always passes
-```
-
-Actions will pass, but the code might be broken. Actions help, but good tests matter more.
+A weak test that always passes will make Actions pass, but the code might be broken. Actions help, but good tests matter more.
 
 ---
 
@@ -436,21 +243,9 @@ This is how you make it harder to do the wrong thing than the right thing.
 
 ### Homestead Example: Protecting Main
 
-You protect `main` branch:
+You protect main branch: go to repository Settings, then Branches, add rule for main, enable "Require a pull request before merging", "Require approvals" (set to 1), "Require status checks to pass", "Require branches to be up to date".
 
-1. Go to repository Settings → Branches
-2. Add rule for `main`
-3. Enable:
-   - "Require a pull request before merging"
-   - "Require approvals" (1)
-   - "Require status checks to pass"
-   - "Require branches to be up to date"
-
-Now:
-- No direct pushes to `main`
-- PRs require approval
-- Tests must pass
-- `main` stays stable
+Now: no direct pushes to main, PRs require approval, tests must pass, main stays stable.
 
 ---
 
@@ -465,12 +260,7 @@ Use when you're working inside the same repo with push access.
 
 **Example:**
 
-```bash
-git switch -c feature/new-sensor
-# ... work ...
-git push origin feature/new-sensor
-# Open PR, review, merge
-```
+Create and switch to a feature branch like feature/new-sensor, work on changes, push your branch to origin, open PR, review, merge.
 
 ### Pattern B: Fork Workflow (Common in Open Source)
 
@@ -481,29 +271,13 @@ Use when contributors don't have push access to the main repo.
 
 **Example:**
 
-1. Fork the repository on GitHub
-2. Clone your fork
-3. Create branch, make changes
-4. Push to your fork
-5. Open PR from your fork to upstream
+Fork the repository on GitHub. Clone your fork. Create branch, make changes. Push to your fork. Open PR from your fork to upstream.
 
 Both patterns are just different ways of controlling who can push where.
 
 ### Homestead Example: Feature Branch Workflow
 
-You're adding a new feature:
-
-```bash
-# Create branch
-git switch -c feature/coop-door-automation
-
-# Work, commit, push
-git push origin feature/coop-door-automation
-
-# Open PR
-# Review happens
-# Merge
-```
+You're adding a new feature: create a branch called feature/coop-door-automation, work, commit, push your branch to origin, open PR, review happens, merge.
 
 Simple and effective for teams with repository access.
 
@@ -511,12 +285,7 @@ Simple and effective for teams with repository access.
 
 You want to contribute to someone else's homestead automation project:
 
-1. Fork their repository on GitHub
-2. Clone your fork: `git clone https://github.com/yourusername/homestead-automation.git`
-3. Create branch: `git switch -c feature/my-improvement`
-4. Make changes, commit, push to your fork
-5. Open PR from your fork to their repository
-6. They review and merge
+Fork their repository on GitHub. Clone your fork. Create a branch called feature/my-improvement. Make changes, commit, push to your fork. Open PR from your fork to their repository. They review and merge.
 
 You don't need push access to their repository.
 
@@ -542,35 +311,18 @@ You don't need push access to their repository.
 ### Repo Hygiene Best Practices
 
 - Delete merged branches (keeps the repo readable)
-- Use consistent naming (e.g., `feature/...`, `fix/...`, `chore/...`)
-- Keep `main` deployable, or admit you don't—and adjust rules accordingly
+- Use consistent naming (e.g., feature/..., fix/..., chore/...)
+- Keep main deployable, or admit you don't—and adjust rules accordingly
 
 ### Homestead Example: Good vs Bad PR
 
 **Bad PR:**
 
-Title: "Updates"
-Description: "Made some changes"
+Title: "Updates". Description: "Made some changes".
 
 **Good PR:**
 
-Title: "Add low battery alert threshold"
-Description:
-```
-Adds configurable low battery alert threshold to solar logger.
-
-**Changes:**
-- Add `low_battery_threshold` to config.json
-- Send alert when voltage drops below threshold
-- Log alert events
-
-**Testing:**
-- Tested with voltage 11.0V (below threshold)
-- Alert sent correctly
-- Log entry created
-
-Fixes #42
-```
+Title: "Add low battery alert threshold". Description: adds configurable low battery alert threshold to solar logger, changes include adding low_battery_threshold to config.json, sending alert when voltage drops below threshold, logging alert events, testing with voltage 11.0V (below threshold), alert sent correctly, log entry created, fixes issue #42.
 
 The good PR is clear, testable, and links to the issue.
 
@@ -590,7 +342,7 @@ The good PR is clear, testable, and links to the issue.
 
 **Symptom:** The reviewer has to reverse-engineer your intent.
 
-**Fix:** Add purpose + scope + verification steps.
+**Fix:** Add purpose plus scope plus verification steps.
 
 **Prevention:** Write PR descriptions that explain what, why, and how to verify.
 
@@ -598,9 +350,9 @@ The good PR is clear, testable, and links to the issue.
 
 **Symptom:** Conflicts explode at merge time.
 
-**Fix:** Periodically integrate `main` into your branch (merge or rebase depending on your rules).
+**Fix:** Periodically integrate main into your branch (merge or rebase depending on your rules).
 
-**Prevention:** Sync with `main` regularly. Don't let your branch diverge too far.
+**Prevention:** Sync with main regularly. Don't let your branch diverge too far.
 
 ### Mistake: Treating Issues as Optional
 
@@ -614,10 +366,7 @@ The good PR is clear, testable, and links to the issue.
 
 **Mistake:** You opened a PR with 500+ lines of changes mixing three features.
 
-**Fix:** Close that PR, split into three separate PRs:
-- PR 1: Add sensor type A
-- PR 2: Add sensor type B
-- PR 3: Add sensor type C
+**Fix:** Close that PR, split into three separate PRs: PR 1 for adding sensor type A, PR 2 for adding sensor type B, PR 3 for adding sensor type C.
 
 Each PR is focused and easier to review.
 
@@ -627,112 +376,27 @@ Each PR is focused and easier to review.
 
 ### Deploy on Tag
 
-Deploy when you create a release tag:
+Deploy when you create a release tag. Create a workflow file that triggers on tag pushes matching version tags like v*.
 
-```yaml
-name: Deploy
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to server
-        run: |
-          echo "Deploying ${{ github.ref_name }}"
-          # Your deployment script
-```
+The workflow runs on Ubuntu, checks out the code, then runs your deployment script with the tag name.
 
 ### Run Tests on Multiple Python Versions
 
-```yaml
-name: Test
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install and test
-        run: |
-          pip install -r requirements.txt
-          pytest
-```
+Create a workflow that runs on push and pull request events, uses a matrix strategy to test on multiple Python versions (3.8, 3.9, 3.10, 3.11), sets up each Python version, installs dependencies, and runs tests.
 
 ### Homestead Example: Deploy on Tag
 
-When you tag a release, automatically deploy:
+When you tag a release, automatically deploy. Create a workflow file in .github/workflows called deploy.yml that triggers on tag pushes matching version tags.
 
-**.github/workflows/deploy.yml:**
+The workflow runs on Ubuntu, checks out the code, then deploys to your Raspberry Pi by SSHing to the Pi and deploying, or using your deployment script.
 
-```yaml
-name: Deploy
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to Raspberry Pi
-        run: |
-          echo "Deploying ${{ github.ref_name }} to production"
-          # SSH to Pi and deploy
-          # Or use your deployment script
-```
-
-Tag a release:
-
-```bash
-git tag -a v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
-```
+Tag a release: create an annotated tag v1.2.0 with a release message, then push the tag to origin.
 
 GitHub Actions automatically runs and deploys.
 
 ---
 
-## 12) Review: GitHub Workflows in One Page
-
-Before moving on, you should be able to state in your own words:
-
-1. **What is a Pull Request?** A proposal to merge changes, with review and discussion.
-
-2. **How do you create a PR?** Create branch, make changes, push, open PR on GitHub.
-
-3. **What are Issues?** Bug tracking and project management on GitHub.
-
-4. **How do you link Issues and PRs?** Use "Fixes #42" in PR description or commit message.
-
-5. **What are GitHub Actions?** Automated workflows that run on Git events (push, PR, tag).
-
-6. **What is branch protection?** Rules that enforce quality (require reviews, require tests).
-
-7. **What's a good PR?** Small, focused, clear description, linked to issues.
-
-If any of these is fuzzy, revisit that section. You now have the tools to collaborate effectively on GitHub.
-
----
-
-## 13) Bridge to Section A Phase 3 Chapter 3.13 — Git vs GitHub
+## 12) Bridge to Section A Phase 3 Chapter 3.13 — Git vs GitHub
 
 In Section A Phase 3 Chapter 3.13 you learned the distinction between Git (the tool) and GitHub (the platform). This chapter showed you how to use GitHub's features—Pull Requests, Issues, Actions—in practice. These features build on Git's version control to enable collaboration, code review, and automation.
 
@@ -747,7 +411,7 @@ Git provides the foundation: branches, commits, history. GitHub adds the workflo
 - **GitHub Actions** automate workflows (tests, deployment).
 - **Branch protection** enforces quality standards.
 - **Good PRs** are small, focused, and well-described.
-- **Link Issues and PRs** to track work (`Fixes #42`).
+- **Link Issues and PRs** to track work (Fixes #42).
 
 GitHub's features transform Git from version control into a collaboration platform. The next phase builds on this foundation as you develop web applications that live in version-controlled repositories.
 

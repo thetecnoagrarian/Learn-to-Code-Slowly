@@ -21,58 +21,29 @@ Git is a distributed version control system. It is installed locally, fully func
 
 ### What Git Is
 
-You've been using Git directly:
-
-```bash
-git init
-git add .
-git commit -m "message"
-git branch
-git merge
-git rebase
-```
+You've been using Git directly: initialize a repository, stage files, commit changes, create branches, merge branches, rebase branches.
 
 Git works entirely on your machine. You do not need internet, GitHub, or any hosting provider. Every clone is a complete repository with full history.
 
 ### Git Is Protocol-Agnostic
 
-Git does not care who hosts your remote. These are all equivalent to Git:
-
-- `https://github.com/user/repo.git`
-- `https://gitlab.com/user/repo.git`
-- `git@your-server:repo.git`
-- `file:///path/to/repo.git`
+Git does not care who hosts your remote. These are all equivalent to Git: GitHub URLs, GitLab URLs, SSH URLs to your own server, or local file paths.
 
 From Git's perspective, they are just URLs.
 
 ### Homestead Example: Git Alone
 
-You are developing a solar logger on a Raspberry Pi with no internet:
-
-```bash
-git init
-git add .
-git commit -m "Initial solar logger"
-```
+You are developing a solar logger on a Raspberry Pi with no internet. Initialize a repository, stage your files, commit with a message like "Initial solar logger".
 
 You now have version history, branches, full recovery, and local snapshots. Git is complete. No GitHub required.
 
 ### Homestead Example: Git on Multiple Machines
 
-You have a laptop and a Raspberry Pi, both on your local network:
+You have a laptop and a Raspberry Pi, both on your local network. On the Pi, initialize a repository, stage files, commit with "Initial commit".
 
-```bash
-# On Pi
-git init
-git add .
-git commit -m "Initial commit"
+Share via local network using Git's built-in daemon to export repositories.
 
-# Share via local network
-git daemon --export-all --base-path=/home/user/repos
-
-# On laptop
-git clone git://pi-ip/repo.git
-```
+On your laptop, clone from the Pi's IP address using the Git protocol.
 
 Git works over your local network without any external service. No GitHub needed.
 
@@ -84,41 +55,17 @@ GitHub is a hosted service that stores Git repositories and adds collaboration f
 
 ### What GitHub Adds
 
-GitHub is not required to use Git. It enhances Git by adding:
-- **Web interface:** Browse repositories, view diffs, read code in a browser
-- **Pull Requests:** Code review workflow built on Git branches
-- **Issues:** Bug tracking and project management
-- **Actions:** CI/CD automation
-- **Access control:** User permissions, organizations, teams
-- **Social features:** Stars, forks, discussions
+GitHub is not required to use Git. It enhances Git by adding web interface (browse repositories, view diffs, read code in a browser), Pull Requests (code review workflow built on Git branches), Issues (bug tracking and project management), Actions (CI/CD automation), access control (user permissions, organizations, teams), and social features (stars, forks, discussions).
 
 ### GitHub Is Just a Remote
 
-When you run:
-
-```bash
-git remote add origin https://github.com/user/repo.git
-git push origin main
-```
-
-Git sees a remote URL and a place to send commits. GitHub adds a web UI, collaboration tools, and workflow automation. But Git itself doesn't change.
+When you add a remote pointing to a GitHub repository URL, then push to origin main, Git sees a remote URL and a place to send commits. GitHub adds a web UI, collaboration tools, and workflow automation. But Git itself doesn't change.
 
 ### Homestead Example: Adding GitHub
 
-You've been developing locally:
+You've been developing locally. Viewing your commit history shows commits like "Initial commit" and "Added sensor reading".
 
-```bash
-git log --oneline
-# Shows: abc123 Initial commit
-#        def456 Added sensor reading
-```
-
-Now you create a GitHub repository and push:
-
-```bash
-git remote add origin https://github.com/yourusername/homestead-automation.git
-git push -u origin main
-```
+Now you create a GitHub repository and push: add a remote called origin pointing to your GitHub repository URL, then push main to origin with the upstream flag.
 
 Nothing about your history changes. GitHub now hosts a copy. You can view it in a browser, share it, collaborate on it.
 
@@ -126,14 +73,9 @@ Nothing about your history changes. GitHub now hosts a copy. You can view it in 
 
 ## 3) The Core Distinction
 
-| Git | GitHub |
-|-----|--------|
-| Version control tool | Hosting & collaboration platform |
-| Works offline | Web-based |
-| Tracks history | Adds workflow tools |
-| Installed locally | Hosted service |
+Git is a version control tool that works offline, tracks history, and is installed locally. GitHub is a hosting and collaboration platform that is web-based, adds workflow tools, and is a hosted service.
 
-Think of it like this: Git = the engine. GitHub = the garage, office, and meeting room built around the engine. You can run the engine without the garage. The garage is built around the engine.
+Think of it like this: Git equals the engine. GitHub equals the garage, office, and meeting room built around the engine. You can run the engine without the garage. The garage is built around the engine.
 
 ### The Relationship
 
@@ -143,13 +85,7 @@ Git is foundational infrastructure. GitHub is workflow infrastructure. Git handl
 
 **Scenario 1: Solo development, no collaboration**
 
-You're building a personal script to log sensor data. Git alone is sufficient:
-
-```bash
-git init
-git add .
-git commit -m "Sensor logger"
-```
+You're building a personal script to log sensor data. Git alone is sufficient: initialize a repository, stage files, commit with "Sensor logger".
 
 No GitHub needed. Git gives you version control, history, branches—everything you need.
 
@@ -177,7 +113,7 @@ Git does not track bugs. GitHub Issues provide task tracking, bug reports, featu
 
 **Without GitHub:** You track bugs in a separate system (spreadsheet, notes, etc.).
 
-**With GitHub:** Issues are integrated with your repository. Link issues to commits (`Fixes #42`), and they close automatically when PRs merge.
+**With GitHub:** Issues are integrated with your repository. Link issues to commits using "Fixes #42" syntax, and they close automatically when PRs merge.
 
 ### Actions (CI/CD)
 
@@ -191,33 +127,15 @@ GitHub Actions automate workflows: run tests on push, deploy on tag, build artif
 
 **Git alone:**
 
-```bash
-# You develop locally
-git switch -c feature/email-alerts
-# ... make changes ...
-git commit -m "Add email alerts"
-git push origin feature/email-alerts
+You develop locally: create and switch to a feature branch like feature/email-alerts, make changes, commit with "Add email alerts", push your feature branch to origin.
 
-# Review happens via email or in-person
-# Merge manually
-git switch main
-git merge feature/email-alerts
-```
+Review happens via email or in-person. Merge manually: switch to main, merge your feature branch.
 
 **With GitHub:**
 
-```bash
-# Same Git commands
-git switch -c feature/email-alerts
-# ... make changes ...
-git commit -m "Add email alerts"
-git push origin feature/email-alerts
+Same Git commands: create and switch to a feature branch, make changes, commit, push your feature branch.
 
-# Open Pull Request on GitHub
-# Reviewers comment on specific lines
-# GitHub Actions runs tests automatically
-# Merge with button click when approved
-```
+Open Pull Request on GitHub. Reviewers comment on specific lines. GitHub Actions runs tests automatically. Merge with button click when approved.
 
 GitHub adds the workflow layer, but Git commands stay the same.
 
@@ -229,12 +147,7 @@ You do not need GitHub if you're working solo, have no collaboration needs, don'
 
 ### Homestead Example: Git-Only Project
 
-You're building firmware for an ESP32 device. The project is:
-- Solo development
-- No collaboration needed
-- Backed up locally to external drive
-- No code review needed
-- No CI/CD needed
+You're building firmware for an ESP32 device. The project is solo development, no collaboration needed, backed up locally to external drive, no code review needed, and no CI/CD needed.
 
 Git alone is perfect. You have version control, history, branches—everything you need. Adding GitHub would add complexity without benefit.
 
@@ -256,19 +169,15 @@ You benefit from GitHub (or similar) when collaborating with others, needing cod
 
 **Phase 1: Solo development**
 
-- Git alone is fine
-- Local version control is sufficient
+Git alone is fine. Local version control is sufficient.
 
 **Phase 2: Backup and multi-machine access**
 
-- Add a remote (GitHub, GitLab, or self-hosted)
-- Push for backup, pull on other machines
+Add a remote (GitHub, GitLab, or self-hosted). Push for backup, pull on other machines.
 
 **Phase 3: Collaboration**
 
-- Use GitHub's Pull Requests for code review
-- Use Issues to track bugs
-- Use Actions for automated testing
+Use GitHub's Pull Requests for code review. Use Issues to track bugs. Use Actions for automated testing.
 
 Your needs evolve. Git stays the same. The platform (GitHub) adds features as you need them.
 
@@ -277,16 +186,12 @@ Your needs evolve. Git stays the same. The platform (GitHub) adds features as yo
 You're collaborating with a friend on your homestead automation system:
 
 **Without GitHub:**
-- Share code via email or USB drive
-- No code review process
-- Track bugs in separate document
-- Manual testing
+
+Share code via email or USB drive. No code review process. Track bugs in separate document. Manual testing.
 
 **With GitHub:**
-- Push to shared repository
-- Pull Requests for code review
-- Issues track bugs and features
-- Actions run tests automatically
+
+Push to shared repository. Pull Requests for code review. Issues track bugs and features. Actions run tests automatically.
 
 GitHub makes collaboration easier, but Git provides the foundation.
 
@@ -298,28 +203,15 @@ GitHub is popular, but not unique. All of these work with Git: GitLab, Gitea, Fo
 
 ### GitLab
 
-GitLab provides similar features to GitHub:
-- Web interface
-- Merge Requests (equivalent to Pull Requests)
-- Issues and project management
-- CI/CD (GitLab CI)
-- Self-hosted option available
+GitLab provides similar features to GitHub: web interface, Merge Requests (equivalent to Pull Requests), Issues and project management, CI/CD (GitLab CI), and self-hosted option available.
 
 ### Gitea / Forgejo
 
-Lightweight, self-hosted Git hosting:
-- Simpler than GitHub/GitLab
-- Can run on your own server
-- Good for private projects
-- Fewer features but more control
+Lightweight, self-hosted Git hosting: simpler than GitHub/GitLab, can run on your own server, good for private projects, fewer features but more control.
 
 ### Self-Hosted
 
-You can host Git repositories yourself:
-- `git daemon` for read-only access
-- SSH for push/pull
-- Web interfaces like Gitea or GitLab self-hosted
-- Full control, no external dependencies
+You can host Git repositories yourself: Git daemon for read-only access, SSH for push/pull, web interfaces like Gitea or GitLab self-hosted, full control, no external dependencies.
 
 ### Bitbucket
 
@@ -329,44 +221,25 @@ Another hosted option, similar to GitHub/GitLab.
 
 **Option 1: GitHub (public, free)**
 
-- Good for: Open source, learning, public projects
-- Your homestead automation could be public on GitHub
+Good for: Open source, learning, public projects. Your homestead automation could be public on GitHub.
 
 **Option 2: Self-hosted Gitea**
 
-- Good for: Private projects, full control, no external dependencies
-- Run on your own server, accessible only on your network
+Good for: Private projects, full control, no external dependencies. Run on your own server, accessible only on your network.
 
 **Option 3: GitLab (private repos)**
 
-- Good for: Private projects, team collaboration
-- Similar to GitHub but with different pricing/features
+Good for: Private projects, team collaboration. Similar to GitHub but with different pricing/features.
 
 All work with the same Git commands. The choice is about features, pricing, and control.
 
 ### Homestead Example: Platform Independence
 
-You develop locally:
+You develop locally: initialize a repository, stage files, commit with "Initial commit".
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
+Push to GitHub: add a remote called origin pointing to your GitHub repository URL, then push main to origin.
 
-Push to GitHub:
-
-```bash
-git remote add origin https://github.com/user/repo.git
-git push origin main
-```
-
-Later, switch to GitLab:
-
-```bash
-git remote set-url origin https://gitlab.com/user/repo.git
-git push origin main
-```
+Later, switch to GitLab: change the remote URL to point to your GitLab repository URL, then push main to origin.
 
 Same Git commands. Different platform. Your repository and history are unchanged.
 
@@ -384,7 +257,7 @@ Same Git commands. Different platform. Your repository and history are unchanged
 
 ### "Git commands change depending on platform."
 
-**False.** Git is platform-independent. `git push origin main` works the same whether the remote is GitHub, GitLab, or your own server.
+**False.** Git is platform-independent. Pushing to origin main works the same whether the remote is GitHub, GitLab, or your own server.
 
 ### "I can only use GitHub."
 
@@ -402,11 +275,7 @@ Same Git commands. Different platform. Your repository and history are unchanged
 
 **Question:** "Can I use GitLab instead of GitHub?"
 
-**Answer:** Yes. Git works the same way. Just change the remote URL:
-
-```bash
-git remote set-url origin https://gitlab.com/user/repo.git
-```
+**Answer:** Yes. Git works the same way. Just change the remote URL to point to your GitLab repository.
 
 Same Git commands, different platform.
 
@@ -414,44 +283,21 @@ Same Git commands, different platform.
 
 ## 9) Platform Independence
 
-If you switch from GitHub to GitLab:
-
-```bash
-git remote set-url origin https://gitlab.com/user/repo.git
-git push origin main
-```
+If you switch from GitHub to GitLab, change the remote URL to point to your GitLab repository, then push main to origin.
 
 Nothing else changes. Your repository remains identical. Git stays the same.
 
 ### The Git Commands Don't Change
 
-Regardless of whether you use GitHub, GitLab, Gitea, or self-hosted, Git commands are identical:
-
-```bash
-git clone <url>
-git add .
-git commit -m "Message"
-git push origin main
-git pull origin main
-```
+Regardless of whether you use GitHub, GitLab, Gitea, or self-hosted, Git commands are identical: clone a repository, stage files, commit with a message, push to origin main, pull from origin main.
 
 The platform (GitHub) adds features around Git, but Git itself doesn't change.
 
 ### Homestead Example: Switching Platforms
 
-You start with GitHub:
+You start with GitHub: add a remote called origin pointing to your GitHub repository URL, then push main to origin.
 
-```bash
-git remote add origin https://github.com/user/repo.git
-git push origin main
-```
-
-Later, you want to switch to self-hosted Gitea:
-
-```bash
-git remote set-url origin http://gitea.local/homestead/repo.git
-git push origin main
-```
+Later, you want to switch to self-hosted Gitea: change the remote URL to point to your Gitea server URL, then push main to origin.
 
 Same Git commands. Different platform. Your code and history are unchanged.
 
@@ -463,26 +309,19 @@ Understanding this distinction matters conceptually. Git is time and state track
 
 ### Git: Foundational Infrastructure
 
-Git provides:
-- Version control (snapshots, history)
-- Branching and merging
-- Distributed architecture
-- Local-first design
+Git provides version control (snapshots, history), branching and merging, distributed architecture, and local-first design.
 
 ### GitHub: Workflow Infrastructure
 
-GitHub adds:
-- Collaboration tools (Pull Requests, Issues)
-- Automation (Actions, CI/CD)
-- Social features (forks, stars)
-- Access control (permissions, teams)
+GitHub adds collaboration tools (Pull Requests, Issues), automation (Actions, CI/CD), social features (forks, stars), and access control (permissions, teams).
 
 ### Homestead Example: Architectural Understanding
 
 Your homestead automation system uses Git for version control:
 
-- **Git layer:** Tracks changes, manages history, enables branching
-- **GitHub layer (optional):** Adds collaboration, code review, automation
+**Git layer:** Tracks changes, manages history, enables branching.
+
+**GitHub layer (optional):** Adds collaboration, code review, automation.
 
 You can use Git without GitHub. You can't use GitHub without Git (it runs Git under the hood). Git is the foundation. GitHub is built on it.
 
@@ -490,14 +329,9 @@ You can use Git without GitHub. You can't use GitHub without Git (it runs Git un
 
 ## 11) Summary: Git vs GitHub
 
-| Aspect | Git | GitHub |
-|--------|-----|--------|
-| **What it is** | Version control tool | Hosting platform |
-| **Works offline** | Yes | No (web interface) |
-| **Required for Git** | No | No |
-| **Provides** | Version control, history, branches | Web UI, PRs, Issues, Actions |
-| **Can use alone** | Yes | No (requires Git) |
-| **Collaboration** | Basic (push/pull) | Advanced (PRs, reviews) |
+Git is a version control tool that works offline, is not required for Git, provides version control/history/branches, can be used alone, and provides basic collaboration (push/pull).
+
+GitHub is a hosting platform that is web-based, is not required for Git, provides web UI/PRs/Issues/Actions, cannot be used alone (requires Git), and provides advanced collaboration (PRs, reviews).
 
 ### The Relationship
 
@@ -505,42 +339,15 @@ Git is the foundation. GitHub is built on Git and adds collaboration features. Y
 
 ### Homestead Example: Putting It Together
 
-You've learned Git—the tool. You understand:
-- Repositories, commits, branches
-- Push, pull, merge, rebase
-- How Git works locally and with remotes
+You've learned Git—the tool. You understand repositories, commits, branches, push, pull, merge, rebase, and how Git works locally and with remotes.
 
-Now you understand GitHub—the platform. It:
-- Hosts your Git repositories
-- Provides a web interface
-- Adds Pull Requests, Issues, Actions
-- Makes collaboration easier
+Now you understand GitHub—the platform. It hosts your Git repositories, provides a web interface, adds Pull Requests, Issues, Actions, and makes collaboration easier.
 
 But Git remains the core. Whether you use GitHub, GitLab, or self-hosted, Git commands stay the same.
 
 ---
 
-## 12) Review: Git vs GitHub in One Page
-
-Before moving on, you should be able to state in your own words:
-
-1. **What is Git?** A distributed version control tool that works locally and with remotes.
-
-2. **What is GitHub?** A web-based platform that hosts Git repositories and adds collaboration features.
-
-3. **Do you need GitHub to use Git?** No. Git works entirely locally.
-
-4. **What does GitHub add?** Web interface, Pull Requests, Issues, Actions, social features.
-
-5. **Are there alternatives?** Yes. GitLab, Gitea, self-hosted, Bitbucket—all work with Git.
-
-6. **Do Git commands change?** No. Git commands are the same regardless of hosting platform.
-
-If any of these is fuzzy, revisit that section. The next chapter assumes you understand the distinction between Git (the tool) and GitHub (the platform).
-
----
-
-## 13) Bridge to Section A Phase 3 Chapter 3.12 — Git in Your Workflow
+## 12) Bridge to Section A Phase 3 Chapter 3.12 — Git in Your Workflow
 
 In Section A Phase 3 Chapter 3.12 you learned about feature-branch workflows and code review. That chapter mentioned Pull Requests but didn't explain them—because Pull Requests are a GitHub feature, not a Git feature. Now you understand: Git provides branches and merging. GitHub provides Pull Requests as a workflow built on those Git features.
 

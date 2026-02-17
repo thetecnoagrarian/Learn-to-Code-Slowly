@@ -22,16 +22,21 @@ These rules apply to all instructional content in this project.
 
 ### Chapter Length
 
-- Target ~15 minutes per chapter (read or listen)
+- Target 15-20 minutes per chapter (read or listen)
+- Character count target: 18,000-26,000 characters
 - One chapter = one core mental model
 - Split topics if they exceed the time or clarity limit
+- If a chapter exceeds 26k characters, it's too wordy—tighten it
 
 ### Audio-First
 
 - Content must work well with text-to-speech
 - Use clear declarative sentences
-- Intentional repetition is allowed and encouraged
-- Avoid dense nesting or reference-heavy writing
+- More direct, less explanatory language
+- Avoid rhetorical questions
+- Avoid dense nesting—less nested structure for better audio flow
+- Cross-relate concepts across sections, but avoid over-repetition within the chapter (listeners can replay)
+- Intentional repetition is allowed and encouraged, but don't over-explain the same concept multiple times
 
 ### Depth
 
@@ -65,12 +70,47 @@ These rules apply to all instructional content in this project.
 
 ### Homestead Example Variety
 
-- **Diversify examples** — Don't rely only on battery/generator. Use a range of homestead contexts:
-  - **Animals:** chickens, pigs, cows; different animal buildings (coop, pig barn, cow barn)
-  - **Solar:** production monitoring, logging, panel status
-  - **Electric poultry net:** fence voltage, energizer status, fence-down alerts
-  - **ESP32/MicroPython:** coop controller, sensor nodes in animal buildings, MQTT publishers, DHT22 temp/humidity, Wi‑Fi connect/reconnect
+To- **Diversify examples** — Don't rely only on battery/generator. Use a range of homestead contexts from real automation projects:
+
+  **Power and Energy:**
+  - Battery voltage monitoring
+  - Solar panel voltage and production monitoring
+  - Energy usage monitoring per building (identifying power drains)
+  - Split monitoring for different buildings
+
+  **Temperature and Climate:**
+  - Freezer temperature sensors (internal + external sensors measuring both temperatures)
+  - Coop temperature and humidity
+  - Barn temperature and humidity (pig area, cow area)
+  - Garage temperature and humidity
+  - Ambient outdoor temperature and humidity
+
+  **Animal Systems:**
+  - Automated chicken coop door (time-based logic: X chickens inside + time of day = door closed)
+  - Chicken counter (door counts chickens coming in and out)
+  - Coop temperature/humidity monitoring
+  - ESP32-CAM monitoring (pig area, cow area in barn)
+
+  **Garden and Irrigation:**
+  - Soil moisture readings (ESP32 sensors in gardens)
+  - Off-grid drip irrigation system
+  - Garden area monitoring
+
+  **Infrastructure:**
+  - Electric poultry net fence voltage and energizer status
+  - Network monitoring (ESP32 network around property)
+  - Wi‑Fi connectivity and reconnection logic
+
+  **Web and Integration:**
+  - Live webcam overlooking property (port to website)
+  - Web page projects (two websites sharing core logic, Express, Handlebars, Shoelace)
+  - Raspberry Pi with Home Assistant OS
+  - ESP32 Home modules and custom code
+  - MQTT publishers and subscribers
+
 - Battery and generator remain useful models for state and automation; alternate with other contexts throughout a chapter so learners see the same concepts across different homestead systems.
+- **Keep examples simple** — Don't always extrapolate. Sometimes a simple example is perfect. Avoid wordy paragraphs explaining homestead relevance—be concise.
+- **Use realistic scenarios** — Examples should reflect actual homestead automation projects: sensor readings, automated systems, monitoring, web integration, and custom code for ESP32 and Raspberry Pi setups.
 
 ---
 
@@ -320,22 +360,59 @@ Clearly mark hands-on coding opportunities:
 When editing for clarity:
 
 - **Remove filler** — Phrases like "Here's the mental upgrade that makes everything click" or "You should be able to say" add no substance. Cut them.
-- **Keep the quotes** — The closing anchor quotes at the end of sections stay. They reinforce the core idea.
-- **Use headings** — Option B style: numbered `##` for main sections, `###` for subsections. No horizontal rules.
+- **Remove rhetorical questions** — They don't work well in audio and add unnecessary words.
+- **Keep anchor quotes** — The closing anchor quotes at the end of sections stay. They reinforce the core idea.
+- **Use headings** — Numbered `##` style for main sections (e.g., `## 1) Section Title`), `###` for subsections. No horizontal rules between sections.
+- **Avoid over-explaining** — If explanations feel drawn out and lose attention, tighten them. Vagueness often comes from too many words, not too few concepts.
 - **Be concise** — Every sentence should earn its place. If it doesn’t add information or reinforcement, remove it.
+
+### Sections to Avoid or Remove
+
+These sections tend to be wordy and do not add value for audio-first content:
+
+- **FAQ sections** — Integrate concepts into main content instead
+- **Review sections** (e.g., "Review: Four Ideas in One Page") — Unnecessary repetition
+- **Checklists** (e.g., "Checklist: Am I Using X Well?") — Can be integrated into main content
+- **Roadmaps** (e.g., "Roadmap: The Rest of Phase X") — Unnecessary preview
+- **Extended Scenarios** — Long narrative examples that over-explain
+- **"When Things Go Wrong: A Mindset"** type sections — Too wordy
+- **"Common Workflows in Plain Language (Preview)"** — Unnecessary preview sections
+- **"Before and After"** comparisons — Often too wordy, tighten or remove
+
+### Sections to Keep (But Tighten)
+
+- **Learning Objectives** — Keep at the top
+- **Key Terms** — Move to top (after Learning Objectives), keep concise
+- **Exploratory sections** — Keep but tighten
+- **Core middle content** — Keep, make more direct
+- **Common Pitfalls and Misconceptions** — Keep but make shorter/more concise
+- **Concise summary** — Keep at end
+- **Brief bridge** — Keep but do not over-explain the next chapter
 
 ---
 
 ## Chapter Structure
 
-Each chapter file should:
+Each chapter file should follow this structure:
 
-- Use `#` for the document title
-- Use `##` for main sections (with optional numbering, e.g., "1) Inputs, State, Outputs")
+1. **Chapter title** — `## Section X Phase Y · Chapter Z.N: Title`
+2. **Brief description** — One line describing what the chapter covers
+3. **Learning Objectives** — Bulleted list of what learners should be able to do
+4. **Key Terms** — Brief definitions of important terms (moved to top for reference)
+5. **Core content sections** — Numbered `## 1) Section Title`, `## 2) Next Section`, etc.
+6. **Common Pitfalls and Misconceptions** — Short, concise (if applicable)
+7. **Why [Tool] Specifically?** — Brief explanation if applicable
+8. **Summary** — Concise bullet points of key takeaways
+9. **Bridge / Next** — Brief connection to next chapter (don't over-explain)
+
+### Structure Guidelines
+
+- Use `##` for main sections with numbering: `## 1) Section Title`
 - Use `###` for subsections
-- Include clear conceptual framing, concrete examples, and common failure modes (see Structure under Content Constraints)
-- End with a reflection or consolidation section
-- Include a short anchor takeaway (e.g., closing quote) when appropriate
+- No horizontal rules (`---` or `⸻`) between sections—use headings only
+- Include clear conceptual framing, concrete examples, and common failure modes
+- Keep homestead examples simple—don't always extrapolate into long paragraphs
+- End with concise summary and brief bridge
 - Refer to resources.md for external links
 
 ---
@@ -352,13 +429,15 @@ Each chapter file should:
 
 1. **Guiding principle:** Teach how systems behave, not how to memorize tools.
 2. **resources.md** = single source of truth for external links. Don’t paste URLs into chapter files.
-3. **Content constraints:** ~15 min per chapter, audio-first, one mental model per chapter, include failure modes and anchor takeaways.
+3. **Content constraints:** 15-20 min per chapter (18k-26k characters), audio-first, one mental model per chapter, include failure modes and anchor takeaways.
 4. **Fetch and integrate** from resource URLs when expanding concepts.
 5. **ChatGPT** = drafting, brainstorming, long-form generation.
 6. **Cursor** = fetching, editing, consistency, technical accuracy, tightening.
 7. **Cut filler.** Keep substance. Maintain the concept-first, homestead-grounded voice.
-8. **Homestead examples** — Use homestead examples anywhere appropriate. Diversify: not just battery/generator, but also chickens/pigs/cows, coop/pig barn/cow barn, solar, electric poultry net, ESP32 sensor nodes. Alternate contexts so learners see concepts across many homestead systems.
+8. **Homestead examples** — Use homestead examples anywhere appropriate. Diversify across power/energy (battery, solar, energy monitoring), temperature/climate (freezer, coop, barn, garage, outdoor), animal systems (coop door automation, chicken counter, ESP32-CAM), garden/irrigation (soil moisture, drip irrigation), infrastructure (fence monitoring, network monitoring), and web/integration (webcams, Express/Handlebars websites, Home Assistant, ESP32 Home modules). Keep examples simple—don't always extrapolate into long paragraphs. Use realistic scenarios from actual homestead automation projects.
 9. **Code examples** — Live in separate `.py` files, referenced conceptually in chapters. Never read code aloud. Code is for hands-on time, not driving time. All code must be executable in Cursor.
 10. **Code examples reference files** — Each phase has a `Phase_X_Code_Examples.md` file that indexes all code mentioned in chapters, organized by chapter with section and line references. Visual-only, not read aloud. Do NOT add code blocks to chapter markdown files. References in chapters should be minimal (e.g., "(Code examples)") to avoid disrupting read-aloud flow.
 11. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
 12. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.
+13. **Tightening chapters** — Remove FAQ sections, Review sections, Checklists, Roadmaps, Extended Scenarios, "When Things Go Wrong" sections. Move Key Terms to top. Keep Learning Objectives, core content, concise Common Pitfalls, concise Summary, brief Bridge. More direct language, less explanatory, remove rhetorical questions, less nested structure.
+14. **Character count** — Check character count before finalizing. If over 26k characters, tighten further. Target 18k-26k characters for 15-20 minute audio.

@@ -8,7 +8,7 @@ By the end of this chapter, you should be able to:
 - Describe what a repository is and where it lives (.git).
 - Explain what the working directory (working tree) is.
 - Explain the staging area (index) and how it sits between working directory and repository.
-- Use the three-area mental model to reason about `git add` and `git commit`.
+- Use the three-area mental model to reason about git add and git commit.
 - Predict where a file's state lives after each Git command.
 
 ---
@@ -19,7 +19,7 @@ A repository is a structured database of project history. It contains all commit
 
 ### The .git Directory
 
-When you run `git init`, Git creates a hidden folder: `.git/`. This folder contains `objects/` (where snapshots live), `refs/` (pointers to branches and tags), `HEAD` (pointer to current branch), configuration files, and internal metadata.
+When you run git init, Git creates a hidden folder: `.git/`. This folder contains objects (where snapshots live), refs (pointers to branches and tags), HEAD (pointer to current branch), configuration files, and internal metadata.
 
 The `.git` directory is the repository, the history store, the time machine. Everything else is just your working files.
 
@@ -45,9 +45,9 @@ The working directory is the visible project folder—minus `.git`. It contains 
 
 ### Tracked vs Untracked Files
 
-Git distinguishes between tracked files (files Git already knows about, included in previous commits, changes show up in `git status`) and untracked files (files Git has never seen, not included in commits, show up as "untracked" in `git status`).
+Git distinguishes between tracked files (files Git already knows about, included in previous commits, changes show up in git status) and untracked files (files Git has never seen, not included in commits, show up as "untracked" in git status).
 
-Example: `git status` might show `modified: server.js` and `untracked: notes.txt`. Tracked files participate in version control. Untracked files are invisible to history until you add and commit them.
+When you run git status, it might show modified files and untracked files. Tracked files participate in version control. Untracked files are invisible to history until you add and commit them.
 
 ### Important Principle
 
@@ -71,24 +71,13 @@ Between the working directory and the repository sits the staging area (also cal
 
 ### Why Does It Exist?
 
-Why not just commit everything? Because you rarely want to. Example: you fix a bug in `sensor.js`, add logging in `logger.js`, and update documentation in `README.md`. These are three logical changes. Without staging, committing would bundle them together. With staging, you can:
-
-```
-git add sensor.js
-git commit -m "Fix voltage rounding bug"
-
-git add logger.js
-git commit -m "Add request duration logging"
-
-git add README.md
-git commit -m "Update API documentation"
-```
+Why not just commit everything? Because you rarely want to. Example: you fix a bug in one file, add logging in another file, and update documentation in a third file. These are three logical changes. Without staging, committing would bundle them together. With staging, you can stage the first file and commit it with a message about the bug fix. Then stage the second file and commit it with a message about logging. Then stage the third file and commit it with a message about documentation.
 
 You craft commits intentionally. Each commit represents one logical change, making history readable and recovery precise.
 
-### What `git add` Actually Does
+### What git add Actually Does
 
-`git add` does not save to the repository or create history. It moves changes from the working directory to the staging area. It says: "Include this in the next snapshot." After `git add`, the change is staged but not yet committed. The repository is still unchanged.
+git add does not save to the repository or create history. It moves changes from the working directory to the staging area. It says: "Include this in the next snapshot." After git add, the change is staged but not yet committed. The repository is still unchanged.
 
 ### Staging Is a Snapshot in Progress
 
@@ -96,32 +85,13 @@ The staging area is a preview of the next commit, a partial snapshot, a curated 
 
 ### Homestead Example: Multiple Changes, Separate Commits
 
-You're working on the coop monitor. You fix a bug where the door timer was off by an hour during DST. You also add a new sensor reading for humidity. And you update the README to document the new sensor. These are three separate ideas. With staging you can:
-
-```
-git add coop_door.py
-git commit -m "Fix coop door timer DST offset"
-
-git add sensor_humidity.py
-git commit -m "Add humidity sensor to coop monitor"
-
-git add README.md
-git commit -m "Document humidity sensor in README"
-```
+You're working on the coop monitor. You fix a bug where the door timer was off by an hour during DST. You also add a new sensor reading for humidity. And you update the README to document the new sensor. These are three separate ideas. With staging you can stage the door fix file and commit it with a message about fixing the DST offset. Then stage the humidity sensor file and commit it with a message about adding the sensor. Then stage the README and commit it with a message about documenting the sensor.
 
 Each commit is focused and clear. Later, if the DST fix causes issues, you can revert just that commit without touching the sensor addition. That precision is why staging exists.
 
 ### Homestead Example: Solar Logger Refactor
 
-You refactor the solar logger to use a new aggregation method. While doing that, you also fix a typo in a comment. These are two separate changes. Stage and commit them separately:
-
-```
-git add solar_aggregator.py
-git commit -m "Refactor solar logger to use time-window aggregation"
-
-git add solar_aggregator.py  # (the typo fix)
-git commit -m "Fix typo in aggregation comment"
-```
+You refactor the solar logger to use a new aggregation method. While doing that, you also fix a typo in a comment. These are two separate changes. Stage and commit them separately: first stage the refactor and commit it with a message about the aggregation change. Then stage the typo fix and commit it with a message about fixing the typo.
 
 Or, if the typo is trivial, you might include it in the refactor commit. The staging area gives you the choice. Without it, every commit would include everything you've changed since the last commit, making history messy and recovery imprecise.
 
@@ -134,19 +104,7 @@ Git has three core areas:
 2. Staging Area (Index)
 3. Repository
 
-The flow is:
-
-```
-Working Directory
-      │
-      │  git add
-      ▼
-Staging Area
-      │
-      │  git commit
-      ▼
-Repository
-```
+The flow is: Working Directory, then git add moves changes to Staging Area, then git commit moves changes to Repository.
 
 ### Why Two Steps?
 
@@ -154,11 +112,7 @@ Because commits should represent one idea, one logical change, one atomic step. 
 
 ### Table Summary
 
-| Area | Purpose | Command to Move Forward |
-|------|---------|------------------------|
-| Working Directory | Edit files | `git add` |
-| Staging Area | Prepare next commit | `git commit` |
-| Repository | Permanent history | — |
+Working Directory is where you edit files. Use git add to move forward. Staging Area is where you prepare the next commit. Use git commit to move forward. Repository is permanent history. There is no command to move forward from here—it's the destination.
 
 ### Key Insight
 
@@ -166,55 +120,41 @@ The repository never sees unstaged changes. The staging area is the only gateway
 
 ### Visualizing the Three Areas
 
-Imagine three boxes. The working directory box contains your current files—some modified, some new, some unchanged. The staging area box is empty until you run `git add`; then it contains copies of the changes you staged. The repository box contains all your commits—immutable snapshots. When you run `git commit`, the contents of the staging area become a new commit in the repository, and the staging area is cleared (ready for the next set of changes). The working directory still has your files, but now they match what's in the repository (for the files you committed).
+Imagine three boxes. The working directory box contains your current files—some modified, some new, some unchanged. The staging area box is empty until you run git add; then it contains copies of the changes you staged. The repository box contains all your commits—immutable snapshots. When you run git commit, the contents of the staging area become a new commit in the repository, and the staging area is cleared (ready for the next set of changes). The working directory still has your files, but now they match what's in the repository (for the files you committed).
 
 ---
 
 ## 5) Basic Commands That Move Between Areas
 
-### `git status`
+### git status
 
 Shows modified files (working directory), staged files (ready to commit), and untracked files. It is your visibility tool. Run it often. It tells you exactly where your changes are: in the working directory (modified but not staged), in the staging area (staged but not committed), or untracked (not yet part of version control).
 
-### `git add`
+### git add
 
-Moves changes into staging. Examples:
-- `git add file.js` — stage one file
-- `git add .` — stage changes in current directory
-- `git add -A` — stage all changes
+Moves changes into staging. You can stage one file, stage changes in the current directory, or stage all changes. After git add, changes are staged but not committed. The repository is still unchanged.
 
-After `git add`, changes are staged but not committed. The repository is still unchanged.
+### git commit
 
-### `git commit`
-
-Takes the staged snapshot and writes it to the repository. `git commit -m "Describe what changed and why"` creates a new commit, generates a hash, updates the branch pointer, and records author and timestamp. Now the repository contains the new state.
+Takes the staged snapshot and writes it to the repository. git commit with a message creates a new commit, generates a hash, updates the branch pointer, and records author and timestamp. Now the repository contains the new state.
 
 ### Predicting State
 
-After editing a file:
-- Working directory: modified
-- Staging: unchanged
-- Repository: unchanged
+After editing a file: working directory is modified, staging is unchanged, repository is unchanged.
 
-After `git add file.js`:
-- Working directory: modified (or clean if you staged all changes)
-- Staging: updated
-- Repository: unchanged
+After git add: working directory may still be modified (or clean if you staged all changes), staging is updated, repository is unchanged.
 
-After `git commit`:
-- Working directory: clean (matches repository)
-- Staging: clean
-- Repository: new commit added
+After git commit: working directory is clean (matches repository), staging is clean, repository has a new commit added.
 
 You should be able to reason about these transitions. This mental model will help you understand what Git commands do and why.
 
 ### Common Confusions
 
-**"Why didn't my commit include my changes?"** Because you didn't stage them. Git only commits what is in the staging area. If you edit a file and run `git commit` without `git add`, nothing happens (or Git tells you there's nothing to commit).
+"Why didn't my commit include my changes?" Because you didn't stage them. Git only commits what is in the staging area. If you edit a file and run git commit without git add, nothing happens (or Git tells you there's nothing to commit).
 
-**"Why does Git have this extra step?"** Because commit quality matters. The staging area enforces thought. It forces intentional grouping, logical boundaries, and clean history. Without it, every commit would be "everything I changed since last time," which makes history hard to read and recovery imprecise.
+"Why does Git have this extra step?" Because commit quality matters. The staging area enforces thought. It forces intentional grouping, logical boundaries, and clean history. Without it, every commit would be "everything I changed since last time," which makes history hard to read and recovery imprecise.
 
-**"Can I skip staging?"** No. Git requires staging before committing. That is by design. Some commands like `git commit -a` stage and commit in one step, but they still use the staging area internally. The two-step process is fundamental to Git's design.
+"Can I skip staging?" No. Git requires staging before committing. That is by design. Some commands stage and commit in one step, but they still use the staging area internally. The two-step process is fundamental to Git's design.
 
 ---
 
@@ -222,72 +162,36 @@ You should be able to reason about these transitions. This mental model will hel
 
 A typical workflow looks like this:
 
-1. **Edit files** in your working directory (using your editor).
-2. **Check status** with `git status` to see what changed.
-3. **Stage changes** with `git add` (selecting which changes to include).
-4. **Review** what's staged (optional: `git diff --staged`).
-5. **Commit** with `git commit -m "message"` to write to repository.
-6. **Repeat** as you continue working.
+1. Edit files in your working directory (using your editor).
+2. Check status with git status to see what changed.
+3. Stage changes with git add (selecting which changes to include).
+4. Review what's staged (optional: use git diff to see staged changes).
+5. Commit with git commit and a message to write to repository.
+6. Repeat as you continue working.
 
-Between steps 3 and 5, you can still edit files, stage more changes, or unstage things (`git reset`). The staging area is flexible until you commit.
+Between steps 3 and 5, you can still edit files, stage more changes, or unstage things. The staging area is flexible until you commit.
 
 ### Homestead Example: Adding a New Sensor
 
-You add a new temperature sensor to the pig barn. The workflow:
-
-1. Edit `pig_barn_sensor.py` to add the new sensor reading.
-2. Edit `config.json` to add the sensor ID.
-3. Run `git status` — see both files modified.
-4. Stage the sensor code: `git add pig_barn_sensor.py`
-5. Commit: `git commit -m "Add temperature sensor to pig barn monitor"`
-6. Stage the config: `git add config.json`
-7. Commit: `git commit -m "Add pig barn sensor ID to config"`
+You add a new temperature sensor to the pig barn. The workflow: Edit the pig barn sensor file to add the new sensor reading. Edit the config file to add the sensor ID. Run git status to see both files modified. Stage the sensor code file and commit it with a message about adding the temperature sensor. Then stage the config file and commit it with a message about adding the sensor ID to config.
 
 Two logical commits: the code change and the config change. If you need to revert the sensor code later, you can do so without touching the config. That precision comes from staging.
 
 ### Homestead Example: Fixing a Bug and Adding a Feature
 
-You fix a bug in the solar logger (wrong calculation for daily total) and also add a new feature (email alerts when production drops). These are two separate ideas. Stage and commit separately:
-
-```
-git add solar_logger.py  # (the bug fix)
-git commit -m "Fix daily total calculation in solar logger"
-
-git add alert_system.py email_config.py
-git commit -m "Add email alerts for low solar production"
-```
+You fix a bug in the solar logger (wrong calculation for daily total) and also add a new feature (email alerts when production drops). These are two separate ideas. Stage and commit separately: first stage the bug fix file and commit it with a message about fixing the daily total calculation. Then stage the alert system files and commit them with a message about adding email alerts for low production.
 
 Each commit is focused. If the email feature has issues, you can revert just that commit. The bug fix stays. That is the value of staging: you control what goes into each commit.
 
 ### Homestead Example: ESPHome Config and Python Script
 
-You're updating the ESP32 controller for the electric fence. You modify the ESPHome YAML config to change the pulse duration, and you also update the Python script that monitors fence voltage. These are related but separate changes. Stage them separately:
-
-```
-git add fence_controller.yaml
-git commit -m "Increase fence pulse duration to 0.5s"
-
-git add fence_monitor.py
-git commit -m "Update voltage threshold in fence monitor"
-```
+You're updating the ESP32 controller for the electric fence. You modify the ESPHome YAML config to change the pulse duration, and you also update the Python script that monitors fence voltage. These are related but separate changes. Stage them separately: first stage the YAML config and commit it with a message about increasing the pulse duration. Then stage the Python script and commit it with a message about updating the voltage threshold.
 
 Later, if the pulse duration change causes issues, you can revert just the YAML commit without affecting the Python script. That granularity is why staging exists.
 
 ### Homestead Example: Documentation and Code Together
 
-You refactor the coop door logic and also update the README to document the new behavior. You could commit them together (since the docs explain the code change), or separately (code first, then docs). Staging gives you the choice:
-
-```
-# Option 1: Together (docs explain the code)
-git add coop_door.py README.md
-git commit -m "Refactor coop door logic; update documentation"
-
-# Option 2: Separate (code first, then docs)
-git add coop_door.py
-git commit -m "Refactor coop door logic for DST handling"
-git add README.md
-git commit -m "Document new coop door DST behavior"
-```
+You refactor the coop door logic and also update the README to document the new behavior. You could commit them together (since the docs explain the code change), or separately (code first, then docs). Staging gives you the choice: stage both files together and commit with a combined message, or stage the code file first and commit it, then stage the README and commit it separately.
 
 Both are valid. The staging area lets you decide based on your project's needs and your commit message style.
 
@@ -295,38 +199,23 @@ Both are valid. The staging area lets you decide based on your project's needs a
 
 ## 7) What Happens When You Don't Stage
 
-If you edit files and run `git commit` without staging, Git will tell you there's nothing to commit. The changes are still in your working directory, but they're not staged, so they can't be committed. This is Git protecting you from accidentally committing things you didn't intend to include.
+If you edit files and run git commit without staging, Git will tell you there's nothing to commit. The changes are still in your working directory, but they're not staged, so they can't be committed. This is Git protecting you from accidentally committing things you didn't intend to include.
 
-You can also have a mix: some files staged, some files modified but not staged. `git status` will show both. Only the staged files will be included in the next commit. The unstaged changes remain in your working directory, ready to be staged later (or discarded).
+You can also have a mix: some files staged, some files modified but not staged. git status will show both. Only the staged files will be included in the next commit. The unstaged changes remain in your working directory, ready to be staged later (or discarded).
 
 ### The Safety Net
 
-The staging area is also a safety net. If you stage something by mistake, you can unstage it (`git reset` or `git restore --staged`) before committing. Once you commit, the change is in the repository and harder to undo (though still possible with care). So staging gives you a chance to review and adjust before making history permanent.
+The staging area is also a safety net. If you stage something by mistake, you can unstage it before committing. Once you commit, the change is in the repository and harder to undo (though still possible with care). So staging gives you a chance to review and adjust before making history permanent.
 
 ### Mixed States: Staged and Unstaged Changes
 
-It's common to have some files staged and others modified but not staged. For example, you might stage a bug fix but leave a new feature unstaged because it's not ready. `git status` will show:
+It's common to have some files staged and others modified but not staged. For example, you might stage a bug fix but leave a new feature unstaged because it's not ready. git status will show staged files under "Changes to be committed" and unstaged files under "Changes not staged for commit."
 
-```
-Changes to be committed:
-  modified:   sensor.py
-
-Changes not staged for commit:
-  modified:   logger.py
-```
-
-Only `sensor.py` will be included in the next commit. `logger.py` stays in your working directory. You can commit the staged changes, then continue working on `logger.py` and stage it later. This flexibility is why the staging area exists: you can prepare commits incrementally.
+Only the staged files will be included in the next commit. The unstaged files stay in your working directory. You can commit the staged changes, then continue working on the unstaged files and stage them later. This flexibility is why the staging area exists: you can prepare commits incrementally.
 
 ### Homestead Example: Partial Staging
 
-You're working on the solar dashboard. You fix a bug in the aggregation code and also start adding a new chart feature. The bug fix is ready; the chart is half-done. Stage only the bug fix:
-
-```
-git add solar_aggregator.py  # (the bug fix)
-git commit -m "Fix off-by-one error in daily aggregation"
-
-# Continue working on chart feature...
-```
+You're working on the solar dashboard. You fix a bug in the aggregation code and also start adding a new chart feature. The bug fix is ready; the chart is half-done. Stage only the bug fix file and commit it with a message about fixing the off-by-one error. Continue working on the chart feature.
 
 The chart changes stay in your working directory. When the chart is complete, you stage and commit it separately. This keeps your history clean: each commit is complete and logical.
 
@@ -336,64 +225,65 @@ The chart changes stay in your working directory. When the chart is complete, yo
 
 ### Staging Parts of a File
 
-You can stage individual lines or hunks within a file (using `git add -p` for patch mode). This lets you commit part of a file's changes while leaving other changes unstaged. For example, you might fix two bugs in the same file but want to commit them separately:
-
-```
-git add -p sensor.py
-# Git shows each change and asks: stage this hunk? (y/n)
-# Stage the first bug fix, skip the second
-git commit -m "Fix voltage reading bug"
-
-# Later, stage the second bug fix
-git add -p sensor.py
-git commit -m "Fix temperature calibration bug"
-```
+You can stage individual lines or hunks within a file (using patch mode). This lets you commit part of a file's changes while leaving other changes unstaged. For example, you might fix two bugs in the same file but want to commit them separately: use patch mode to stage the first bug fix and commit it, then later use patch mode again to stage the second bug fix and commit it separately.
 
 This advanced usage is powerful but not required for daily work. Most of the time, staging entire files is sufficient.
 
 ### Unstaging Changes
 
-If you stage something by mistake, you can unstage it:
-
-```
-git restore --staged file.js
-# or
-git reset HEAD file.js  # (older syntax, still works)
-```
-
-This moves the changes back to the working directory (unstaged but still modified). The file is unchanged; only the staging status changes.
+If you stage something by mistake, you can unstage it. This moves the changes back to the working directory (unstaged but still modified). The file is unchanged; only the staging status changes.
 
 ### Clearing the Staging Area
 
-If you want to unstage everything (but keep your working directory changes):
-
-```
-git reset
-```
-
-This clears the staging area but leaves your working directory files as they were. Useful if you staged things and then realized you want to reorganize your commits differently.
+If you want to unstage everything (but keep your working directory changes), you can clear the staging area. This clears the staging area but leaves your working directory files as they were. Useful if you staged things and then realized you want to reorganize your commits differently.
 
 ---
 
-## 9) Common Mistakes and How to Avoid Them
+## 9) Understanding git status Output
+
+git status is your window into the three areas. Understanding its output is crucial.
+
+### Clean Working Directory
+
+When git status shows "nothing to commit, working tree clean," this means: working directory matches the repository. No changes anywhere.
+
+### Modified Files (Unstaged)
+
+When git status shows "Changes not staged for commit" followed by a modified file, this means: the file is modified in the working directory but not staged. The repository still has the old version.
+
+### Staged Files
+
+When git status shows "Changes to be committed" followed by a file, this means: the file is staged and will be included in the next commit. The repository will be updated when you commit.
+
+### Mixed State
+
+When git status shows both "Changes to be committed" and "Changes not staged for commit," this means: some files are staged, others are modified but not staged. Only the staged files will be in the next commit.
+
+### Untracked Files
+
+When git status shows "Untracked files" followed by a file, this means: the file exists in the working directory but Git has never seen it. It's not in any commit. You must add it to start tracking it.
+
+---
+
+## 10) Common Mistakes and How to Avoid Them
 
 ### Mistake: Forgetting to Stage
 
-**Symptom:** You edit a file, run `git commit`, and Git says "nothing to commit" or your changes aren't in the commit.
+**Symptom:** You edit a file, run git commit, and Git says "nothing to commit" or your changes aren't in the commit.
 
-**Cause:** You didn't run `git add` before `git commit`.
+**Cause:** You didn't run git add before git commit.
 
-**Fix:** Run `git add` to stage your changes, then commit.
+**Fix:** Run git add to stage your changes, then commit.
 
-**Prevention:** Make `git status` a habit. Run it before committing to see what's staged and what's not.
+**Prevention:** Make git status a habit. Run it before committing to see what's staged and what's not.
 
 ### Mistake: Staging Everything Unintentionally
 
-**Symptom:** You run `git add .` and accidentally stage files you didn't mean to include (like temporary files or debug code).
+**Symptom:** You run git add and accidentally stage files you didn't mean to include (like temporary files or debug code).
 
-**Fix:** Unstage the unwanted files: `git restore --staged unwanted_file.js`, then commit only what you intended.
+**Fix:** Unstage the unwanted files, then commit only what you intended.
 
-**Prevention:** Use `.gitignore` to exclude temporary files (covered in a later chapter). Be selective with `git add`—stage specific files rather than everything.
+**Prevention:** Use `.gitignore` to exclude temporary files (covered in a later chapter). Be selective with git add—stage specific files rather than everything.
 
 ### Mistake: Committing Too Much at Once
 
@@ -401,7 +291,7 @@ This clears the staging area but leaves your working directory files as they wer
 
 **Fix:** Too late for this commit, but going forward: stage and commit logical units separately.
 
-**Prevention:** Review what's staged (`git diff --staged`) before committing. If it includes multiple unrelated changes, unstage some and commit separately.
+**Prevention:** Review what's staged before committing. If it includes multiple unrelated changes, unstage some and commit separately.
 
 ### Mistake: Confusing Working Directory and Repository
 
@@ -409,67 +299,9 @@ This clears the staging area but leaves your working directory files as they wer
 
 **Cause:** Confusing the working directory (where you edit) with the repository (where history lives).
 
-**Fix:** Remember: editing files only changes the working directory. You must `git add` and `git commit` to put changes in the repository.
+**Fix:** Remember: editing files only changes the working directory. You must git add and git commit to put changes in the repository.
 
 **Prevention:** Think of the three areas: working directory (editing), staging (preparing), repository (permanent). Changes only become permanent when committed.
-
----
-
-## 10) Understanding `git status` Output
-
-`git status` is your window into the three areas. Understanding its output is crucial.
-
-### Clean Working Directory
-
-```
-On branch main
-nothing to commit, working tree clean
-```
-
-This means: working directory matches the repository. No changes anywhere.
-
-### Modified Files (Unstaged)
-
-```
-On branch main
-Changes not staged for commit:
-  modified:   sensor.py
-```
-
-This means: `sensor.py` is modified in the working directory but not staged. The repository still has the old version.
-
-### Staged Files
-
-```
-On branch main
-Changes to be committed:
-  modified:   sensor.py
-```
-
-This means: `sensor.py` is staged and will be included in the next commit. The repository will be updated when you commit.
-
-### Mixed State
-
-```
-On branch main
-Changes to be committed:
-  modified:   sensor.py
-
-Changes not staged for commit:
-  modified:   logger.py
-```
-
-This means: `sensor.py` is staged; `logger.py` is modified but not staged. Only `sensor.py` will be in the next commit.
-
-### Untracked Files
-
-```
-On branch main
-Untracked files:
-  new_file.py
-```
-
-This means: `new_file.py` exists in the working directory but Git has never seen it. It's not in any commit. You must `git add` it to start tracking it.
 
 ---
 
@@ -487,25 +319,7 @@ The repository is state evolving through time, with each commit being a named sn
 
 ### The Mental Model in Practice
 
-When you edit a file, you're changing the working directory state. When you `git add`, you're copying that change into the staging area (proposed next state). When you `git commit`, you're making the staging area the new repository state and clearing the staging area. The working directory now matches the repository (for committed files). That cycle repeats: edit → stage → commit → repeat. Each commit is a named point in time you can return to.
-
----
-
-## 12) Review: The Three Areas in One Page
-
-Before moving on, you should be able to state in your own words:
-
-1. **What is the repository?** The `.git` directory that holds all history—commits, branches, tags, objects. It only changes when you commit.
-
-2. **What is the working directory?** The visible project folder (minus `.git`) where you edit files. Changes here are not yet in history until staged and committed.
-
-3. **What is the staging area?** The buffer between working directory and repository. It holds what will become the next commit. You control what goes in via `git add`.
-
-4. **How do changes move?** Working directory → (git add) → Staging area → (git commit) → Repository.
-
-5. **Why two steps?** To let you craft logical commits. You can stage some changes and commit them, leaving other changes unstaged for later commits.
-
-If any of these is fuzzy, revisit that section. The next chapter assumes you understand where history lives and how changes flow from editing to committing.
+When you edit a file, you're changing the working directory state. When you git add, you're copying that change into the staging area (proposed next state). When you git commit, you're making the staging area the new repository state and clearing the staging area. The working directory now matches the repository (for committed files). That cycle repeats: edit → stage → commit → repeat. Each commit is a named point in time you can return to.
 
 ---
 
@@ -514,8 +328,8 @@ If any of these is fuzzy, revisit that section. The next chapter assumes you und
 - The repository (`.git`) holds all history—commits, branches, tags, objects. It only changes when you commit.
 - The working directory is where you edit files—your active workspace. Changes here are not yet in history.
 - The staging area (index) is what will become the next commit—a buffer and selection mechanism. You control what goes in.
-- `git add` moves changes from working directory to staging.
-- `git commit` writes the staged snapshot into the repository.
+- git add moves changes from working directory to staging.
+- git commit writes the staged snapshot into the repository.
 - The three-area model explains Git's design and behavior.
 
 If you understand these three areas, you understand Git's core architecture. Everything else builds on this foundation. The next chapter examines what a commit actually is—the snapshot itself—now that you know where it lives and how it gets there.

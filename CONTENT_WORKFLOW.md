@@ -379,7 +379,7 @@ These sections tend to be wordy and do not add value for audio-first content:
 - **"Common Workflows in Plain Language (Preview)"** — Unnecessary preview sections
 - **"Before and After"** comparisons — Often too wordy, tighten or remove
 
-### Sections to Keep (But Tighten)
+### Sections to Keep or Add (But Tighten)
 
 - **Learning Objectives** — Keep at the top
 - **Key Terms** — Move to top (after Learning Objectives), keep concise
@@ -439,5 +439,5 @@ Each chapter file should follow this structure:
 10. **Code examples reference files** — Each phase has a `Phase_X_Code_Examples.md` file that indexes all code mentioned in chapters, organized by chapter with section and line references. Visual-only, not read aloud. Do NOT add code blocks to chapter markdown files. References in chapters should be minimal (e.g., "(Code examples)") to avoid disrupting read-aloud flow.
 11. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
 12. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.
-13. **Tightening chapters** — Remove FAQ sections, Review sections, Checklists, Roadmaps, Extended Scenarios, "When Things Go Wrong" sections. Move Key Terms to top. Keep Learning Objectives, core content, concise Common Pitfalls, concise Summary, brief Bridge. More direct language, less explanatory, remove rhetorical questions, less nested structure.
+13. **Tightening chapters** — Remove FAQ sections, Review sections, Checklists, Roadmaps, Extended Scenarios, "When Things Go Wrong" sections. Move Key Terms to top. Keep Learning Objectives, core content, concise Common Pitfalls, concise Summary, brief Bridge. More direct language, less explanatory, remove rhetorical questions, less nested structure,no bullet points.
 14. **Character count** — Check character count before finalizing. If over 26k characters, tighten further. Target 18k-26k characters for 15-20 minute audio.

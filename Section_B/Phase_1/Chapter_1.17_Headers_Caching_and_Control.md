@@ -1,768 +1,157 @@
-# Phase 2 · Chapter 2.17: Headers — Caching and Control
+# Section B Phase 1 · Chapter 1.17: Headers — Caching and Control
 
-This chapter builds on [Chapter 2.1: Request-Response](Chapter_2.1_Request-Response.md), [Chapter 2.2: HTTP on TCP](Chapter_2.2_HTTP_on_TCP.md), [Chapter 2.3: What HTTP Is](Chapter_2.3_What_HTTP_Is.md), [Chapter 2.4: HTTP as Text](Chapter_2.4_HTTP_as_Text.md), [Chapter 2.5: Statelessness and Connection Lifecycle](Chapter_2.5_Statelessness_and_Connection_Lifecycle.md), [Chapter 2.6: Request Structure](Chapter_2.6_Request_Structure.md), [Chapter 2.7: The Request Line](Chapter_2.7_The_Request_Line.md), [Chapter 2.8: Response Structure](Chapter_2.8_Response_Structure.md), [Chapter 2.9: Status Codes Overview](Chapter_2.9_Status_Codes_Overview.md), [Chapter 2.10: Status Codes — Success and Redirects](Chapter_2.10_Status_Codes_Success_and_Redirects.md), [Chapter 2.11: Status Codes — Client and Server Errors](Chapter_2.11_Status_Codes_Client_and_Server_Errors.md), [Chapter 2.12: Errors vs Failures](Chapter_2.12_Errors_vs_Failures.md), [Chapter 2.13: HTTP Methods](Chapter_2.13_HTTP_Methods.md), [Chapter 2.14: Safety and Idempotency](Chapter_2.14_Safety_and_Idempotency.md), [Chapter 2.15: Headers — Overview and Purpose](Chapter_2.15_Headers_Overview.md), and [Chapter 2.16: Headers — Content and Type](Chapter_2.16_Headers_Content_and_Type.md).
+## Learning Objectives
 
-Caching exists to answer one simple question:
+After this chapter, you will be able to:
+- Understand why caching exists and how it makes HTTP efficient
+- Use Cache-Control directives to control caching behavior
+- Implement validation using ETags and conditional requests
+- Distinguish between freshness-based and validation-based caching
+- Design caching policies for different types of data
+- Debug caching issues using headers and tools
 
-“Do I really need to send this again?”
+## Key Terms
 
-HTTP does not assume the answer.
-Instead, it negotiates—explicitly—using headers.
+- **Cache-Control**: Header that defines caching policy with directives
+- **max-age**: Cache-Control directive that specifies freshness lifetime in seconds
+- **no-cache**: Cache-Control directive that requires revalidation before use
+- **no-store**: Cache-Control directive that prohibits storing the response
+- **ETag**: Response header that provides an opaque identifier for validation
+- **If-None-Match**: Request header used for conditional requests with ETags
+- **304 Not Modified**: Status code indicating cached version is still valid
+- **Freshness**: Time-based validity of cached data
+- **Validation**: Process of checking if cached data is still current
 
-Caching is not magic.
-It is a contract between client and server, enforced entirely through metadata.
+## 1) Why Caching Exists
 
-This chapter explains that contract. Chapter 2.15 introduced headers as HTTP's control surface; Chapter 2.16 showed how headers turn bytes into meaning; this chapter focuses on caching headers—Cache-Control, ETag, If-None-Match—that make HTTP efficient. Whether your dashboard caches voltage readings, your ESP32 validates sensor data, or your Pi controls cache freshness—caching is a negotiated contract enforced through headers.
+Caching exists to answer one simple question: do I really need to send this again? HTTP does not assume the answer. Instead, it negotiates explicitly using headers. Caching is not magic. It is a contract between client and server, enforced entirely through metadata.
 
+Chapter 1.15 introduced headers as HTTP's control surface. Chapter 1.16 showed how headers turn bytes into meaning. This chapter focuses on caching headers, Cache-Control, ETag, If-None-Match, that make HTTP efficient. Whether your dashboard caches voltage readings, your ESP32 validates sensor data, or your Pi controls cache freshness, caching is a negotiated contract enforced through headers.
 
+Without caching, every request hits the server, every response sends full content, latency increases, load increases, and bandwidth is wasted. With caching, clients reuse data, servers do less work, networks move fewer bytes, and systems scale. Caching is an optimization, but a powerful one. When your dashboard requests a GET to the voltage API every second, without caching your Pi handles every request and sends full response each time. Latency increases, load increases, bandwidth wasted. With caching using Cache-Control max-age equals sixty, your dashboard reuses data for sixty seconds. Pi does less work, network moves fewer bytes, system scales. Or your ESP32 requests a GET to the config API. Caching reduces load on your Pi. Caching is an optimization, but a powerful one.
 
-## 1) Why Caching Exists at All
+Caching is a boundary concern. Caching is a boundary decision: what crosses the boundary again, what is reused, what must be revalidated. Caching is never implicit. It is always negotiated. When your ESP32 sends a GET request to the temperature API from the coop, your Pi responds with Cache-Control max-age equals three hundred. Boundary decision: what crosses the boundary again, what is reused, what must be revalidated. Caching is never implicit. Pi declares rules via headers, ESP32 decides accordingly. Or your dashboard requests voltage. Pi negotiates caching policy via headers. Caching is a boundary concern. Always negotiated, never implicit.
 
-Without caching:
-	•	Every request hits the server
-	•	Every response sends full content
-	•	Latency increases
-	•	Load increases
-	•	Bandwidth is wasted
+HTTP caching is declarative. HTTP does not say cache this. It says here are the rules, decide accordingly. Headers declare intent. Clients, proxies, and browsers enforce it. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty, HTTP does not say cache this. It says here are the rules, fresh for sixty seconds, decide accordingly. Your dashboard enforces it, reuses data for sixty seconds. Or your ESP32 receives Cache-Control no-cache. Must revalidate. Headers declare intent. Clients, proxies, browsers enforce it. HTTP caching is declarative.
 
-With caching:
-	•	Clients reuse data
-	•	Servers do less work
-	•	Networks move fewer bytes
-	•	Systems scale
+## 2) Cache-Control Directives
 
-Caching is an optimization—but a powerful one.
+Cache-Control is the main header for caching policy. It appears in responses, what may be cached, and requests, what the client is willing to accept. It contains directives. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty comma public, or responds to a GET request to the config API with Cache-Control no-cache comma must-revalidate, Cache-Control is the primary tool. Appears in responses, what may be cached, and requests, what client accepts. It contains directives: max-age, no-cache, public, private, must-revalidate.
 
-Example: Your dashboard requests `GET /api/voltage` every second. Without caching, your Pi handles every request, sends full response each time—latency increases, load increases, bandwidth wasted. With caching (`Cache-Control: max-age=60`), your dashboard reuses data for 60 seconds—Pi does less work, network moves fewer bytes, system scales. Or your ESP32 requests `GET /api/config`—caching reduces load on your Pi. Caching is an optimization—but a powerful one.
+Cache-Control directives are instructions. Examples include max-age equals three thousand six hundred, fresh for three thousand six hundred seconds, no-cache, revalidate before using, no-store, do not store anywhere, must-revalidate, check server when stale, public, may be cached by shared caches, and private, only end client may cache. Each directive changes caching behavior. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty comma public, two directives: max-age for freshness, public for shared cache allowed. Or responds with Cache-Control no-cache comma must-revalidate. Revalidate before using, check server when stale. Cache-Control directives are instructions. Each directive changes caching behavior. Combine them for precise control.
 
+Max-age equals three thousand six hundred means this response is fresh for three thousand six hundred seconds. While fresh, the client may reuse it, no server contact required, no validation required. This is strong caching. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty, your dashboard reuses the response for sixty seconds. No server contact, no validation, just reuse. Or your ESP32 requests a GET to the config API with max-age equals three thousand six hundred. Reuses for one hour. Max-age equals three thousand six hundred means fresh for three thousand six hundred seconds. While fresh, client may reuse it without asking server. This is strong caching.
 
+Freshness answers is this data still valid right now? If yes, use cache. If no, revalidate or refetch. Freshness is about time, not correctness. When your dashboard requests a GET to the voltage API and gets Cache-Control max-age equals sixty, after thirty seconds data is fresh, use cache. After seventy seconds data is stale, revalidate or refetch. Freshness answers is this data still valid right now? It is about time, sixty seconds passed, not correctness, is voltage reading accurate. Or your ESP32 checks freshness. Time-based validity, not correctness check.
 
-## 2) Caching Is a Boundary Concern
+No-cache does not mean do not cache. This is a common mistake. No-cache means you may store this, but you must revalidate before using it. The data can be cached, but not trusted without checking. When your Pi responds to a GET request to the voltage API with Cache-Control no-cache, your dashboard may store it, but must revalidate before using it. Ask Pi is this still valid before reusing. Or your ESP32 receives no-cache. Can cache, but must check with server first. No-cache does not mean do not cache. It means cache, but revalidate before using. The data can be cached, but not trusted without checking.
 
-Phase 0.8: boundaries are where validation lives.
+No-store means do not store this anywhere. Not in browser cache, disk cache, proxy cache, or memory cache. Used for credentials, personal data, and sensitive responses. When your ESP32 sends a POST request to the login API and receives Cache-Control no-store, your ESP32 must not store this anywhere. Not browser cache, disk cache, proxy cache, memory cache. Or your dashboard receives authentication token with no-store. Must not cache credentials. No-store means do not store this anywhere. Used for credentials, personal data, sensitive responses.
 
-Caching is a boundary decision:
-	•	What crosses the boundary again?
-	•	What is reused?
-	•	What must be revalidated?
+Public means may be cached by shared caches, proxies, CDNs. Private means only the end client may cache it. Important for authenticated responses. When your ESP32 requests a GET to the sensors API with Authorization Bearer followed by a token, your Pi responds with Cache-Control private. Only the ESP32 may cache it, not shared caches, proxies, CDNs. Or your dashboard gets authenticated response with public. May be cached by shared caches. Public versus private. Public: may be cached by shared caches. Private: only end client may cache. Important for authenticated responses. Prevent leaks.
 
-Caching is never implicit.
-It is always negotiated.
+Must-revalidate means when this becomes stale, you must check with the server. No heuristic reuse. No stale usage. When your Pi responds to a GET request to the voltage API with Cache-Control must-revalidate, when data becomes stale your dashboard must check with Pi. No heuristic reuse, no stale usage. Or your ESP32 receives must-revalidate. When stale, must revalidate, cannot use stale data. Must-revalidate means when this becomes stale, you must check with the server. No heuristic reuse, no stale usage.
 
-Example: Your ESP32 sends `GET /api/temp` from the coop. Your Pi responds with `Cache-Control: max-age=300`—boundary decision: what crosses the boundary again? What is reused? What must be revalidated? Caching is never implicit—Pi declares rules via headers, ESP32 decides accordingly. Or your dashboard requests voltage—Pi negotiates caching policy via headers. Caching is a boundary concern—always negotiated, never implicit.
+Clients can send Cache-Control too. Examples include Cache-Control no-cache, I want fresh data, and Cache-Control max-age equals zero, treat as stale immediately. Clients can override freshness preferences. When your dashboard sends a GET request to the voltage API with Cache-Control no-cache, wants fresh data, even if cached copy is fresh. Or sends Cache-Control max-age equals zero. Treat as stale immediately, force revalidation. Or your ESP32 sends no-cache. Overrides server freshness preferences. Clients can send Cache-Control too. Override freshness preferences, force revalidation.
 
+Caching is not unilateral. The server proposes. The client decides. Intermediaries enforce. This is negotiation, not command. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty, proposes sixty seconds, your dashboard decides. May reuse for sixty seconds, or may send Cache-Control no-cache to override. Or your ESP32 negotiates. Server proposes, client decides, intermediaries enforce. Caching is not unilateral. Server proposes, client decides, intermediaries enforce. This is negotiation, not command.
 
+## 3) Validation and ETags
 
-## 3) HTTP Caching Is Declarative
+Two strategies exist: freshness-based, use cached copy without asking, and validation-based, ask server is this still valid? HTTP supports both. Validation requires identifiers. To validate cached data, the client needs a way to ask has this changed? That requires identifiers. When your dashboard has cached voltage reading with ETag v123, to validate it needs to ask Pi has voltage changed? Requires identifier, ETag v123. Or your ESP32 has cached config. Needs identifier to validate. Validation requires identifiers. Client needs a way to ask has this changed? That requires identifiers, ETag, Last-Modified.
 
-HTTP does not say:
+An ETag is a fingerprint of the response body. For example, ETag abc123. If the content changes, the ETag should change. When your Pi responds to a GET request to the voltage API with ETag v123, if voltage reading changes ETag should change to v124. Or your ESP32 requests config. Pi responds with ETag. If config changes, ETag changes. ETag is a fingerprint of the response body. If content changes, ETag should change. Example: ETag abc123. Opaque identifier, changes when content changes.
 
-“Cache this.”
+ETags are opaque. Clients must not interpret ETags. They are opaque identifiers, only meaningful to the server, compared for equality only. When your Pi responds with ETag v123, your dashboard must not interpret it. Do not assume it is a version number, do not parse it, just compare for equality. Or your ESP32 receives ETag abc123. Opaque identifier, only meaningful to Pi. ETags are opaque. Clients must not interpret them, only compare for equality. They are opaque identifiers, only meaningful to the server.
 
-It says:
+Strong ETag is ETag abc123. Weak ETag is ETag W slash abc123. Weak means semantically equivalent, not byte-identical.
 
-“Here are the rules. Decide accordingly.”
+If-None-Match is a validation request. Client sends If-None-Match abc123. Meaning: I have this version. Has it changed? Server checks: does current ETag equal the one provided? If yes, unchanged. If no, changed. When your dashboard sends a GET request to the voltage API with If-None-Match v123, your Pi checks. Current ETag is v123? Yes, unchanged, respond three hundred four Not Modified. Or current ETag is v124? No, changed, respond two hundred OK with new content. Server validation logic. Check if current ETag equals provided ETag. If yes, unchanged. If no, changed.
 
-Headers declare intent.
-Clients, proxies, and browsers enforce it.
+If unchanged, server responds three hundred four Not Modified. No body, minimal headers, client reuses cached copy. This is a successful response. When your dashboard sends a GET request to the voltage API with If-None-Match v123, your Pi checks. Current ETag is still v123, responds three hundred four Not Modified, no body, minimal headers. Dashboard reuses cached copy. Or your ESP32 validates. Pi responds three hundred four, ESP32 reuses cache. Three hundred four Not Modified. No body, minimal headers, client reuses cached copy. This is a successful response. Saves bandwidth and time.
 
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60`. HTTP doesn't say "cache this"—it says "here are the rules (fresh for 60 seconds), decide accordingly." Your dashboard enforces it—reuses data for 60 seconds. Or your ESP32 receives `Cache-Control: no-cache`—must revalidate. Headers declare intent—clients, proxies, browsers enforce it. HTTP caching is declarative.
+Three hundred four means your cached version is still valid. It saves bandwidth and time. When your dashboard validates cached voltage reading, Pi responds three hundred four Not Modified, dashboard reuses cache. Saves bandwidth, no body transfer, saves time, no parsing. Or your ESP32 validates config. Three hundred four response, reuses cache. Three hundred four means your cached version is still valid. It saves bandwidth and time. Not an error, successful validation.
 
+If changed, server returns two hundred OK, includes full body, includes new ETag. Client replaces cache. When your dashboard sends a GET request to the voltage API with If-None-Match v123, your Pi checks. Voltage changed, ETag is now v124, responds two hundred OK with full body and new ETag v124. Dashboard replaces cache. Or your ESP32 validates. Pi responds two hundred OK with new content, ESP32 replaces cache. If changed, server returns two hundred OK, includes full body, includes new ETag. Client replaces cache.
 
+If-Modified-Since is an older validation mechanism. Client sends If-Modified-Since followed by a timestamp. Server compares timestamps. When your dashboard sends a GET request to the voltage API with If-Modified-Since followed by a timestamp, has cached version from this timestamp, asks Pi has it changed since then? Or your ESP32 sends If-Modified-Since. Server compares timestamps. If-Modified-Since is older validation mechanism. Client sends timestamp, server compares. ETags are more reliable.
 
-## 4) Cache-Control Is the Primary Tool
+Limitations of If-Modified-Since include time resolution issues, sub-second changes, clock skew, server and client clocks differ, and files changing without timestamp change, content changes, timestamp does not. ETags are more reliable. When your Pi's voltage reading changes twice in one second, If-Modified-Since may miss the second change, time resolution issue. Or server clock differs from client clock. Clock skew causes wrong validation. Or content changes but timestamp does not. If-Modified-Since fails. Limitations of If-Modified-Since. Time resolution issues, clock skew, files changing without timestamp change. ETags are more reliable.
 
-Cache-Control is the main header for caching policy.
+Many servers send both ETag and Last-Modified and accept both validation headers. ETag usually takes precedence. When your Pi responds to a GET request to the voltage API with both ETag v123 and Last-Modified followed by a timestamp, your dashboard may send either If-None-Match v123 or If-Modified-Since followed by a timestamp. Pi accepts both, but ETag usually takes precedence. Or your ESP32 validates. Pi supports both, ETag preferred. Servers may support both. Send both ETag and Last-Modified, accept both validation headers. ETag usually takes precedence.
 
-It appears in:
-	•	Responses (what may be cached)
-	•	Requests (what the client is willing to accept)
+Requests with If-None-Match or If-Modified-Since are conditional requests. They ask only send the body if something changed. Conditional requests reduce load. Benefits include no body transfer if unchanged, minimal server work, and faster responses. This is critical at scale. When your dashboard requests voltage every second, without conditional requests Pi sends full body every time. Bandwidth wasted, server load high. With If-None-Match, Pi responds three hundred four most times. No body transfer, minimal server work, faster responses. Or your ESP32 validates config. Conditional requests reduce load. Conditional requests reduce load. No body transfer if unchanged, minimal server work, faster responses. This is critical at scale.
 
-It contains directives.
+## 4) Caching and HTTP Methods
 
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60, public`. Or responds to `GET /api/config` with `Cache-Control: no-cache, must-revalidate`. Cache-Control is the primary tool—appears in responses (what may be cached) and requests (what client accepts). It contains directives—max-age, no-cache, public, private, must-revalidate.
+HTTP is stateless, but caching adds client-side memory. The server does not remember. The client does. State exists, but outside the server. When your Pi does not remember your dashboard's previous requests, HTTP is stateless. But your dashboard caches voltage readings. Client-side memory. Or your ESP32 caches config. State exists, but outside the server. Caching and statelessness. HTTP is stateless, server does not remember, but caching adds client-side memory, client remembers. State exists, but outside the server.
 
+Caching is safe because of idempotency. GET is safe and idempotent. This allows caching. POST generally is not cached. When your ESP32 sends a GET request to the voltage API, safe and idempotent, can be cached. Or sends a GET request to the config API. Cacheable. But sends a POST request to the temperature API. Not safe, not idempotent, generally not cached. Caching is safe because of idempotency. GET is safe and idempotent, allows caching. POST generally is not cached. Not safe, not idempotent.
 
+Typically cacheable methods include GET, safe and idempotent, and HEAD, safe and idempotent. POST is rarely cacheable, explicitly allowed only, not safe, not idempotent. Never by default: PUT, not safe, PATCH, not safe, and DELETE, not safe. When your ESP32 sends a GET request to the voltage API, cacheable, safe and idempotent. Or sends a GET request to the config API. Cacheable. But sends a POST request to the temperature API. Not cacheable by default, not safe, not idempotent. Which methods are cacheable? Typically GET and HEAD, safe and idempotent. POST rarely, explicitly allowed only. PUT, PATCH, DELETE never by default, not safe.
 
-## 5) Cache-Control Directives Are Instructions
+## 5) Cache Keys and URLs
 
-Examples:
-	•	max-age=3600 (fresh for 3600 seconds)
-	•	no-cache (revalidate before using)
-	•	no-store (do not store anywhere)
-	•	must-revalidate (check server when stale)
-	•	public (may be cached by shared caches)
-	•	private (only end client may cache)
+Cache-Control applies per response. Caching rules are tied to a specific response, to a specific URL. Changing the URL changes the cache key. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty, caching rules tied to this URL. Or responds to a GET request to the config API with Cache-Control max-age equals three thousand six hundred. Different URL, different caching rules. Cache-Control applies per response. Caching rules tied to specific response, specific URL. Changing the URL changes the cache key.
 
-Each directive changes caching behavior.
+URLs are cache keys. The cache key includes scheme, http versus https, host, pi dot local versus example dot com, path, slash api slash voltage versus slash api slash config, and query string, question mark window equals sixty versus question mark window equals three hundred. Different query strings equal different cache entries. When your dashboard requests GET http colon slash slash pi dot local slash api slash voltage question mark window equals sixty, cache key includes scheme http, host pi dot local, path slash api slash voltage, query string question mark window equals sixty. Or requests GET http colon slash slash pi dot local slash api slash voltage question mark window equals three hundred. Different query string, different cache entry. URLs are cache keys. Cache key includes scheme, host, path, query string. Different query strings equal different cache entries.
 
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60, public`—two directives: max-age (freshness), public (shared cache allowed). Or responds with `Cache-Control: no-cache, must-revalidate`—revalidate before using, check server when stale. Cache-Control directives are instructions—each directive changes caching behavior. Combine them for precise control.
+Query strings and caching. Slash api slash voltage question mark window equals sixty and slash api slash voltage question mark window equals three hundred are distinct cache entries. When your dashboard requests GET slash api slash voltage question mark window equals sixty and GET slash api slash voltage question mark window equals three hundred, these are distinct cache entries. Different query strings, different cache keys. Or your ESP32 requests slash api slash temp question mark unit equals F and slash api slash temp question mark unit equals C. Distinct cache entries. Query strings are part of cache key. Slash api slash voltage question mark window equals sixty and slash api slash voltage question mark window equals three hundred are distinct cache entries.
 
+## 6) Shared Caches and Security
 
+Shared caches include CDNs, Content Delivery Networks, reverse proxies, load balancers, and corporate proxies, enterprise networks. They obey Cache-Control too. When your dashboard requests a GET to the voltage API through a CDN, the CDN, shared cache, obeys Cache-Control public comma max-age equals sixty. May cache and serve to other clients. Or your ESP32 requests through a reverse proxy. Proxy obeys Cache-Control. Proxies and shared caches. CDNs, reverse proxies, corporate proxies. They obey Cache-Control too. Shared caches respect caching headers.
 
-## 6) max-age: Freshness Lifetime
+Authenticated responses often include user-specific data and must not be shared. Use private to prevent leaks. When your ESP32 requests a GET to the sensors API with Authorization Bearer followed by a token, your Pi responds with Cache-Control private. Only ESP32 may cache it, not shared caches. Prevents user-specific data from leaking to other clients. Or your dashboard gets authenticated response. Use private to prevent leaks. Authenticated responses often include user-specific data, must not be shared. Use private to prevent leaks.
 
-max-age=3600 means:
+Browsers may cache even without explicit headers, heuristic caching, guess freshness, for example ten percent of age, and apply heuristics, for example cache images longer than HTML. APIs should not rely on this. When your dashboard, browser, may cache GET to the voltage API even without Cache-Control, browser heuristics guess freshness. Or browser caches images longer than HTML. Heuristic behavior. Browser heuristics, danger zone. Browsers may cache without explicit headers, guess freshness, apply heuristics. APIs should not rely on this. Be explicit, do not rely on browser heuristics.
 
-“This response is fresh for 3600 seconds.”
+APIs should be explicit. Best practice: always set Cache-Control, always set ETag if cacheable, and be explicit about freshness. Explicit beats clever. When your Pi API always sets Cache-Control max-age equals sixty for voltage readings, explicit freshness policy. Or sets ETag v123 for validation. Explicit validation. Or your ESP32 API sets explicit caching headers. No relying on browser heuristics. APIs should be explicit. Always set Cache-Control, always set ETag if cacheable, be explicit about freshness. Explicit beats clever.
 
-While fresh:
-	•	The client may reuse it
-	•	No server contact required
-	•	No validation required
+## 7) Caching Dynamic Data
 
-This is strong caching.
+Not all dynamic data is uncacheable. Examples include sensor data updated once per minute and config data updated hourly. Short max-age plus validation works well. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals five and ETag v123, sensor data updated once per minute. Short max-age, five seconds, plus validation, ETag, works well. Or config data updated hourly. Short max-age plus validation. Not all dynamic data is uncacheable. Sensor data updated once per minute, config data updated hourly. Short max-age plus validation works well.
 
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60`. Your dashboard reuses the response for 60 seconds—no server contact, no validation, just reuse. Or your ESP32 requests `GET /api/config` with `max-age=3600`—reuses for 1 hour. max-age=3600 means "fresh for 3600 seconds"—while fresh, client may reuse it without asking server. This is strong caching.
+Sensor API example. Server response: Cache-Control max-age equals five and ETag v123. Clients reuse data for five seconds, then revalidate. Low latency, low load. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals five and ETag v123, your dashboard reuses data for five seconds, then revalidates with If-None-Match v123. Low latency, reuse cache, low load, revalidate, not refetch. Or your ESP32 requests sensor data. Short max-age plus validation. Sensor API example. Short freshness, validation enabled.
 
+Client override for freshness. Client sends Cache-Control no-cache. Meaning: I want to revalidate even if fresh. Useful for dashboards. When your dashboard sends a GET request to the voltage API with Cache-Control no-cache, wants to revalidate even if cached copy is fresh. Useful for dashboards. Always show latest data. Or your ESP32 sends no-cache. Force revalidation. Client override for freshness. Client sends Cache-Control no-cache, meaning I want to revalidate even if fresh. Useful for dashboards.
 
+Stale data is sometimes acceptable. Design decision: is slightly stale data OK, or must it always be fresh? Caching policy encodes this decision. When your dashboard shows voltage readings, is slightly stale data OK? If yes, use max-age equals sixty. If no, use no-cache. Or your ESP32 requests config. Must always be fresh? Use no-cache. Stale data is sometimes acceptable. Design decision: is slightly stale data OK, or must it always be fresh? Caching policy encodes this decision.
 
-## 7) Freshness Is Time-Based Validity
+Some caches support Cache-Control max-age equals sixty comma stale-while-revalidate equals three hundred. Serve stale data while revalidating in background. Advanced but powerful. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty comma stale-while-revalidate equals three hundred, your dashboard may serve stale data, after sixty seconds, while revalidating in background, up to three hundred seconds. Or your ESP32 receives stale-while-revalidate. Serve stale while revalidating. Stale-while-revalidate, advanced. Some caches support serving stale data while revalidating in background. Advanced but powerful.
 
-Freshness answers:
+Caching affects consistency, user experience, load, cost, and correctness. It is architectural. When your Pi's caching policy affects consistency, how fresh is data, user experience, fast or slow, load, high or low, cost, bandwidth, correctness, stale data bugs, or your ESP32's caching affects system architecture. Caching affects consistency, user experience, load, cost, correctness. It is architectural, not just performance.
 
-“Is this data still valid right now?”
+## 8) Caching Bugs and Debugging
 
-If yes → use cache
-If no → revalidate or refetch
+Common caching bugs include forgetting to invalidate, wrong cache key, missing private directive, and overly long max-age. These bugs persist invisibly. When your Pi forgets to invalidate cache when voltage changes, dashboard shows stale data, bug persists invisibly. Or wrong cache key. ESP32 gets wrong cached data. Or missing private directive. Authenticated data leaks. Or overly long max-age. Stale data shown too long. Common caching bugs. Forgetting to invalidate, wrong cache key, missing private directive, overly long max-age. These bugs persist invisibly.
 
-Freshness is about time, not correctness.
+Caching invariants include content must match ETag, cache rules must be honored, and validation must be correct. Breaking invariants creates ghosts. When your Pi responds with ETag v123 but content does not match, breaks invariant, creates ghosts, stale data, wrong validation. Or cache rules not honored. Data cached when should not be. Or validation incorrect. Three hundred four when should be two hundred. Caching invariants. Content must match ETag, cache rules must be honored, validation must be correct. Breaking invariants creates ghosts.
 
-Example: Your dashboard requests `GET /api/voltage` and gets `Cache-Control: max-age=60`. After 30 seconds, data is fresh—use cache. After 70 seconds, data is stale—revalidate or refetch. Freshness answers "is this data still valid right now?"—it's about time (60 seconds passed?), not correctness (is voltage reading accurate?). Or your ESP32 checks freshness—time-based validity, not correctness check.
+When debugging, inspect Cache-Control, what is the policy, inspect ETag, what is the identifier, inspect three hundred four versus two hundred, validation working, and disable cache temporarily, see fresh data. Caching hides mistakes. When your dashboard shows stale voltage, inspect Cache-Control, is max-age too long, inspect ETag, is validation working, inspect three hundred four versus two hundred, is Pi responding correctly, disable cache temporarily, see fresh data. Or your ESP32 debugging. Inspect caching headers. Debugging caching. Inspect Cache-Control, ETag, three hundred four versus two hundred, disable cache temporarily. Caching hides mistakes. Debug carefully.
 
+Use curl with dash I to inspect headers only. When your dashboard debugs caching, use curl dash I http colon slash slash pi dot local slash api slash voltage to inspect headers only, Cache-Control, ETag. Or your ESP32 debugs. Inspect headers without body. curl is your friend. curl dash I inspects headers only, shows caching policy. Useful for debugging caching.
 
+Browser dev tools show cached versus network, three hundred four responses, and timing. Learn to read them. When your dashboard uses browser dev tools, Network tab shows cached versus network, three hundred four responses, timing. Or your ESP32 debugging. Inspect caching behavior. Browser dev tools show cached versus network, three hundred four responses, timing. Learn to read them. Useful for debugging caching.
 
-## 8) no-cache Does Not Mean “Do Not Cache”
+Caching is optional but powerful. You can build systems without caching. But systems that scale well use it intentionally. When your Pi API can work without caching, every request hits server, every response sent, but systems that scale well use caching intentionally. Your dashboard caches voltage readings, ESP32 caches config. Caching is optional but powerful. You can build systems without it, but systems that scale well use it intentionally.
 
-This is a common mistake.
+## Common Pitfalls
 
-no-cache means:
+Confusing no-cache with no-store breaks caching behavior. No-cache means cache but revalidate. No-store means do not store anywhere. Understanding the difference is critical for correct caching.
 
-“You may store this, but you must revalidate before using it.”
+Forgetting to set ETag for cacheable resources prevents validation. Without ETags, clients cannot efficiently check if data changed. Always include ETag for cacheable GET responses.
 
-The data can be cached—but not trusted without checking.
+Using public for authenticated responses leaks user data. Authenticated responses should use private to prevent shared caches from serving user-specific data to other clients.
 
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: no-cache`. Your dashboard may store it, but must revalidate before using it—ask Pi "is this still valid?" before reusing. Or your ESP32 receives `no-cache`—can cache, but must check with server first. no-cache does not mean "do not cache"—it means "cache, but revalidate before using." The data can be cached—but not trusted without checking.
+Setting max-age too long causes stale data bugs. Short-lived data like sensor readings need short max-age values. Long max-age for frequently changing data shows stale information.
 
+Ignoring client Cache-Control overrides breaks negotiation. Clients can send no-cache to force revalidation. Servers should honor client preferences when possible.
 
+## Summary
 
-## 9) no-store Means Exactly That
+Cache-Control defines caching policy through directives like max-age, no-cache, no-store, public, private, and must-revalidate. Freshness determines when cached data can be reused without validation. ETag and If-None-Match enable validation through conditional requests. Three hundred four Not Modified means use your cache. Caching is a negotiated contract between client and server. Explicit rules beat heuristics. URLs are cache keys, including scheme, host, path, and query string. Shared caches obey Cache-Control. Authenticated responses should use private. Caching affects consistency, user experience, load, cost, and correctness. It is architectural, not just performance. Understanding caching is essential for building efficient HTTP systems.
 
-no-store means:
+## Next
 
-“Do not store this anywhere.”
-
-Not in:
-	•	Browser cache
-	•	Disk cache
-	•	Proxy cache
-	•	Memory cache
-
-Used for:
-	•	Credentials
-	•	Personal data
-	•	Sensitive responses
-
-Example: Your ESP32 sends `POST /api/login` and receives `Cache-Control: no-store`. Your ESP32 must not store this anywhere—not browser cache, disk cache, proxy cache, memory cache. Or your dashboard receives authentication token with `no-store`—must not cache credentials. no-store means "do not store this anywhere"—used for credentials, personal data, sensitive responses.
-
-
-
-## 10) public vs private
-	•	public: may be cached by shared caches (proxies, CDNs)
-	•	private: only the end client may cache it
-
-Important for authenticated responses.
-
-Example: Your ESP32 requests `GET /api/sensors` with `Authorization: Bearer xyz`. Your Pi responds with `Cache-Control: private`—only the ESP32 may cache it, not shared caches (proxies, CDNs). Or your dashboard gets authenticated response with `public`—may be cached by shared caches. public vs private—public: may be cached by shared caches; private: only end client may cache. Important for authenticated responses—prevent leaks.
-
-
-
-## 11) must-revalidate
-
-Means:
-
-“When this becomes stale, you must check with the server.”
-
-No heuristic reuse.
-No stale usage.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: must-revalidate`. When data becomes stale, your dashboard must check with Pi—no heuristic reuse, no stale usage. Or your ESP32 receives `must-revalidate`—when stale, must revalidate, cannot use stale data. must-revalidate means "when this becomes stale, you must check with the server"—no heuristic reuse, no stale usage.
-
-
-
-## 12) Request Cache-Control
-
-Clients can send Cache-Control too.
-
-Examples:
-	•	Cache-Control: no-cache → “I want fresh data”
-	•	Cache-Control: max-age=0 → “Treat as stale immediately”
-
-Clients can override freshness preferences.
-
-Example: Your dashboard sends `GET /api/voltage` with `Cache-Control: no-cache`—wants fresh data, even if cached copy is fresh. Or sends `Cache-Control: max-age=0`—treat as stale immediately, force revalidation. Or your ESP32 sends `no-cache`—overrides server freshness preferences. Clients can send Cache-Control too—override freshness preferences, force revalidation.
-
-
-
-## 13) Server and Client Negotiate
-
-Caching is not unilateral.
-
-The server proposes.
-The client decides.
-Intermediaries enforce.
-
-This is negotiation, not command.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60` (proposes 60 seconds). Your dashboard decides—may reuse for 60 seconds, or may send `Cache-Control: no-cache` to override. Or your ESP32 negotiates—server proposes, client decides, intermediaries enforce. Caching is not unilateral—server proposes, client decides, intermediaries enforce. This is negotiation, not command.
-
-
-
-## 14) Validation vs Freshness
-
-Two strategies:
-	•	Freshness-based: use cached copy without asking
-	•	Validation-based: ask server “is this still valid?”
-
-HTTP supports both.
-
-
-
-## 15) Validation Requires Identifiers
-
-To validate cached data, the client needs a way to ask:
-
-“Has this changed?”
-
-That requires identifiers.
-
-Example: Your dashboard has cached voltage reading with ETag "v123". To validate, it needs to ask Pi "has voltage changed?"—requires identifier (ETag "v123"). Or your ESP32 has cached config—needs identifier to validate. Validation requires identifiers—client needs a way to ask "has this changed?" That requires identifiers (ETag, Last-Modified).
-
-
-
-## 16) ETag: Entity Tags
-
-An ETag is a fingerprint of the response body.
-
-Example:
-
-ETag: "abc123"
-
-If the content changes, the ETag should change.
-
-Example: Your Pi responds to `GET /api/voltage` with `ETag: "v123"`. If voltage reading changes, ETag should change to `"v124"`. Or your ESP32 requests config—Pi responds with ETag, if config changes, ETag changes. ETag is a fingerprint of the response body—if content changes, ETag should change. Example: `ETag: "abc123"`—opaque identifier, changes when content changes.
-
-
-
-## 17) ETags Are Opaque
-
-Clients must not interpret ETags.
-
-They are:
-	•	Opaque identifiers
-	•	Only meaningful to the server
-	•	Compared for equality only
-
-Example: Your Pi responds with `ETag: "v123"`. Your dashboard must not interpret it—don't assume it's a version number, don't parse it, just compare for equality. Or your ESP32 receives `ETag: "abc123"`—opaque identifier, only meaningful to Pi. ETags are opaque—clients must not interpret them, only compare for equality. They're opaque identifiers, only meaningful to the server.
-
-
-
-## 18) Strong vs Weak ETags
-
-Strong ETag:
-
-ETag: "abc123"
-
-Weak ETag:
-
-ETag: W/"abc123"
-
-Weak means “semantically equivalent, not byte-identical.”
-
-
-
-## 19) If-None-Match: Validation Request
-
-Client sends:
-
-```
-If-None-Match: "abc123"
-```
-
-Meaning:
-
-“I have this version. Has it changed?”
-
-
-
-## 20) Server Validation Logic
-
-Server checks:
-	•	Does current ETag equal the one provided?
-
-If yes → unchanged
-If no → changed
-
-Example: Your dashboard sends `GET /api/voltage` with `If-None-Match: "v123"`. Your Pi checks—current ETag is "v123"? Yes → unchanged, respond `304 Not Modified`. Or current ETag is "v124"? No → changed, respond `200 OK` with new content. Server validation logic—check if current ETag equals provided ETag. If yes → unchanged, if no → changed.
-
-
-
-## 21) 304 Not Modified
-
-If unchanged, server responds:
-
-```
-HTTP/1.1 304 Not Modified
-```
-
-	•	No body
-	•	Minimal headers
-	•	Client reuses cached copy
-
-This is a successful response.
-
-Example: Your dashboard sends `GET /api/voltage` with `If-None-Match: "v123"`. Your Pi checks—current ETag is still "v123", responds `304 Not Modified` (no body, minimal headers). Dashboard reuses cached copy. Or your ESP32 validates—Pi responds `304`, ESP32 reuses cache. 304 Not Modified—no body, minimal headers, client reuses cached copy. This is a successful response—saves bandwidth and time.
-
-Example: Your dashboard sends `GET /api/voltage` with `If-None-Match: "v123"`. Your Pi checks—current ETag is still "v123", responds `304 Not Modified` (no body, minimal headers). Dashboard reuses cached copy. Or your ESP32 validates—Pi responds `304`, ESP32 reuses cache. 304 Not Modified—no body, minimal headers, client reuses cached copy. This is a successful response—saves bandwidth and time.
-
-
-
-## 22) 304 Is Not an Error
-
-304 means:
-
-“Your cached version is still valid.”
-
-It saves bandwidth and time.
-
-Example: Your dashboard validates cached voltage reading—Pi responds `304 Not Modified`, dashboard reuses cache. Saves bandwidth (no body transfer), saves time (no parsing). Or your ESP32 validates config—`304` response, reuses cache. 304 means "your cached version is still valid"—it saves bandwidth and time. Not an error—successful validation.
-
-
-
-## 23) When the Body Is Sent Again
-
-If changed:
-	•	Server returns 200 OK
-	•	Includes full body
-	•	Includes new ETag
-
-Client replaces cache.
-
-Example: Your dashboard sends `GET /api/voltage` with `If-None-Match: "v123"`. Your Pi checks—voltage changed, ETag is now "v124", responds `200 OK` with full body and new ETag "v124". Dashboard replaces cache. Or your ESP32 validates—Pi responds `200 OK` with new content, ESP32 replaces cache. If changed—server returns 200 OK, includes full body, includes new ETag. Client replaces cache.
-
-
-
-## 24) If-Modified-Since
-
-Older validation mechanism.
-
-Client sends:
-
-```
-If-Modified-Since: Tue, 30 Jan 2025 12:00:00 GMT
-```
-
-Server compares timestamps.
-
-Example: Your dashboard sends `GET /api/voltage` with `If-Modified-Since: Tue, 30 Jan 2025 12:00:00 GMT`—has cached version from this timestamp, asks Pi "has it changed since then?" Or your ESP32 sends If-Modified-Since—server compares timestamps. If-Modified-Since is older validation mechanism—client sends timestamp, server compares. ETags are more reliable.
-
-
-
-## 25) Limitations of If-Modified-Since
-
-Problems:
-	•	Time resolution issues (sub-second changes)
-	•	Clock skew (server/client clocks differ)
-	•	Files changing without timestamp change (content changes, timestamp doesn't)
-
-ETags are more reliable.
-
-Example: Your Pi's voltage reading changes twice in one second—If-Modified-Since may miss the second change (time resolution issue). Or server clock differs from client clock—clock skew causes wrong validation. Or content changes but timestamp doesn't—If-Modified-Since fails. Limitations of If-Modified-Since—time resolution issues, clock skew, files changing without timestamp change. ETags are more reliable.
-
-
-
-## 26) Servers May Support Both
-
-Many servers:
-	•	Send both ETag and Last-Modified
-	•	Accept both validation headers
-
-ETag usually takes precedence.
-
-Example: Your Pi responds to `GET /api/voltage` with both `ETag: "v123"` and `Last-Modified: Tue, 30 Jan 2025 12:00:00 GMT`. Your dashboard may send either `If-None-Match: "v123"` or `If-Modified-Since: Tue, 30 Jan 2025 12:00:00 GMT`. Pi accepts both, but ETag usually takes precedence. Or your ESP32 validates—Pi supports both, ETag preferred. Servers may support both—send both ETag and Last-Modified, accept both validation headers. ETag usually takes precedence.
-
-
-
-## 27) Validation Is Conditional Requests
-
-Requests with:
-	•	If-None-Match
-	•	If-Modified-Since
-
-Are conditional requests.
-
-They ask:
-
-“Only send the body if something changed.”
-
-
-
-## 28) Conditional Requests Reduce Load
-
-Benefits:
-	•	No body transfer if unchanged
-	•	Minimal server work
-	•	Faster responses
-
-This is critical at scale.
-
-Example: Your dashboard requests voltage every second. Without conditional requests, Pi sends full body every time—bandwidth wasted, server load high. With `If-None-Match`, Pi responds `304` most times—no body transfer, minimal server work, faster responses. Or your ESP32 validates config—conditional requests reduce load. Conditional requests reduce load—no body transfer if unchanged, minimal server work, faster responses. This is critical at scale.
-
-
-
-## 29) Caching and Statelessness
-
-HTTP is stateless—but caching adds client-side memory.
-
-The server does not remember.
-The client does.
-
-State exists—but outside the server.
-
-Example: Your Pi doesn't remember your dashboard's previous requests—HTTP is stateless. But your dashboard caches voltage readings—client-side memory. Or your ESP32 caches config—state exists, but outside the server. Caching and statelessness—HTTP is stateless (server doesn't remember), but caching adds client-side memory (client remembers). State exists—but outside the server.
-
-
-
-## 30) Caching Is Safe Because of Idempotency
-
-GET is:
-	•	Safe
-	•	Idempotent
-
-This allows caching.
-
-POST generally is not cached.
-
-Example: Your ESP32 sends `GET /api/voltage`—safe and idempotent, can be cached. Or sends `GET /api/config`—cacheable. But sends `POST /api/temp`—not safe, not idempotent, generally not cached. Caching is safe because of idempotency—GET is safe and idempotent, allows caching. POST generally is not cached—not safe, not idempotent.
-
-
-
-## 31) Which Methods Are Cacheable
-
-Typically cacheable:
-	•	GET (safe, idempotent)
-	•	HEAD (safe, idempotent)
-
-Rarely:
-	•	POST (explicitly allowed only, not safe, not idempotent)
-
-Never by default:
-	•	PUT (not safe)
-	•	PATCH (not safe)
-	•	DELETE (not safe)
-
-Example: Your ESP32 sends `GET /api/voltage`—cacheable (safe, idempotent). Or sends `GET /api/config`—cacheable. But sends `POST /api/temp`—not cacheable by default (not safe, not idempotent). Which methods are cacheable—typically GET and HEAD (safe, idempotent). POST rarely (explicitly allowed only). PUT, PATCH, DELETE never by default (not safe).
-
-
-
-## 32) Cache-Control Applies Per Response
-
-Caching rules are tied to:
-	•	A specific response
-	•	To a specific URL
-
-Changing the URL changes the cache key.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60`—caching rules tied to this URL. Or responds to `GET /api/config` with `Cache-Control: max-age=3600`—different URL, different caching rules. Cache-Control applies per response—caching rules tied to specific response, specific URL. Changing the URL changes the cache key.
-
-
-
-## 33) URLs Are Cache Keys
-
-The cache key includes:
-	•	Scheme (http vs https)
-	•	Host (pi.local vs example.com)
-	•	Path (/api/voltage vs /api/config)
-	•	Query string (?window=60 vs ?window=300)
-
-Different query strings = different cache entries.
-
-Example: Your dashboard requests `GET http://pi.local/api/voltage?window=60`—cache key includes scheme (http), host (pi.local), path (/api/voltage), query string (?window=60). Or requests `GET http://pi.local/api/voltage?window=300`—different query string, different cache entry. URLs are cache keys—cache key includes scheme, host, path, query string. Different query strings = different cache entries.
-
-
-
-## 34) Query Strings and Caching
-
-Example:
-
-/api/voltage?window=60
-/api/voltage?window=300
-
-These are distinct cache entries.
-
-Example: Your dashboard requests `GET /api/voltage?window=60` and `GET /api/voltage?window=300`. These are distinct cache entries—different query strings, different cache keys. Or your ESP32 requests `/api/temp?unit=F` and `/api/temp?unit=C`—distinct cache entries. Query strings are part of cache key—`/api/voltage?window=60` and `/api/voltage?window=300` are distinct cache entries.
-
-
-
-## 35) Proxies and Shared Caches
-
-Shared caches:
-	•	CDNs (Content Delivery Networks)
-	•	Reverse proxies (load balancers)
-	•	Corporate proxies (enterprise networks)
-
-They obey Cache-Control too.
-
-Example: Your dashboard requests `GET /api/voltage` through a CDN. The CDN (shared cache) obeys `Cache-Control: public, max-age=60`—may cache and serve to other clients. Or your ESP32 requests through a reverse proxy—proxy obeys Cache-Control. Proxies and shared caches—CDNs, reverse proxies, corporate proxies. They obey Cache-Control too—shared caches respect caching headers.
-
-
-
-## 36) Why public vs private Matters
-
-Authenticated responses:
-	•	Often include user-specific data
-	•	Must not be shared
-
-Use private to prevent leaks.
-
-Example: Your ESP32 requests `GET /api/sensors` with `Authorization: Bearer xyz`. Your Pi responds with `Cache-Control: private`—only ESP32 may cache it, not shared caches. Prevents user-specific data from leaking to other clients. Or your dashboard gets authenticated response—use private to prevent leaks. Authenticated responses often include user-specific data, must not be shared—use private to prevent leaks.
-
-
-
-## 37) Browser Heuristics (Danger Zone)
-
-Browsers may:
-	•	Cache even without explicit headers (heuristic caching)
-	•	Guess freshness (e.g., 10% of age)
-	•	Apply heuristics (e.g., cache images longer than HTML)
-
-APIs should not rely on this.
-
-Example: Your dashboard (browser) may cache `GET /api/voltage` even without Cache-Control—browser heuristics guess freshness. Or browser caches images longer than HTML—heuristic behavior. Browser heuristics (danger zone)—browsers may cache without explicit headers, guess freshness, apply heuristics. APIs should not rely on this—be explicit, don't rely on browser heuristics.
-
-
-
-## 38) APIs Should Be Explicit
-
-Best practice:
-	•	Always set Cache-Control
-	•	Always set ETag (if cacheable)
-	•	Be explicit about freshness
-
-Explicit beats clever.
-
-Example: Your Pi API always sets `Cache-Control: max-age=60` for voltage readings—explicit freshness policy. Or sets `ETag: "v123"` for validation—explicit validation. Or your ESP32 API sets explicit caching headers—no relying on browser heuristics. APIs should be explicit—always set Cache-Control, always set ETag (if cacheable), be explicit about freshness. Explicit beats clever.
-
-
-
-## 39) Caching Dynamic Data
-
-Not all dynamic data is uncacheable.
-
-Examples:
-	•	Sensor data updated once per minute
-	•	Config data updated hourly
-
-Short max-age + validation works well.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=5` and `ETag: "v123"`. Sensor data updated once per minute—short max-age (5 seconds) + validation (ETag) works well. Or config data updated hourly—short max-age + validation. Not all dynamic data is uncacheable—sensor data updated once per minute, config data updated hourly. Short max-age + validation works well.
-
-
-
-## 40) Example: Sensor API
-
-Server response:
-
-```
-Cache-Control: max-age=5
-ETag: "v123"
-```
-
-Clients:
-	•	Reuse data for 5 seconds
-	•	Then revalidate
-
-Low latency, low load.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=5` and `ETag: "v123"`. Your dashboard reuses data for 5 seconds, then revalidates with `If-None-Match: "v123"`. Low latency (reuse cache), low load (revalidate, not refetch). Or your ESP32 requests sensor data—short max-age + validation. Sensor API example—short freshness, validation enabled.
-
-
-
-## 41) Client Override for Freshness
-
-Client sends:
-
-Cache-Control: no-cache
-
-Meaning:
-
-“I want to revalidate even if fresh.”
-
-Useful for dashboards.
-
-Example: Your dashboard sends `GET /api/voltage` with `Cache-Control: no-cache`—wants to revalidate even if cached copy is fresh. Useful for dashboards—always show latest data. Or your ESP32 sends `no-cache`—force revalidation. Client override for freshness—client sends `Cache-Control: no-cache`, meaning "I want to revalidate even if fresh." Useful for dashboards.
-
-
-
-## 42) Stale Data Is Sometimes Acceptable
-
-Design decision:
-	•	Is slightly stale data OK?
-	•	Or must it always be fresh?
-
-Caching policy encodes this decision.
-
-Example: Your dashboard shows voltage readings—is slightly stale data OK? If yes, use `max-age=60`. If no, use `no-cache`. Or your ESP32 requests config—must always be fresh? Use `no-cache`. Stale data is sometimes acceptable—design decision: is slightly stale data OK, or must it always be fresh? Caching policy encodes this decision.
-
-
-
-## 43) Stale-While-Revalidate (Advanced)
-
-Some caches support:
-
-```
-Cache-Control: max-age=60, stale-while-revalidate=300
-```
-
-Serve stale data while revalidating in background.
-
-Advanced but powerful.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60, stale-while-revalidate=300`. Your dashboard may serve stale data (after 60 seconds) while revalidating in background (up to 300 seconds). Or your ESP32 receives stale-while-revalidate—serve stale while revalidating. Stale-while-revalidate (advanced)—some caches support serving stale data while revalidating in background. Advanced but powerful.
-
-
-
-## 44) Caching Is Not Just Performance
-
-Caching affects:
-	•	Consistency
-	•	User experience
-	•	Load
-	•	Cost
-	•	Correctness
-
-It is architectural.
-
-Example: Your Pi's caching policy affects consistency (how fresh is data?), user experience (fast or slow?), load (high or low?), cost (bandwidth), correctness (stale data bugs). Or your ESP32's caching affects system architecture. Caching affects consistency, user experience, load, cost, correctness—it is architectural, not just performance.
-
-
-
-## 45) Caching Bugs Are Subtle
-
-Common bugs:
-	•	Forgetting to invalidate
-	•	Wrong cache key
-	•	Missing private directive
-	•	Overly long max-age
-
-These bugs persist invisibly.
-
-Example: Your Pi forgets to invalidate cache when voltage changes—dashboard shows stale data, bug persists invisibly. Or wrong cache key—ESP32 gets wrong cached data. Or missing private directive—authenticated data leaks. Or overly long max-age—stale data shown too long. Common caching bugs—forgetting to invalidate, wrong cache key, missing private directive, overly long max-age. These bugs persist invisibly.
-
-
-
-## 46) Phase 0 Revisited: Invariants
-
-Caching invariants:
-	•	Content must match ETag
-	•	Cache rules must be honored
-	•	Validation must be correct
-
-Breaking invariants creates ghosts.
-
-Example: Your Pi responds with `ETag: "v123"` but content doesn't match—breaks invariant, creates ghosts (stale data, wrong validation). Or cache rules not honored—data cached when shouldn't be. Or validation incorrect—304 when should be 200. Caching invariants—content must match ETag, cache rules must be honored, validation must be correct. Breaking invariants creates ghosts.
-
-
-
-## 47) Debugging Caching
-
-When debugging:
-	•	Inspect Cache-Control (what's the policy?)
-	•	Inspect ETag (what's the identifier?)
-	•	Inspect 304 vs 200 (validation working?)
-	•	Disable cache temporarily (see fresh data)
-
-Caching hides mistakes.
-
-Example: Your dashboard shows stale voltage—inspect Cache-Control (is max-age too long?), inspect ETag (is validation working?), inspect 304 vs 200 (is Pi responding correctly?), disable cache temporarily (see fresh data). Or your ESP32 debugging—inspect caching headers. Debugging caching—inspect Cache-Control, ETag, 304 vs 200, disable cache temporarily. Caching hides mistakes—debug carefully.
-
-
-
-## 48) curl Is Your Friend
-
-Example:
-
-```
-curl -I http://pi.local/api/voltage
-```
-
-Inspect headers only.
-
-Example: Your dashboard debugs caching—use `curl -I http://pi.local/api/voltage` to inspect headers only (Cache-Control, ETag). Or your ESP32 debugs—inspect headers without body. curl is your friend—`curl -I` inspects headers only, shows caching policy. Useful for debugging caching.
-
-Example: Your dashboard debugs caching—use `curl -I http://pi.local/api/voltage` to inspect headers only (Cache-Control, ETag). Or your ESP32 debugs—inspect headers without body. curl is your friend—`curl -I` inspects headers only, shows caching policy. Useful for debugging caching.
-
-
-
-## 49) DevTools Network Tab
-
-Browser dev tools show:
-	•	Cached vs network
-	•	304 responses
-	•	Timing
-
-Learn to read them.
-
-Example: Your dashboard uses browser dev tools—Network tab shows cached vs network, 304 responses, timing. Or your ESP32 debugging—inspect caching behavior. Browser dev tools show cached vs network, 304 responses, timing—learn to read them. Useful for debugging caching.
-
-
-
-## 50) Caching Is Optional but Powerful
-
-You can build systems without caching.
-
-But systems that scale well use it intentionally.
-
-Example: Your Pi API can work without caching—every request hits server, every response sent. But systems that scale well use caching intentionally—your dashboard caches voltage readings, ESP32 caches config. Caching is optional but powerful—you can build systems without it, but systems that scale well use it intentionally.
-
-
-
-## Reflection
-
-Think about real HTTP exchanges—your dashboard caching voltage readings, your ESP32 validating sensor data, your Pi controlling cache freshness.
-	•	Pick one API you know. Is it cacheable?
-	•	Does it return ETags?
-	•	What is its Cache-Control policy?
-	•	What breaks if the cache lies?
-
-Consider failure modes:
-	•	Your dashboard requests `GET /api/voltage` and gets `Cache-Control: max-age=3600`. Dashboard caches for 1 hour, but voltage changes every minute—stale data shown for 59 minutes. What breaks? Dashboard shows wrong voltage, user makes wrong decisions. Or your Pi forgets to invalidate cache when voltage changes—cache lies, stale data persists.
-	•	Your ESP32 requests `GET /api/config` with `If-None-Match: "v123"`. Your Pi responds `304 Not Modified`, but config actually changed (ETag mismatch bug)—ESP32 uses stale config, system misconfigured. What breaks? Wrong config applied, system behaves incorrectly. Or Pi responds with wrong ETag—validation fails, cache lies.
-	•	Your dashboard requests authenticated data with `Cache-Control: public` (should be private). Shared cache (CDN) caches it, serves to other clients—data leak. What breaks? User-specific data leaked to other clients, privacy violation. Or missing private directive—authenticated data cached publicly.
-	•	Your ESP32 requests `GET /api/temp` with `Cache-Control: max-age=0` (force revalidation). Your Pi ignores it, serves cached response—client override ignored. What breaks? ESP32 can't force fresh data, stale data shown. Or Pi doesn't honor client Cache-Control—negotiation breaks.
-
-If you can identify caching policies, validation mechanisms, and failure modes, you understand caching as a negotiated contract.
-
-
-
-## Core Understanding
-	•	Cache-Control defines caching policy
-	•	Freshness determines reuse
-	•	ETag + If-None-Match enable validation
-	•	304 means “use your cache”
-	•	Caching is a negotiated contract
-	•	Explicit rules beat heuristics
-
-
-
-What’s Next
-
-Next: Chapter 2.18 — URLs, Paths, and Query Strings
-
-Where we dissect:
-	•	How URLs are structured
-	•	How paths map to resources
-	•	How query strings encode parameters
-	•	And why small URL differences matter deeply
-
-This is where identity, addressing, and caching collide.
+This chapter built on Chapter 1.16, which covered headers for content and type. Next, Chapter 1.18 explores URLs, paths, and query strings, dissecting how URLs are structured, how paths map to resources, how query strings encode parameters, and why small URL differences matter deeply. This is where identity, addressing, and caching collide.

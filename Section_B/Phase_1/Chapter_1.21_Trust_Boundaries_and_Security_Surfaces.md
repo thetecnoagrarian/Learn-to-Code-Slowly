@@ -1,666 +1,145 @@
-# Phase 2 · Chapter 2.21: Trust Boundaries and Security Surfaces
+# Section B Phase 1 · Chapter 1.21: Trust Boundaries and Security Surfaces
 
-This chapter builds on [Chapter 2.5: Statelessness and Connection Lifecycle](Chapter_2.5_Statelessness_and_Connection_Lifecycle.md), [Chapter 2.18: URLs, Paths, and Query Strings](Chapter_2.18_URLs_Paths_and_Query_Strings.md), [Chapter 2.19: Request Bodies and Content Types](Chapter_2.19_Request_Bodies_and_Content_Types.md), and [Chapter 2.20: Cookies and Session State](Chapter_2.20_Cookies_and_Session_State.md). We have seen how requests carry data in headers, cookies, paths, query strings, and bodies. Here we make explicit what Phase 0.8 established: boundaries are where validation lives, and HTTP is nothing but boundaries. Every byte that crosses the boundary is suspect—there is no safe part of an HTTP request.
+## Learning Objectives
 
-Phase 0.8 established a foundational rule:
+After this chapter, you will be able to:
+- Recognize that every part of an HTTP request is untrusted input
+- Understand why headers, cookies, paths, and bodies are all attack surfaces
+- Validate input at boundaries before processing
+- Distinguish between identity, authentication, and authorization
+- Design systems that fail closed rather than open
+- Recognize that security is layered, not singular
 
-Boundaries are where validation lives.
+## Key Terms
 
-HTTP is nothing but boundaries.
+- **Trust Boundary**: The line between trusted and untrusted environments
+- **Attack Surface**: Any part of a system that can be exploited by attackers
+- **Input Validation**: Process of checking that input meets expected criteria
+- **Ambient Authority**: Property where possession of credentials grants access automatically
+- **CSRF**: Cross-Site Request Forgery attack enabled by automatic cookie sending
+- **Fail Closed**: Security principle where validation failures result in rejection
+- **Timing Attack**: Attack that exploits differences in operation duration to leak information
 
-Every request crosses from an untrusted environment into a trusted one.
-Every response crosses back.
-Every byte is suspect.
+## 1) HTTP Is Nothing But Boundaries
 
-This chapter makes that explicit.
+Phase 0.8 established a foundational rule: boundaries are where validation lives. HTTP is nothing but boundaries. Every request crosses from an untrusted environment into a trusted one. Every response crosses back. Every byte is suspect. This chapter makes that explicit.
 
-There is no “safe” part of an HTTP request.
-There is no “harmless” header.
-There is no “obviously honest” cookie.
+Chapter 1.5 covered statelessness. Chapter 1.18 covered URLs, paths, and query strings. Chapter 1.19 covered request bodies and content types. Chapter 1.20 covered cookies and session state. We have seen how requests carry data in headers, cookies, paths, query strings, and bodies. Here we make explicit what Phase 0.8 established: boundaries are where validation lives, and HTTP is nothing but boundaries. Every byte that crosses the boundary is suspect. There is no safe part of an HTTP request.
 
-There is only input.
+There is no safe part of an HTTP request. There is no harmless header. There is no obviously honest cookie. There is only input. From the server's perspective, the client is outside, the server is inside, and everything that crosses the line is input. There are no exceptions. Not headers. Not cookies. Not paths. Not methods. Everything arrives from the other side of the boundary. When your Pi receives a request, every header, cookie, path, method, and body byte came from the client. Your ESP32 sensor node, your dashboard browser, your coop controller app, all are on the other side of the boundary. Everything arrives from the other side of the boundary.
 
+A common beginner mistake is thinking the body is input but headers are metadata. This is wrong. In HTTP, headers are input, cookies are input, path is input, query string is input, method is input, and version is input. The entire request is data from an untrusted source. When your Pi receives a request with headers, cookies, path, query string, method, and body, all are data from an untrusted source. Your solar dashboard, your pig barn controller, your electric poultry net config UI, same rule. The entire request is data from an untrusted source.
 
+## 2) Headers Are Client-Supplied Data
 
-## 1) The HTTP Boundary Is Absolute
+Every header in a request was sent by the client, can be altered by the client, and can be forged by the client. There is no such thing as a server-generated request header. When your Pi receives a request, every header was sent by the client. Your dashboard browser, your ESP32 sensor node, your coop controller app, all send headers. Your Pi cannot generate headers for incoming requests. Every header is client-supplied data. There is no such thing as a server-generated request header.
 
-From the server’s perspective:
-	•	The client is outside
-	•	The server is inside
-	•	Everything that crosses the line is input
+The User-Agent header claims what browser or client is being used, is frequently spoofed, and is often meaningless. You may log it, you may inspect it, you may not trust it. When your Pi logs User-Agent for debugging, but never uses it for authorization. An attacker can send User-Agent TrustedESP32 or AdminDashboard. Your Pi must not trust it. Or your coop controller: you may log User-Agent. You may not trust it.
 
-There are no exceptions.
+The Referer header may be missing, may be truncated, may be spoofed, and may be intentionally suppressed. It can help with debugging. It cannot enforce security. When your Pi might check Referer to see where a request came from, but an attacker can spoof or omit it. Your solar dashboard or poultry net config: Referer can help with debugging. It cannot enforce security.
 
-Not headers.
-Not cookies.
-Not paths.
-Not methods.
+Custom headers like X-User-Id colon 42, X-Admin colon true, X-Trusted colon yes mean nothing by themselves. Any client can send them. Any script can add them. Any attacker can forge them. When your Pi receives X-User-Id colon 42 or X-Admin colon true, any client can send these. Your dashboard, ESP32, or attacker's script can forge them. X-anything means nothing. Any attacker can forge them.
 
-Everything arrives from the other side of the boundary.
+Treat headers as hints, suggestions, and context. Never treat them as authority, identity, or permission. When your Pi receives X-Admin colon true, treat it as a hint at best, never as authority. Your coop controller or cow barn dashboard: headers are hints, not truth. Never treat them as authority, identity, or permission.
 
-Example: Your Pi receives a request—every header, cookie, path, method, and body byte came from the client. Your ESP32 sensor node, your dashboard browser, your coop controller app—all are on the other side of the boundary. Everything arrives from the other side of the boundary.
+## 3) Cookies Are Input and Ambient Authority
 
+Cookies feel special because browsers manage them, they are automatic, and they persist. None of that makes them trustworthy. Cookies are client-controlled input. When your Pi receives Cookie session_id equals abc123, the client sent it, the client can modify it, the client can forge it. Your dashboard browser manages cookies, but they are still client-controlled input. Cookies are client-controlled input.
 
+Cookies are sent automatically, with every matching request, and without user intent. This makes them dangerous. The server sees Cookie session equals abc123, but it has no idea why the request was sent. When your Pi receives Cookie session equals abc123, was it a legitimate button click, a malicious script, a CSRF attack, or a forged form? Your Pi cannot tell. Your solar dashboard or poultry net config: the server cannot see intent. It has no idea why the request was sent.
 
-## 2) Input Is Not Just the Body
+From the server's perspective, a legitimate button click, a malicious script-triggered request, a background fetch, and a forged form submission all look identical. Intent does not cross the boundary. When your Pi receives a request with a valid session cookie, was the user tricked into clicking a link on evil dot com, or did they click your button? Your coop controller or pig barn dashboard: intent does not cross the boundary.
 
-A common beginner mistake:
+Cross-Site Request Forgery exists because cookies are automatic, browsers send them without asking, and servers trust them. The protocol does not distinguish user intended from user tricked. When your Pi receives a POST to slash api slash config with a valid session cookie, was it from your dashboard UI or from a form on evil dot com? HTTP does not distinguish user intended from user tricked. This is why CSRF exists. Your solar dashboard or poultry net config: cookies are automatic, browsers send them without asking, servers trust them. But the protocol cannot see intent. This is why CSRF exists.
 
-“The body is input. Headers are metadata.”
+A cookie may carry a session ID, a token, or a reference. It does not carry authorization, permission, or trust. Those must be verified server-side. When your Pi receives Cookie session_id equals abc123, the cookie carries identity, a session ID, not permission. Your Pi must look up the session, check roles, verify authorization. Your dashboard or coop controller: cookies carry identity, not permission. Those must be verified server-side.
 
-This is wrong.
+Never trust cookie values. Bad idea: Cookie role equals admin. Worse idea: Cookie is_logged_in equals true. The client can change both. Cookies can identify. They cannot authorize. When your Pi must never check if cookie says role equals admin then allow, the client can change it. Your cow barn dashboard or poultry net config: cookies can identify. They cannot authorize.
 
-In HTTP:
-	•	Headers are input
-	•	Cookies are input
-	•	Path is input
-	•	Query string is input
-	•	Method is input
-	•	Version is input
+A session cookie identifies a session, points to server-side state, and has no meaning on its own. All authority lives behind the boundary. When your Pi stores session data, roles, permissions, in Redis or a database, the cookie only holds the session ID. Your dashboard or ESP32: session IDs are keys, not data. All authority lives behind the boundary.
 
-The entire request is data from an untrusted source.
+## 4) Paths, Query Strings, Methods, and Bodies Are Input
 
-Example: Your Pi receives a request with headers, cookies, path, query string, method, and body—all are data from an untrusted source. Your solar dashboard, your pig barn controller, your electric poultry net config UI—same rule. The entire request is data from an untrusted source.
+Paths feel structural: slash admin, slash users slash 42, slash api slash delete. They are still client-provided data. Attackers guess paths, for example slash admin, slash api slash admin, slash admin slash users, manipulate IDs, for example slash users slash 42 to slash users slash 999999, or slash users slash 1 to slash users slash 0, traverse directories, for example slash api slash dot dot slash config, slash static slash dot dot slash dot dot slash etc slash passwd, and probe hidden endpoints, for example slash api slash v1, slash api slash v2, slash api slash internal. Never assume the path implies permission. The path is just a string the client sent. Validate it, normalize it, check authorization separately.
 
+When your Pi receives DELETE slash api slash users slash 42, the path suggests admin action, but an attacker can send it. Your solar dashboard or coop controller: paths are input. Never assume the path implies permission.
 
+Query parameters like question mark user_id equals 42, question mark is_admin equals true are just as forgeable as headers. Treat them as untrusted data. When your Pi receives question mark user_id equals 42 ampersand is_admin equals true, query strings are just as forgeable as headers. Your dashboard or ESP32: query strings are input. Treat them as untrusted data.
 
-## 3) Headers Are Client-Supplied Data
+The client chooses the method. A client can send DELETE slash users slash 42 even if your UI never exposes it. Authorization must not depend on the UI would not do that. When your dashboard UI never shows a DELETE button, but an attacker can send DELETE slash api slash sensors slash 17 directly. Your Pi must authorize based on session and roles, not on the UI would not do that. Your coop controller or cow barn dashboard: the client chooses the method. Authorization must not depend on the UI would not do that.
 
-Every header in a request:
-	•	Was sent by the client
-	•	Can be altered by the client
-	•	Can be forged by the client
+Even the protocol version HTTP slash 1.1 is supplied by the client. Servers must handle malformed or unexpected versions safely. When your Pi receives HTTP slash 0.9 or HTTP slash 3.0 or malformed version strings, must handle them safely. Your coop controller or poultry net config: version is input. Servers must handle malformed or unexpected versions safely.
 
-There is no such thing as a “server-generated request header.”
+This part is obvious, but still worth stating: JSON bodies, form data, and multipart uploads are all untrusted. Validation belongs at the boundary. When your Pi receives JSON, form data, or multipart uploads, all untrusted. Your solar dashboard posts temperature readings, your pig barn controller uploads images. Validation belongs at the boundary. Bodies are input. Validation belongs at the boundary.
 
-Example: Your Pi receives a request—every header was sent by the client. Your dashboard browser, your ESP32 sensor node, your coop controller app—all send headers. Your Pi cannot generate headers for incoming requests; every header is client-supplied data. There is no such thing as a "server-generated request header."
+## 5) Validation Is Mandatory
 
+Validation is not an optimization, a best practice, or a nice to have. It is the definition of the boundary. When your Pi validates every request, presence, type, range, authorization. Your dashboard, ESP32, coop controller: validation is not optional. It is the definition of the boundary.
 
+Is the field there? Missing data is a failure mode. Do not assume headers exist, cookies exist, or fields exist. When your Pi checks if Authorization header exists before using it. Your dashboard might not send a cookie. Your ESP32 might omit a field. Validate presence. Do not assume headers, cookies, or fields exist.
 
+Is the data the type you expect? String versus number, integer versus float, object versus list. Type confusion is a common exploit vector. When your Pi expects a number but receives 42 as a string or true as a boolean, type confusion can lead to bugs or exploits. Your solar dashboard or poultry net config: validate type. Type confusion is a common exploit vector.
 
-## 4) User-Agent Is a Lie
+Is the value reasonable? IDs in expected range, length limits, and time windows. Unbounded input is dangerous. When your Pi receives a sensor ID, must validate it is in the expected range, one to one hundred, not 999999 or negative. Your coop controller or cow barn dashboard: validate range. Unbounded input is dangerous.
 
-The User-Agent header:
-	•	Claims what browser or client is being used
-	•	Is frequently spoofed
-	•	Is often meaningless
+Never combine identity, authentication, and authorization. Each must be checked independently. When your Pi checks identity, who is this, authentication, are they logged in, and authorization, can they do this, separately. Your dashboard or ESP32: never combine identity, authentication, and authorization. Each must be checked independently.
 
-You may log it.
-You may inspect it.
-You may not trust it.
+The client would never send that is not a defense. Clients are buggy, are scripted, are malicious, and are controlled by attackers. Assume the worst. When your Pi assumes clients are buggy, scripted, malicious, or controlled by attackers. Your solar dashboard, coop controller, or poultry net config: the client would never send that is not a defense. Assume the worst.
 
-Example: Your Pi logs User-Agent for debugging, but never uses it for authorization. An attacker can send User-Agent: "TrustedESP32" or "AdminDashboard"—your Pi must not trust it. Or your coop controller: you may log User-Agent; you may not trust it.
+Servers do not trust clients. This is not cynicism. It is architecture. The server validates, verifies, and rejects. Always. When your Pi validates, verifies, and rejects, always. Your dashboard, ESP32, or any client: servers do not trust clients. This is not cynicism. It is architecture. Always.
 
+## 6) Clients Also Live in Hostile Environments
 
+The boundary goes both ways. Clients must assume servers can lie, responses can be malformed, and content can be malicious. When your dashboard browser receives a response from your Pi, must validate Content-Type, parse carefully, avoid executing unexpected content. Your ESP32 or coop controller app: clients also live in hostile environments. Content can be malicious.
 
-## 5) Referer Is Optional and Unreliable
+Client-side validation includes checking status codes, validating Content-Type, parsing carefully, and avoiding execution of unexpected content. When your dashboard validates status codes, checks Content-Type, parses JSON carefully, never evaluates response data as code. Your solar dashboard or poultry net UI: clients validate responses too. Avoiding execution of unexpected content.
 
-The Referer header:
-	•	May be missing
-	•	May be truncated
-	•	May be spoofed
-	•	May be intentionally suppressed
+Never execute response data blindly. Classic failures include injecting HTML directly, XSS, evaluating JSON as code, and trusting script responses. Responses are also input. When your dashboard must not inject HTML directly, XSS, evaluate JSON as code, or trust script responses blindly. Your coop controller or pig barn app: never execute response data blindly. Responses are also input.
 
-It can help with debugging.
-It cannot enforce security.
+Browsers execute code, load third-party scripts, and share global state. Trust boundaries still apply. When your dashboard browser executes code, loads third-party scripts, shares global state, trust boundaries still apply. Your solar panel UI or poultry net config: the browser is not a safe space. Trust boundaries still apply.
 
-Example: Your Pi might check Referer to see where a request came from, but an attacker can spoof or omit it. Your solar dashboard or poultry net config: Referer can help with debugging; it cannot enforce security.
+The browser enforces rules. Attackers find edge cases, abuse misconfigurations, and exploit CORS mistakes. Do not rely on the browser alone. When your Pi sets CORS headers, but attackers find edge cases, abuse misconfigurations, exploit CORS mistakes. Your dashboard or ESP32: same-origin policy is not absolute. Do not rely on the browser alone.
 
+CORS controls which origins may read responses. It does not authenticate, authorize, or validate input. When your Pi sets CORS headers to allow your dashboard origin, CORS controls which origins may read responses, but it does not authenticate, authorize, or validate input. Your coop controller or solar dashboard: CORS is a boundary control. It does not validate input.
 
+## 7) Security Is Layered and Fail Closed
 
-## 6) X-Anything Means Nothing
+No single mechanism protects you: not cookies, not headers, not HTTPS, not CORS. Each layer assumes the others can fail. When your Pi uses HTTPS, cookies, headers, CORS, no single mechanism protects you. Your dashboard or ESP32: security is layered, not singular. Each layer assumes the others can fail.
 
-Custom headers:
+When validation fails, reject the request, return an error, and log the event. Do not guess. Do not continue. When your Pi receives invalid input, rejects the request, returns an error, logs the event. Does not guess, does not continue. Your solar dashboard or poultry net config: fail closed, not open. Do not continue.
 
-X-User-Id: 42
-X-Admin: true
-X-Trusted: yes
+Ignoring malformed input hides bugs, enables probing, and encourages exploitation. Explicit rejection is safer. When your Pi explicitly rejects malformed input with a clear error, hides nothing, enables no probing. Your coop controller or cow barn dashboard: silence is dangerous. Explicit rejection is safer.
 
-Mean nothing by themselves.
+Error responses can leak information, reveal structure, and aid attackers. Balance clarity with restraint. When your Pi returns an error message, must balance clarity, user needs to know what went wrong, with restraint, do not leak structure or aid attackers. Your dashboard or ESP32: error messages are also a surface. Balance clarity with restraint.
 
-Any client can send them.
-Any script can add them.
-Any attacker can forge them.
+Log validation failures, authorization failures, and unexpected inputs. Logs reveal attack patterns. When your Pi logs validation failures, authorization failures, unexpected inputs, logs reveal attack patterns. Your solar dashboard or poultry net config: logging is a defensive tool. Logs reveal attack patterns.
 
-Example: Your Pi receives X-User-Id: 42 or X-Admin: true—any client can send these. Your dashboard, ESP32, or attacker's script can forge them. X-anything means nothing; any attacker can forge them.
+Once bad data enters, it spreads, it contaminates state, and it creates secondary failures. The edge is your only clean choke point. When your Pi validates at the boundary, once bad data enters, it spreads and contaminates state. Your dashboard, ESP32, or coop controller: the boundary is the only safe place to stop bad data. The edge is your only clean choke point.
 
+## 8) Everything Is an Attack Surface
 
+Headers, cookies, paths, bodies, methods, timing. All of it. Timing attacks exploit how long operations take. If your Pi checks a password character-by-character and returns early on the first mismatch, an attacker can measure response times to learn which characters are correct. If your Pi takes longer to respond when a user exists versus when a user does not exist, an attacker can enumerate usernames. Even side channels like error message timing or database query duration can leak information.
 
-## 7) Headers Are Hints, Not Truth
+When your Pi treats headers, cookies, paths, bodies, methods, timing, all as attack surfaces. Your solar dashboard, coop controller, poultry net config, ESP32 sensor nodes: everything is an attack surface. Timing attacks are subtle but real. If your authentication check takes longer for valid users, attackers can measure that. All of it is an attack surface.
 
-Treat headers as:
-	•	Hints
-	•	Suggestions
-	•	Context
+If you believe headers are safe, cookies are trustworthy, or the client would not do that, you will ship vulnerabilities. When your Pi assumes headers are safe or cookies are trustworthy or the client would not do that, you will ship vulnerabilities. Your dashboard or ESP32: security starts with correct mental models. Wrong models lead to vulnerabilities.
 
-Never treat them as:
-	•	Authority
-	•	Identity
-	•	Permission
+## Common Pitfalls
 
-Example: Your Pi receives X-Admin: true—treat it as a hint at best, never as authority. Your coop controller or cow barn dashboard: headers are hints, not truth. Never treat them as authority, identity, or permission.
+Trusting headers for authorization allows privilege escalation. Never use X-Admin or custom headers to grant permissions. Headers are hints, not authority. Always verify authorization server-side from session data.
 
+Assuming cookies are trustworthy enables attacks. Cookies are client-controlled input. Never store authority in cookies. Use cookies only to carry identifiers that point to server-side session data.
 
+Ignoring path validation allows path traversal and unauthorized access. Never assume paths imply permission. Validate and normalize paths. Check authorization separately from path structure.
 
-## 8) Cookies Are Input Too
+Skipping input validation at boundaries allows bad data to spread. Validate presence, type, and range at the boundary before processing. Once bad data enters, it contaminates state.
 
-Cookies feel special because:
-	•	Browsers manage them
-	•	They’re automatic
-	•	They persist
+Failing open instead of closed enables exploitation. When validation fails, reject the request explicitly. Do not guess or continue with invalid input. Fail closed, not open.
 
-None of that makes them trustworthy.
+## Summary
 
-Cookies are client-controlled input.
+Everything in an HTTP request is input. All input is untrusted. Headers, cookies, paths, bodies, methods, version, timing, all attack surfaces. Servers validate aggressively. Clients validate defensively. The boundary is where correctness and security live. There is no safe part of an HTTP request. The boundary is absolute. Everything that crosses it is suspect until validated. Headers are client-supplied data. Cookies are ambient authority and client-controlled input. Paths, query strings, methods, and bodies are all untrusted. Validation is mandatory: presence, type, range, identity, authentication, authorization. Security is layered, not singular. Fail closed, not open. The boundary is the only safe place to stop bad data. Understanding trust boundaries is essential for building secure HTTP systems.
 
-Example: Your Pi receives Cookie: session_id=abc123—the client sent it, the client can modify it, the client can forge it. Your dashboard browser manages cookies, but they are still client-controlled input. Cookies are client-controlled input.
+## Next
 
-
-
-## 9) Cookies Are Ambient Authority
-
-Cookies are sent:
-	•	Automatically
-	•	With every matching request
-	•	Without user intent
-
-This makes them dangerous.
-
-The server sees:
-
-Cookie: session=abc123
-
-But it has no idea why the request was sent.
-
-Example: Your Pi receives Cookie: session=abc123—was it a legitimate button click, a malicious script, a CSRF attack, or a forged form? Your Pi cannot tell. Your solar dashboard or poultry net config: the server cannot see intent; it has no idea why the request was sent.
-
-
-
-## 10) The Server Cannot See Intent
-
-From the server’s perspective:
-	•	A legitimate button click
-	•	A malicious script-triggered request
-	•	A background fetch
-	•	A forged form submission
-
-All look identical.
-
-Intent does not cross the boundary.
-
-Example: Your Pi receives a request with a valid session cookie—was the user tricked into clicking a link on evil.com, or did they click your button? Your coop controller or pig barn dashboard: intent does not cross the boundary.
-
-
-
-## 11) This Is Why CSRF Exists
-
-Cross-Site Request Forgery exists because:
-	•	Cookies are automatic
-	•	Browsers send them without asking
-	•	Servers trust them
-
-The protocol does not distinguish “user intended” from “user tricked.”
-
-Example: Your Pi receives a POST to /api/config with a valid session cookie—was it from your dashboard UI or from a form on evil.com? HTTP does not distinguish "user intended" from "user tricked." This is why CSRF exists. Your solar dashboard or poultry net config: cookies are automatic, browsers send them without asking, servers trust them—but the protocol cannot see intent. This is why CSRF exists.
-
-
-
-
-## 12) Cookies Carry Identity, Not Permission
-
-A cookie may carry:
-	•	A session ID
-	•	A token
-	•	A reference
-
-It does not carry:
-	•	Authorization
-	•	Permission
-	•	Trust
-
-Those must be verified server-side.
-
-Example: Your Pi receives Cookie: session_id=abc123—the cookie carries identity (a session ID), not permission. Your Pi must look up the session, check roles, verify authorization. Your dashboard or coop controller: cookies carry identity, not permission; those must be verified server-side.
-
-
-
-## 13) Never Trust Cookie Values
-
-Bad idea:
-
-Cookie: role=admin
-
-Worse idea:
-
-Cookie: is_logged_in=true
-
-The client can change both.
-
-Cookies can identify.
-They cannot authorize.
-
-Example: Your Pi must never check "if cookie says role=admin then allow"—the client can change it. Your cow barn dashboard or poultry net config: cookies can identify; they cannot authorize.
-
-
-
-## 14) Session IDs Are Keys, Not Data
-
-A session cookie:
-	•	Identifies a session
-	•	Points to server-side state
-	•	Has no meaning on its own
-
-All authority lives behind the boundary.
-
-Example: Your Pi stores session data (roles, permissions) in Redis or a database; the cookie only holds the session ID. Your dashboard or ESP32: session IDs are keys, not data; all authority lives behind the boundary.
-
-
-
-## 15) The Path Is Input
-
-Paths feel structural:
-
-/admin
-/users/42
-/api/delete
-
-They are still client-provided data.
-
-Attackers:
-	•	Guess paths (e.g. /admin, /api/admin, /admin/users)
-	•	Manipulate IDs (e.g. /users/42 → /users/999999, or /users/1 → /users/0)
-	•	Traverse directories (e.g. /api/../config, /static/../../etc/passwd)
-	•	Probe hidden endpoints (e.g. /api/v1, /api/v2, /api/internal)
-
-Never assume the path implies permission. The path is just a string the client sent—validate it, normalize it, check authorization separately.
-
-Example: Your Pi receives DELETE /api/users/42—the path suggests admin action, but an attacker can send it. Your solar dashboard or coop controller: paths are input; never assume the path implies permission.
-
-
-
-## 16) Query Strings Are Input
-
-Query parameters:
-
-?user_id=42
-?is_admin=true
-
-Are just as forgeable as headers.
-
-Treat them as untrusted data.
-
-Example: Your Pi receives ?user_id=42&is_admin=true—query strings are just as forgeable as headers. Your dashboard or ESP32: query strings are input; treat them as untrusted data.
-
-
-
-## 17) HTTP Method Is Input
-
-The client chooses the method.
-
-A client can send:
-
-DELETE /users/42
-
-Even if your UI never exposes it.
-
-Authorization must not depend on “the UI wouldn’t do that.”
-
-Example: Your dashboard UI never shows a DELETE button, but an attacker can send DELETE /api/sensors/17 directly. Your Pi must authorize based on session and roles, not on "the UI wouldn't do that." Your coop controller or cow barn dashboard: the client chooses the method; authorization must not depend on "the UI wouldn't do that."
-
-
-
-
-## 18) Version Is Input
-
-Even the protocol version:
-
-HTTP/1.1
-
-Is supplied by the client.
-
-Servers must handle malformed or unexpected versions safely.
-
-Example: Your Pi receives HTTP/0.9 or HTTP/3.0 or malformed version strings—must handle them safely. Your coop controller or poultry net config: version is input; servers must handle malformed or unexpected versions safely.
-
-
-
-## 19) Bodies Are Input
-
-This part is obvious—but still worth stating:
-	•	JSON bodies
-	•	Form data
-	•	Multipart uploads
-
-All untrusted.
-
-Validation belongs at the boundary.
-
-Example: Your Pi receives JSON, form data, or multipart uploads—all untrusted. Your solar dashboard posts temperature readings, your pig barn controller uploads images—validation belongs at the boundary. Bodies are input; validation belongs at the boundary.
-
-
-
-## 20) Validation Is Not Optional
-
-Validation is not:
-	•	An optimization
-	•	A best practice
-	•	A “nice to have”
-
-It is the definition of the boundary.
-
-Example: Your Pi validates every request—presence, type, range, authorization. Your dashboard, ESP32, coop controller—validation is not optional; it is the definition of the boundary.
-
-
-
-## 21) Validate Presence
-
-Is the field there?
-
-Missing data is a failure mode.
-
-Do not assume:
-	•	Headers exist
-	•	Cookies exist
-	•	Fields exist
-
-Example: Your Pi checks if Authorization header exists before using it. Your dashboard might not send a cookie; your ESP32 might omit a field. Validate presence; do not assume headers, cookies, or fields exist.
-
-
-
-## 22) Validate Type
-
-Is the data the type you expect?
-	•	String vs number
-	•	Integer vs float
-	•	Object vs list
-
-Type confusion is a common exploit vector.
-
-Example: Your Pi expects a number but receives "42" (string) or "true" (boolean)—type confusion can lead to bugs or exploits. Your solar dashboard or poultry net config: validate type; type confusion is a common exploit vector.
-
-
-
-## 23) Validate Range
-
-Is the value reasonable?
-	•	IDs in expected range
-	•	Length limits
-	•	Time windows
-
-Unbounded input is dangerous.
-
-Example: Your Pi receives a sensor ID—must validate it is in the expected range (1-100), not 999999 or negative. Your coop controller or cow barn dashboard: validate range; unbounded input is dangerous.
-
-
-
-## 24) Validate Authorization Separately
-
-Never combine:
-	•	Identity
-	•	Authentication
-	•	Authorization
-
-Each must be checked independently.
-
-Example: Your Pi checks identity (who is this?), authentication (are they logged in?), and authorization (can they do this?) separately. Your dashboard or ESP32: never combine identity, authentication, and authorization; each must be checked independently.
-
-
-
-## 25) “The Client Would Never Send That” Is Not a Defense
-
-Clients:
-	•	Are buggy
-	•	Are scripted
-	•	Are malicious
-	•	Are controlled by attackers
-
-Assume the worst.
-
-Example: Your Pi assumes clients are buggy, scripted, malicious, or controlled by attackers. Your solar dashboard, coop controller, or poultry net config: "the client would never send that" is not a defense; assume the worst.
-
-
-
-## 26) Servers Do Not Trust Clients
-
-This is not cynicism.
-It is architecture.
-
-The server:
-	•	Validates
-	•	Verifies
-	•	Rejects
-
-Always.
-
-Example: Your Pi validates, verifies, and rejects—always. Your dashboard, ESP32, or any client—servers do not trust clients. This is not cynicism; it is architecture. Always.
-
-
-
-## 27) Clients Also Live in Hostile Environments
-
-The boundary goes both ways.
-
-Clients must assume:
-	•	Servers can lie
-	•	Responses can be malformed
-	•	Content can be malicious
-
-Example: Your dashboard browser receives a response from your Pi—must validate Content-Type, parse carefully, avoid executing unexpected content. Your ESP32 or coop controller app: clients also live in hostile environments; content can be malicious.
-
-
-
-## 28) Clients Validate Responses Too
-
-Client-side validation includes:
-	•	Checking status codes
-	•	Validating Content-Type
-	•	Parsing carefully
-	•	Avoiding execution of unexpected content
-
-Example: Your dashboard validates status codes, checks Content-Type, parses JSON carefully, never evaluates response data as code. Your solar dashboard or poultry net UI: clients validate responses too; avoiding execution of unexpected content.
-
-
-
-## 29) Never Execute Response Data Blindly
-
-Classic failures:
-	•	Injecting HTML directly (XSS)
-	•	Evaluating JSON as code
-	•	Trusting script responses
-
-Responses are also input.
-
-Example: Your dashboard must not inject HTML directly (XSS), evaluate JSON as code, or trust script responses blindly. Your coop controller or pig barn app: never execute response data blindly; responses are also input.
-
-
-
-## 30) The Browser Is Not a Safe Space
-
-Browsers:
-	•	Execute code
-	•	Load third-party scripts
-	•	Share global state
-
-Trust boundaries still apply.
-
-Example: Your dashboard browser executes code, loads third-party scripts, shares global state—trust boundaries still apply. Your solar panel UI or poultry net config: the browser is not a safe space; trust boundaries still apply.
-
-
-
-## 31) Same-Origin Policy Is Not Absolute
-
-The browser enforces rules.
-
-Attackers:
-	•	Find edge cases
-	•	Abuse misconfigurations
-	•	Exploit CORS mistakes
-
-Do not rely on the browser alone.
-
-Example: Your Pi sets CORS headers, but attackers find edge cases, abuse misconfigurations, exploit CORS mistakes. Your dashboard or ESP32: same-origin policy is not absolute; do not rely on the browser alone.
-
-
-
-## 32) CORS Is a Boundary Control
-
-CORS controls:
-	•	Which origins may read responses
-
-It does not:
-	•	Authenticate
-	•	Authorize
-	•	Validate input
-
-Example: Your Pi sets CORS headers to allow your dashboard origin—CORS controls which origins may read responses, but it does not authenticate, authorize, or validate input. Your coop controller or solar dashboard: CORS is a boundary control; it does not validate input.
-
-
-
-## 33) Security Is Layered, Not Singular
-
-No single mechanism protects you:
-	•	Not cookies
-	•	Not headers
-	•	Not HTTPS
-	•	Not CORS
-
-Each layer assumes the others can fail.
-
-Example: Your Pi uses HTTPS, cookies, headers, CORS—no single mechanism protects you. Your dashboard or ESP32: security is layered, not singular; each layer assumes the others can fail.
-
-
-
-## 34) Fail Closed, Not Open
-
-When validation fails:
-	•	Reject the request
-	•	Return an error
-	•	Log the event
-
-Do not guess.
-Do not continue.
-
-Example: Your Pi receives invalid input—rejects the request, returns an error, logs the event. Does not guess, does not continue. Your solar dashboard or poultry net config: fail closed, not open; do not continue.
-
-
-
-## 35) Silence Is Dangerous
-
-Ignoring malformed input:
-	•	Hides bugs
-	•	Enables probing
-	•	Encourages exploitation
-
-Explicit rejection is safer.
-
-Example: Your Pi explicitly rejects malformed input with a clear error—hides nothing, enables no probing. Your coop controller or cow barn dashboard: silence is dangerous; explicit rejection is safer.
-
-
-
-## 36) Error Messages Are Also a Surface
-
-Error responses can:
-	•	Leak information
-	•	Reveal structure
-	•	Aid attackers
-
-Balance clarity with restraint.
-
-Example: Your Pi returns an error message—must balance clarity (user needs to know what went wrong) with restraint (do not leak structure or aid attackers). Your dashboard or ESP32: error messages are also a surface; balance clarity with restraint.
-
-
-
-## 37) Logging Is a Defensive Tool
-
-Log:
-	•	Validation failures
-	•	Authorization failures
-	•	Unexpected inputs
-
-Logs reveal attack patterns.
-
-Example: Your Pi logs validation failures, authorization failures, unexpected inputs—logs reveal attack patterns. Your solar dashboard or poultry net config: logging is a defensive tool; logs reveal attack patterns.
-
-
-
-## 38) The Boundary Is the Only Safe Place to Stop Bad Data
-
-Once bad data enters:
-	•	It spreads
-	•	It contaminates state
-	•	It creates secondary failures
-
-The edge is your only clean choke point.
-
-Example: Your Pi validates at the boundary—once bad data enters, it spreads and contaminates state. Your dashboard, ESP32, or coop controller: the boundary is the only safe place to stop bad data; the edge is your only clean choke point.
-
-
-
-## 39) Everything Is an Attack Surface
-
-Headers.
-Cookies.
-Paths.
-Bodies.
-Methods.
-Timing.
-
-All of it.
-
-Timing attacks exploit how long operations take. If your Pi checks a password character-by-character and returns early on the first mismatch, an attacker can measure response times to learn which characters are correct. If your Pi takes longer to respond when a user exists versus when a user does not exist, an attacker can enumerate usernames. Even side channels like error message timing or database query duration can leak information.
-
-Example: Your Pi treats headers, cookies, paths, bodies, methods, timing—all as attack surfaces. Your solar dashboard, coop controller, poultry net config, ESP32 sensor nodes—everything is an attack surface. Timing attacks are subtle but real: if your authentication check takes longer for valid users, attackers can measure that. All of it is an attack surface.
-
-
-
-## 40) Security Starts with Correct Mental Models
-
-If you believe:
-	•	“Headers are safe”
-	•	“Cookies are trustworthy”
-	•	“The client wouldn’t do that”
-
-You will ship vulnerabilities.
-
-Example: Your Pi assumes "headers are safe" or "cookies are trustworthy" or "the client wouldn't do that"—you will ship vulnerabilities. Your dashboard or ESP32: security starts with correct mental models; wrong models lead to vulnerabilities.
-
-
-
-## Reflection
-
-A request arrives at your Pi:
-
-X-User-Id: 42
-Cookie: session=abc123
-DELETE /api/sensors/17
-
-What is trusted? Nothing. Every header, cookie, path, method, and body byte came from the client.
-
-What must be verified? Everything. Presence (does the session cookie exist?), type (is the sensor ID a number?), range (is 17 a valid sensor ID?), identity (who owns session=abc123?), authentication (is that session valid?), authorization (can this user delete sensor 17?).
-
-What assumptions are unsafe? Assuming X-User-Id means anything. Assuming the path /api/sensors/17 implies permission. Assuming DELETE means the user intended it. Assuming the cookie value is unchanged. Assuming "the UI wouldn't send that."
-
-Walk through the boundary: validate presence, type, range, then check identity, authentication, authorization—all independently. Reject if any check fails. Log failures. Never trust input.
-
-
-
-## Core Understanding
-	•	Everything in an HTTP request is input
-	•	All input is untrusted
-	•	Headers, cookies, paths, bodies—all attack surfaces
-	•	Servers validate aggressively
-	•	Clients validate defensively
-	•	The boundary is where correctness and security live
-
-Anchor: there is no safe part of an HTTP request. The boundary is absolute—everything that crosses it is suspect until validated.
-
-
-
-## What's Next
-
-Chapter 2.22 — Redirects and the Location Header
-
-Where we explore how control flow itself crosses boundaries,
-and how even navigation becomes an attack surface if misunderstood.
-
-This is where HTTP starts shaping user behavior—not just data flow.
+This chapter built on Chapter 1.5, which covered statelessness, Chapter 1.18, which covered URLs, Chapter 1.19, which covered request bodies, and Chapter 1.20, which covered cookies. Next, Chapter 1.22 explores redirects and the Location header, showing how control flow itself crosses boundaries and how even navigation becomes an attack surface if misunderstood. This is where HTTP starts shaping user behavior, not just data flow.

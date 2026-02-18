@@ -1,550 +1,140 @@
-# Phase 2 · Chapter 2.14: Safety and Idempotency
+# Section B Phase 1 · Chapter 1.14: Safety and Idempotency
 
-This chapter builds on [Chapter 2.1: Request-Response](Chapter_2.1_Request-Response.md), [Chapter 2.2: HTTP on TCP](Chapter_2.2_HTTP_on_TCP.md), [Chapter 2.3: What HTTP Is](Chapter_2.3_What_HTTP_Is.md), [Chapter 2.4: HTTP as Text](Chapter_2.4_HTTP_as_Text.md), [Chapter 2.5: Statelessness and Connection Lifecycle](Chapter_2.5_Statelessness_and_Connection_Lifecycle.md), [Chapter 2.6: Request Structure](Chapter_2.6_Request_Structure.md), [Chapter 2.7: The Request Line](Chapter_2.7_The_Request_Line.md), [Chapter 2.8: Response Structure](Chapter_2.8_Response_Structure.md), [Chapter 2.9: Status Codes Overview](Chapter_2.9_Status_Codes_Overview.md), [Chapter 2.10: Status Codes — Success and Redirects](Chapter_2.10_Status_Codes_Success_and_Redirects.md), [Chapter 2.11: Status Codes — Client and Server Errors](Chapter_2.11_Status_Codes_Client_and_Server_Errors.md), [Chapter 2.12: Errors vs Failures](Chapter_2.12_Errors_vs_Failures.md), and [Chapter 2.13: HTTP Methods](Chapter_2.13_HTTP_Methods.md).
+## Learning Objectives
 
-Safety and idempotency are not optional details.
-They are invariants of HTTP.
+After this chapter, you will be able to:
+- Distinguish between safety and idempotency as separate properties
+- Understand why these concepts exist in HTTP
+- Recognize which methods are safe, idempotent, or both
+- Design POST endpoints that handle retries safely
+- Understand why retries are unavoidable in distributed systems
+- Apply safety and idempotency principles when choosing HTTP methods
 
-They exist because:
-	•	Networks fail
-	•	Requests get duplicated
-	•	Responses are lost
-	•	Clients retry automatically
-	•	Proxies replay traffic
-	•	Humans click buttons twice
+## Key Terms
 
-If you misunderstand these concepts, your system will appear to work—until it doesn’t.
+- **Safety**: Property of methods that do not change server state
+- **Idempotency**: Property of operations that produce the same result whether run once or many times
+- **Safe Method**: A method that does not cause state changes (GET, HEAD, OPTIONS)
+- **Idempotent Method**: A method that can be applied multiple times with the same effect (GET, PUT, DELETE, HEAD, OPTIONS)
+- **Idempotency Key**: A client-generated unique identifier that makes POST requests effectively idempotent
+- **Side Effect**: A persistent state change caused by a request
 
+## 1) Why These Concepts Exist
 
-## 1) Why These Concepts Exist at All
+Safety and idempotency are not optional details. They are invariants of HTTP. They exist because networks fail, requests get duplicated, responses are lost, clients retry automatically, proxies replay traffic, and humans click buttons twice. If you misunderstand these concepts, your system will appear to work until it doesn't.
 
-HTTP was designed for unreliable networks.
+HTTP was designed for unreliable networks. Packets drop. Connections reset. Servers crash. Clients disappear mid-request. The protocol does not guarantee that a request arrives once, that a response arrives at all, or that a request is not duplicated. Safety and idempotency exist to make systems survivable under those conditions.
 
-Packets drop. Connections reset. Servers crash. Clients disappear mid-request.
+These two ideas are often confused. They are not the same. Safety answers whether this request changes state. Idempotency answers what happens if this request happens again. A method can be safe and idempotent like GET, unsafe and idempotent like PUT and DELETE, or unsafe and non-idempotent like POST. Understanding the difference is critical.
 
-The protocol does not guarantee:
-	•	That a request arrives once
-	•	That a response arrives at all
-	•	That a request is not duplicated
+When your dashboard sends a GET request to the voltage API, it's safe with no state change and idempotent with the same result if repeated. Or sends a PUT request to the config API, which is unsafe because it changes state but idempotent because the same result occurs if repeated. Or sends a POST request to the temperature API, which is unsafe because it changes state and not idempotent because different results occur if repeated. Different properties require different retry behavior.
 
-Safety and idempotency exist to make systems survivable under those conditions.
+## 2) Safe Methods: No Side Effects
 
+A safe method does not change server state. Calling it does not create, modify, or delete. Safe methods are observational only. When your ESP32 sends a GET request to the voltage API, this reads the voltage. No sensor is created, no config is modified, no resource is deleted. Observational only. Contrast with POST to the temperature API, which creates a temperature reading and changes server state. Not safe.
 
-## 2) Safety and Idempotency Are Different
+Safe methods include GET like getting voltage from your Pi, HEAD like checking if config exists without fetching the body, and OPTIONS like checking what methods are allowed on the sensors API. They exist to read, not act. When your dashboard sends a GET request to the voltage API, it's safe and reads voltage. Or sends a HEAD request to the config API, safe and checks if config exists without fetching the body. Or sends an OPTIONS request to the sensors API, safe and checks what methods are allowed. All are observational with no mutations.
 
-These two ideas are often confused. They are not the same.
-	•	Safety answers: Does this request change state?
-	•	Idempotency answers: What happens if this request happens again?
+No side effects means no persistent state change, no mutation of resources, no counters incremented, and no logs written as a consequence of the request itself. Logging the request is fine. Changing application state is not. When your ESP32 sends a GET request to the voltage API, your Pi may log that the ESP32 requested voltage. That's fine. Logging is acceptable. But if the Pi increments a request count counter or updates a last read timestamp, that's a side effect. GET is no longer safe. Safe means no application state change, not no logging.
 
-A method can be:
-	•	Safe and idempotent (e.g., GET)
-	•	Unsafe and idempotent (e.g., PUT, DELETE)
-	•	Unsafe and non-idempotent (e.g., POST)
+Because safe methods may be automatically retried, prefetched by browsers, crawled by search engines, cached aggressively, and replayed by proxies, if a safe method has side effects, those effects may happen unexpectedly. When your dashboard sends a GET request to the voltage API and times out, your HTTP library automatically retries because GET is safe and retries are fine. Or your browser prefetches GET links to the config API, safe to prefetch with no mutations. But if GET to a reboot endpoint actually reboots the Pi, retries and prefetching cause multiple reboots with unexpected side effects. Safety matters because safe methods are trusted to be harmless.
 
-Understanding the difference is critical.
+If GET changes state, reloading a page mutates data, crawlers trigger actions, prefetching causes writes, and caching breaks correctness. This is one of the most common HTTP mistakes. When your Pi implements GET to an increment counter endpoint that increments a counter, your dashboard reloads the page and the counter increments. A crawler visits and the counter increments. Browser prefetches and the counter increments. Caches cache mutations and everything breaks. This is the GET trap. Using GET for mutations breaks the web. Use POST or PATCH instead.
 
-Example: Your dashboard sends `GET /api/voltage`—safe (no state change) and idempotent (same result if repeated). Or sends `PUT /api/config`—unsafe (changes state) but idempotent (same result if repeated). Or sends `POST /api/temp`—unsafe (changes state) and not idempotent (different result if repeated). Different properties, different retry behavior.
+## 3) Unsafe Methods: Side Effects Allowed
 
+Unsafe methods may change state. These include POST like creating a temperature reading, PUT like replacing config, PATCH like updating config, and DELETE like removing a sensor. Calling them has consequences. When your ESP32 sends a POST request to the temperature API, it creates a temperature reading and state changes. Or your dashboard sends a PUT request to the config API, replacing the entire config and state changes. Or sends a DELETE request to the sensors API with a specific sensor ID, removing the sensor and state changes. Unsafe methods have consequences. They mutate state.
 
-## 3) Safe Methods: No Side Effects
+Unsafe means this request may change something. It does not mean the request is dangerous, forbidden, or unreliable. It means do not assume this can be repeated safely. Browsers warn on resubmitting POST, do not prefetch POST, and require user intent. They assume unsafe methods have consequences. When your dashboard submits a form with POST to the sensors API, your browser warns are you sure you want to resubmit because POST has consequences. Or your browser doesn't prefetch POST links. Unsafe methods aren't prefetched. Browsers assume unsafe methods have consequences. They require explicit user intent, not automatic behavior.
 
-A safe method does not change server state.
+## 4) Idempotency: Same Effect, No Matter How Many Times
 
-Calling it:
-	•	Does not create
-	•	Does not modify
-	•	Does not delete
+An idempotent operation produces the same result whether it runs once or many times. Important: same result means same final state. It does not mean the response is identical. It does not mean no work happens. When you send PUT to a resource with value X, then PUT to the same resource with value X again, the server may write to disk twice, log twice, and do work twice. But the final state is identical. That's idempotent.
 
-Safe methods are observational only.
+Idempotent methods include GET like getting voltage with the same result if repeated, PUT like updating config with the same final state if repeated, DELETE like removing a sensor with the same final state if repeated, HEAD like checking config with the same result if repeated, and OPTIONS like checking allowed methods with the same result if repeated. PATCH may be idempotent depending on the operation. PATCH to config with a voltage threshold update is idempotent. PATCH to stats with an increment operation is not idempotent. POST is not idempotent. POST to the temperature API creates a new reading each time.
 
-Example: Your ESP32 sends `GET /api/voltage`. This reads the voltage—no sensor is created, no config is modified, no resource is deleted. Observational only. Contrast with `POST /api/temp`—this creates a temperature reading, changing server state. Not safe.
+GET is idempotent and safe. No state change, and repeating it does nothing new. This is why GET is so powerful. When your ESP32 sends a GET request to the voltage API once, no state change and reads voltage. Sends it ten times, still no state change and reads voltage ten times. GET is both safe with no mutations and idempotent with the same result if repeated. This is why GET is so powerful. It can be retried, cached, prefetched, crawled, all without side effects.
 
+PUT is idempotent but unsafe. PUT changes state, but repeating it yields the same state. This makes PUT safe to retry after failures. When your dashboard sends a PUT request to the config API with a voltage threshold, PUT changes state because config is updated, but it's idempotent. Sending the same PUT again yields the same final state. This makes PUT safe to retry after failures. If a PUT times out, retrying with the same body is safe. Unsafe because it mutates state, but idempotent because the same final state results.
 
-## 4) Which Methods Are Safe
+DELETE is idempotent but unsafe. DELETE removes a resource, and removing it again changes nothing. Deleting twice is the same as deleting once. When your dashboard sends a DELETE request to the sensors API with a specific sensor ID once, the sensor is removed. Sends it again, the sensor is already gone with the same final state. DELETE is idempotent. Deleting twice is the same as deleting once. This makes DELETE safe to retry after failures. If a DELETE times out, retrying is safe. Unsafe because it mutates state, but idempotent because the same final state results.
 
-Safe methods include:
-	•	GET (e.g., `GET /api/voltage`)
-	•	HEAD (e.g., `HEAD /api/config`—check if exists without body)
-	•	OPTIONS (e.g., `OPTIONS /api/sensors`—check allowed methods)
+PATCH is conditionally idempotent. PATCH depends on what the patch does. An idempotent patch sets threshold to twelve point one. A non-idempotent patch increments counter by one. Same method, different semantics.
 
-They exist to read, not act.
+POST is not idempotent. POST submits work, creates resources, and triggers actions. Two identical POSTs may create two records like when your ESP32 registers a sensor twice, trigger two jobs like when your solar logger processes readings twice, or charge twice like payment processing. This is intentional. When your ESP32 sends POST to the sensors API twice, two sensor records are created. This is intentional. POST is not idempotent. Two identical POSTs may create two resources.
 
-Example: Your dashboard sends `GET /api/voltage`—safe, reads voltage. Or sends `HEAD /api/config`—safe, checks if config exists without fetching body. Or sends `OPTIONS /api/sensors`—safe, checks what methods are allowed. All are observational, no mutations.
+POST exists because sometimes you don't know the resource ID yet, the action is inherently one-time, or you're submitting work, not state. POST is for commands, not state replacement.
 
+## 5) Retries Are the Real Problem
 
-## 5) What “No Side Effects” Really Means
+The danger is not POST itself. The danger is retries. When your ESP32 sends a POST request to the temperature API and it succeeds, no problem. Or sends POST to the temperature API and times out, then retries, might create duplicate readings. POST itself isn't dangerous. Retries are. When failures happen like timeouts or connection drops, retries duplicate POST effects. That's why idempotency matters. It makes retries safe.
 
-“No side effects” means:
-	•	No persistent state change
-	•	No mutation of resources
-	•	No counters incremented
-	•	No logs written as a consequence of the request itself
+Retries happen because the response timed out, the connection dropped, the client crashed, the server restarted, or the network partitioned. The client does not know whether the server processed the request. When your ESP32 sends a POST request to the temperature API and times out after thirty seconds, did the Pi receive it? Process it? Unknown. Or your dashboard sends a PUT request to the config API and the connection drops mid-transfer. Did the Pi receive it? Unknown. Retries happen because failures are ambiguous. The client doesn't know what happened. Idempotency makes retries safe.
 
-Logging the request is fine.
-Changing application state is not.
+After a timeout, the client asks whether the server received the request or not. There are only three possibilities. The server never got it, the server got it but didn't finish, or the server finished but the response was lost. HTTP gives no built-in answer.
 
-Example: Your ESP32 sends `GET /api/voltage`. Your Pi may log "ESP32 requested voltage"—that's fine, logging is acceptable. But if the Pi increments a "request_count" counter or updates a "last_read" timestamp—that's a side effect, GET is no longer safe. Safe means no application state change, not no logging.
+If the operation is idempotent, retry is safe and final state is correct. If it is not, retry may duplicate effects. When your dashboard sends a PUT request to the config API with a voltage threshold and times out, PUT is idempotent. Retry is safe. Whether the Pi received it or not, retrying yields the same final state with threshold set to twelve point one. Or sends a POST request to the temperature API and times out. POST is not idempotent. Retry may duplicate effects. If the Pi already processed it, retrying creates a duplicate reading. Idempotency solves the did it happen problem.
 
+Retries may be triggered by HTTP client libraries, load balancers, reverse proxies, gateways, and mobile SDKs. Even if you don't retry, something else might. POST plus retry equals duplicate risk. This is why POST is dangerous under failure. POST to orders, timeout, retry, two orders created. Nothing went wrong at the protocol level.
 
-## 6) Why Safety Matters So Much
+## 6) Designing POST Safely
 
-Because safe methods may be:
-	•	Automatically retried
-	•	Prefetched by browsers
-	•	Crawled by search engines
-	•	Cached aggressively
-	•	Replayed by proxies
+You must design POST endpoints with retries in mind. Common strategies include idempotency keys like an Idempotency-Key header with a unique value, client-generated IDs like POST to the readings API with an ID field, deduplication windows like rejecting duplicate requests within five minutes, and explicit retry tokens like a Retry-Token header.
 
-If a safe method has side effects, those effects may happen unexpectedly.
+When your ESP32 sends a POST request to the temperature API with an Idempotency-Key header containing a unique value, if it times out and retries with the same key, your Pi recognizes the duplicate and returns the original response instead of creating a new reading. POST becomes effectively idempotent through idempotency keys.
 
-Example: Your dashboard sends `GET /api/voltage` and times out. Your HTTP library automatically retries—GET is safe, retries are fine. Or your browser prefetches `GET /api/config` links—safe to prefetch, no mutations. But if `GET /api/reboot` actually reboots the Pi, retries and prefetching cause multiple reboots—unexpected side effects. Safety matters because safe methods are trusted to be harmless.
+Your solar panel logger might send POST requests to the readings API with client-generated IDs. When the logger sends a reading with ID reading dash one two three, if the request times out and retries with the same ID, your Pi checks if that ID already exists. If it does, the Pi returns the original response instead of creating a duplicate. This makes POST effectively idempotent through client-generated IDs.
 
+Deduplication windows work by tracking recent requests and rejecting duplicates within a time window. When your coop controller sends a POST request to the door control API, your Pi records the request timestamp and parameters. If an identical request arrives within five minutes, your Pi recognizes it as a duplicate and returns the original response. This prevents duplicate door operations during network hiccups.
 
-## 7) The GET Trap
+An idempotency key is a client-generated unique identifier sent with the request, usually as a header. The server records the key and rejects or reuses duplicate requests with the same key. When your ESP32 sends a POST request to the temperature API with an Idempotency-Key header containing a unique value, your Pi records the key and creates the reading. If the ESP32 retries with the same key, your Pi recognizes it's a duplicate and returns the original two hundred one Created response instead of creating a new reading. The key makes POST effectively idempotent.
 
-If GET changes state:
-	•	Reloading a page mutates data
-	•	Crawlers trigger actions
-	•	Prefetching causes writes
-	•	Caching breaks correctness
+Idempotency keys are not magic. They require storage like a database to store keys and responses, expiration policies like expiring keys after twenty-four hours, and consistent behavior like the same key always returning the same response. But they turn POST into effectively idempotent. When your Pi stores idempotency keys in a database with expiration, keys expire after twenty-four hours. When your ESP32 retries with the same key, your Pi looks it up, finds the original response, and returns it. This requires storage and consistent behavior, but it turns POST into effectively idempotent. Not magic, but effective.
 
-This is one of the most common HTTP mistakes.
+If the client can choose the resource ID, PUT is safer, PUT is retry-friendly, and PUT avoids duplication. POST is often used out of habit, not necessity. When your dashboard creates a sensor with a known ID using PUT to the sensors API with a specific sensor ID and full configuration, PUT is idempotent. Creating it twice yields the same result. Or your ESP32 registers itself without knowing its ID using POST to the sensors API and letting the Pi assign the ID. If the client can choose the ID, PUT is safer. It's idempotent by design, no idempotency keys needed.
 
-Example: Your Pi implements `GET /api/increment_counter` that increments a counter. Your dashboard reloads the page—counter increments. A crawler visits—counter increments. Browser prefetches—counter increments. Caches cache mutations—everything breaks. This is the GET trap—using GET for mutations breaks the web. Use POST or PATCH instead.
+## 7) Safety vs Idempotency Matrix
 
+Let's make it explicit. GET is safe and idempotent like getting voltage from your Pi. HEAD is safe and idempotent like checking if a resource exists. OPTIONS is safe and idempotent like checking allowed methods. PUT is not safe but is idempotent like updating config with full replacement. DELETE is not safe but is idempotent like removing a sensor. PATCH is not safe, and idempotency depends on the operation like updating config with a threshold change is idempotent, but incrementing a counter is not. POST is not safe and not idempotent like creating a temperature reading. This table explains most HTTP bugs.
 
-## 8) Unsafe Methods: Side Effects Allowed
+Understanding this matrix helps you choose the right method for each operation. When your dashboard needs to read voltage data, GET is perfect because it's safe and idempotent. When updating a configuration threshold, PUT is ideal because it's idempotent and safe to retry. When creating a new sensor reading, POST is necessary but requires careful handling because it's neither safe nor idempotent. The matrix guides your method selection based on the operation's requirements.
 
-Unsafe methods may change state.
+When your ESP32 uses GET to the voltage API, it's safe and idempotent, retry freely. Or uses PUT to the config API, unsafe but idempotent, safe to retry. Or uses POST to the temperature API, unsafe and not idempotent, dangerous to retry. This table explains most HTTP bugs.
 
-These include:
-	•	POST (e.g., `POST /api/temp`—creates reading)
-	•	PUT (e.g., `PUT /api/config`—replaces config)
-	•	PATCH (e.g., `PATCH /api/config`—updates config)
-	•	DELETE (e.g., `DELETE /api/sensors/old_id`—removes sensor)
+Safety is about observation. Safe methods observe, inspect, and query. They should be invisible to the system's evolution. Idempotency is about recovery. Idempotent methods survive retries, tolerate duplication, and enable resilience. They make failure survivable. When your dashboard sends a PUT request to the config API and times out, PUT is idempotent. Retrying survives the failure, tolerates duplication because the same PUT twice equals the same result, enables resilience. Or sends a DELETE request to the sensors API with a specific sensor ID and times out. DELETE is idempotent. Retrying survives the failure. Idempotency is about recovery, making failures survivable through safe retries.
 
-Calling them has consequences.
+Safety is about trust. The web assumes GET is harmless, links are safe, and crawling won't destroy data. Break that trust and everything else breaks too. Idempotency is about uncertainty. Distributed systems assume messages may be duplicated, responses may be lost, and timeouts are ambiguous. Idempotency is how we live with that. When your ESP32 sends a POST request to the temperature API, the message might be duplicated through network retransmission, the response might be lost through connection drop, the timeout is ambiguous because you don't know if the Pi received it. Idempotency is how we live with that uncertainty. If operations are idempotent, duplication and ambiguity don't break correctness. Idempotency makes uncertainty survivable.
 
-Example: Your ESP32 sends `POST /api/temp`—creates a temperature reading, state changes. Or your dashboard sends `PUT /api/config`—replaces entire config, state changes. Or sends `DELETE /api/sensors/old_id`—removes sensor, state changes. Unsafe methods have consequences—they mutate state.
+## 8) Why These Are Invariants
 
+These rules are not conventions. They are assumptions baked into the ecosystem: browsers, proxies, caches, CDNs, APIs, and tooling. You violate them at your own risk. Browsers assume GET is safe. They prefetch GET links. Proxies assume idempotent methods are retry-safe. They retry GET, PUT, DELETE automatically. Caches assume GET doesn't mutate. They cache GET responses. If you violate these invariants like GET mutating state, browsers, proxies, and caches break. These are invariants. Violate them at your own risk.
 
-## 9) Unsafe Does Not Mean “Bad”
+Ignoring safety and idempotency leads to duplicate data like when your ESP32 retries POST and creates duplicate readings, inconsistent state like when GET mutates state and caches break, phantom actions like when crawlers trigger mutations, impossible debugging like why did this happen twice, and fragile systems that break under retries and failures. Usually discovered too late. When your ESP32 uses GET to an increment endpoint that increments a counter, it works in development. The counter increments. But it breaks in production. Browsers prefetch, crawlers index, caches cache mutations. Duplicate data, inconsistent state, phantom actions, impossible debugging, fragile systems. Usually discovered too late, after production deployment.
 
-Unsafe means:
+Your irrigation controller might use GET to trigger a watering cycle. In development, clicking the link waters the garden once. In production, search engine crawlers visit the link, browsers prefetch it, and caches serve it multiple times. The garden gets watered repeatedly, wasting water and potentially flooding plants. This is why safety matters. GET must not have side effects, or the entire web breaks.
 
-“This request may change something.”
+Your freezer temperature monitor might send POST requests to log temperature readings without idempotency keys. When the Wi‑Fi connection is unstable and requests timeout, automatic retries create duplicate temperature logs. Your database fills with duplicate readings, making it impossible to track actual temperature trends. This is why idempotency matters. POST requires careful design to handle retries safely.
 
-It does not mean:
-	•	The request is dangerous
-	•	The request is forbidden
-	•	The request is unreliable
+Before choosing a method, ask whether this is observational or mutational, can it be retried safely, what happens if it runs twice, and what happens if the response is lost. The method should encode the answer. When your ESP32 wants to send a temperature reading, is it observational or mutational? Mutational because it creates a reading. Can it be retried safely? No, might duplicate. What happens if it runs twice? Two readings created. What happens if the response is lost? Unknown if reading was created. Answer: POST to the temperature API. Not idempotent, handle retries carefully.
 
-It means: do not assume this can be repeated safely.
+This chapter is Phase 0 applied to HTTP. Invariants must hold like GET must not mutate state. Failure is normal like ESP32 timeouts and Pi crashes. Boundaries matter like HTTP versus transport failures. Absence does not equal error like timeout versus five hundred. Retries are reality like automatic retries by libraries and proxies. HTTP methods exist to encode those truths. When your ESP32 sends a GET request to the voltage API, invariant: GET must not mutate state. Or times out, failure is normal, retries are reality. HTTP methods encode these truths. Safety and idempotency make systems survivable.
 
+## Common Pitfalls
 
-## 10) Why Browsers Treat Unsafe Methods Carefully
+Confusing safety and idempotency leads to incorrect retry behavior. Safety means no state change. Idempotency means same result if repeated. GET is both. PUT and DELETE are idempotent but not safe. POST is neither. Understanding the difference is critical for proper retry logic.
 
-Browsers:
-	•	Warn on resubmitting POST
-	•	Do not prefetch POST
-	•	Require user intent
+Using GET for mutations breaks the web. When GET changes state, reloading pages mutates data, crawlers trigger actions, prefetching causes writes, and caching breaks correctness. This is one of the most common HTTP mistakes.
 
-They assume unsafe methods have consequences.
+Ignoring retries when designing POST endpoints causes duplicate operations. POST is not idempotent, so retries after timeouts can create duplicate resources. Design POST endpoints with idempotency keys, client-generated IDs, or deduplication windows.
 
-Example: Your dashboard submits a form with `POST /api/sensors`. Your browser warns "Are you sure you want to resubmit?"—POST has consequences. Or your browser doesn't prefetch POST links—unsafe methods aren't prefetched. Browsers assume unsafe methods have consequences—they require explicit user intent, not automatic behavior.
+Assuming you control all retries is dangerous. HTTP client libraries, load balancers, reverse proxies, gateways, and mobile SDKs may retry automatically. Even if you don't retry, something else might. Design for automatic retries.
 
-Example: Your dashboard submits a form with `POST /api/sensors`. Your browser warns "Are you sure you want to resubmit?"—POST has consequences. Or your browser doesn't prefetch POST links—unsafe methods aren't prefetched. Browsers assume unsafe methods have consequences—they require explicit user intent, not automatic behavior.
+Not understanding that idempotency is about final state, not identical responses, leads to confusion. PUT with the same body twice may write to disk twice and log twice, but the final state is identical. That's idempotent.
 
+## Summary
 
-## 11) Idempotency: Same Effect, No Matter How Many Times
+Safety and idempotency are HTTP invariants. Safe methods do not change state, including GET, HEAD, and OPTIONS. Idempotent methods tolerate retries, including GET, PUT, DELETE, HEAD, and OPTIONS. PATCH depends on the operation. GET is safe and idempotent, retry freely, cache, prefetch. PUT and DELETE are idempotent but unsafe, safe to retry, not safe to prefetch. POST is neither safe nor idempotent, dangerous to retry, requires careful design. Retries are unavoidable. Libraries, proxies, and load balancers retry automatically. Method choice is failure design. It determines retry safety, cache behavior, and system resilience. HTTP does not protect you from mistakes. It assumes you understand these invariants. These rules are assumptions baked into browsers, proxies, caches, CDNs, APIs, and tooling. Violate them at your own risk. Understanding safety and idempotency is critical for building robust systems that handle failures correctly.
 
-An idempotent operation produces the same result whether it runs once or many times.
+## Next
 
-Important:
-	•	“Same result” means same final state
-	•	It does not mean the response is identical
-	•	It does not mean no work happens
-
-
-## 12) Idempotency Is About Final State
-
-Example:
-	•	PUT /resource with value X
-	•	PUT /resource with value X again
-
-The server may:
-	•	Write to disk twice
-	•	Log twice
-	•	Do work twice
-
-But the final state is identical.
-
-That’s idempotent.
-
-
-## 13) Which Methods Are Idempotent
-
-Idempotent methods include:
-	•	GET (e.g., `GET /api/voltage`—same result if repeated)
-	•	PUT (e.g., `PUT /api/config`—same final state if repeated)
-	•	DELETE (e.g., `DELETE /api/sensors/old_id`—same final state if repeated)
-	•	HEAD (e.g., `HEAD /api/config`—same result if repeated)
-	•	OPTIONS (e.g., `OPTIONS /api/sensors`—same result if repeated)
-
-PATCH may be idempotent—depending on the operation (e.g., `PATCH /api/config` with `{"voltage_threshold": 12.1}`—idempotent; `PATCH /api/stats` with `{"increment": 1}`—not idempotent).
-
-POST is not idempotent (e.g., `POST /api/temp`—creates new reading each time).
-
-
-## 14) GET Is Idempotent and Safe
-	•	No state change
-	•	Repeating it does nothing new
-
-This is why GET is so powerful.
-
-Example: Your ESP32 sends `GET /api/voltage` once—no state change, reads voltage. Sends it ten times—still no state change, reads voltage ten times. GET is both safe (no mutations) and idempotent (same result if repeated). This is why GET is so powerful—it can be retried, cached, prefetched, crawled, all without side effects.
-
-
-## 15) PUT Is Idempotent but Unsafe
-
-PUT:
-	•	Changes state
-	•	But repeating it yields the same state
-
-This makes PUT safe to retry after failures.
-
-Example: Your dashboard sends `PUT /api/config` with `{"voltage_threshold": 12.1}`. PUT changes state (config is updated), but it's idempotent—sending the same PUT again yields the same final state. This makes PUT safe to retry after failures—if a PUT times out, retrying with the same body is safe. Unsafe (mutates state) but idempotent (same final state).
-
-
-## 16) DELETE Is Idempotent but Unsafe
-
-DELETE:
-	•	Removes a resource
-	•	Removing it again changes nothing
-
-Deleting twice is the same as deleting once.
-
-Example: Your dashboard sends `DELETE /api/sensors/old_id` once—sensor removed. Sends it again—sensor already gone, same final state. DELETE is idempotent—deleting twice is the same as deleting once. This makes DELETE safe to retry after failures—if a DELETE times out, retrying is safe. Unsafe (mutates state) but idempotent (same final state).
-
-
-## 17) PATCH Is Conditionally Idempotent
-
-PATCH depends on what the patch does.
-
-Idempotent patch:
-	•	“Set threshold to 12.1”
-
-Non-idempotent patch:
-	•	“Increment counter by 1”
-
-Same method. Different semantics.
-
-
-## 18) POST Is Not Idempotent
-
-POST:
-	•	Submits work
-	•	Creates resources
-	•	Triggers actions
-
-Two identical POSTs may:
-	•	Create two records (e.g., ESP32 registers sensor twice)
-	•	Trigger two jobs (e.g., solar logger processes readings twice)
-	•	Charge twice (e.g., payment processing)
-
-This is intentional.
-
-Example: Your ESP32 sends `POST /api/sensors` twice. Two sensor records are created—this is intentional. POST is not idempotent—two identical POSTs may create two resources.
-
-
-## 19) Why POST Exists Anyway
-
-Because sometimes:
-	•	You don’t know the resource ID yet
-	•	The action is inherently one-time
-	•	You’re submitting work, not state
-
-POST is for commands, not state replacement.
-
-
-## 20) Retries Are the Real Problem
-
-The danger is not POST itself.
-
-The danger is retries.
-
-Example: Your ESP32 sends `POST /api/temp` and it succeeds—no problem. Or sends `POST /api/temp` and times out, then retries—might create duplicate readings. POST itself isn't dangerous—retries are. When failures happen (timeouts, connection drops), retries duplicate POST effects. That's why idempotency matters—it makes retries safe.
-
-Example: Your ESP32 sends `POST /api/temp` and it succeeds—no problem. Or sends `POST /api/temp` and times out, then retries—might create duplicate readings. POST itself isn't dangerous—retries are. When failures happen (timeouts, connection drops), retries duplicate POST effects. That's why idempotency matters—it makes retries safe.
-
-
-## 21) Why Retries Happen
-
-Retries happen because:
-	•	The response timed out
-	•	The connection dropped
-	•	The client crashed
-	•	The server restarted
-	•	The network partitioned
-
-The client does not know whether the server processed the request.
-
-Example: Your ESP32 sends `POST /api/temp` and times out after 30 seconds. Did the Pi receive it? Process it? Unknown. Or your dashboard sends `PUT /api/config` and the connection drops mid-transfer. Did the Pi receive it? Unknown. Retries happen because failures are ambiguous—the client doesn't know what happened. Idempotency makes retries safe.
-
-
-## 22) The “Did It Happen?” Problem
-
-After a timeout, the client asks:
-
-“Did the server receive my request or not?”
-
-There are only three possibilities:
-	1.	The server never got it
-	2.	The server got it but didn’t finish
-	3.	The server finished but the response was lost
-
-HTTP gives no built-in answer.
-
-
-## 23) Why Idempotency Solves This
-
-If the operation is idempotent:
-	•	Retry is safe
-	•	Final state is correct
-
-If it is not:
-	•	Retry may duplicate effects
-
-Example: Your dashboard sends `PUT /api/config` with `{"voltage_threshold": 12.1}` and times out. PUT is idempotent—retry is safe. Whether the Pi received it or not, retrying yields the same final state (threshold is 12.1). Or sends `POST /api/temp` and times out. POST is not idempotent—retry may duplicate effects. If the Pi already processed it, retrying creates a duplicate reading. Idempotency solves the "did it happen?" problem.
-
-Example: Your dashboard sends `PUT /api/config` with `{"voltage_threshold": 12.1}` and times out. PUT is idempotent—retry is safe. Whether the Pi received it or not, retrying yields the same final state (threshold is 12.1). Or sends `POST /api/temp` and times out. POST is not idempotent—retry may duplicate effects. If the Pi already processed it, retrying creates a duplicate reading. Idempotency solves the "did it happen?" problem.
-
-
-## 24) Automatic Retries in the Real World
-
-Retries may be triggered by:
-	•	HTTP client libraries
-	•	Load balancers
-	•	Reverse proxies
-	•	Gateways
-	•	Mobile SDKs
-
-Even if you don’t retry, something else might.
-
-
-## 25) POST + Retry = Duplicate Risk
-
-This is why POST is dangerous under failure.
-
-Example:
-	•	POST /orders
-	•	Timeout
-	•	Retry
-	•	Two orders created
-
-Nothing “went wrong” at the protocol level.
-
-
-## 26) Designing POST Safely
-
-You must design POST endpoints with retries in mind.
-
-Common strategies:
-	•	Idempotency keys (e.g., `Idempotency-Key: esp32-temp-2024-01-30-12:34:56`)
-	•	Client-generated IDs (e.g., `POST /api/readings` with `{"id": "reading-123", ...}`)
-	•	Deduplication windows (e.g., reject duplicate requests within 5 minutes)
-	•	Explicit retry tokens (e.g., `Retry-Token: abc123`)
-
-Example: Your ESP32 sends `POST /api/temp` with header `Idempotency-Key: esp32-temp-2024-01-30-12:34:56`. If it times out and retries with the same key, your Pi recognizes the duplicate and returns the original response instead of creating a new reading. POST becomes effectively idempotent through idempotency keys.
-
-
-## 27) Idempotency Keys
-
-An idempotency key is:
-	•	A client-generated unique identifier
-	•	Sent with the request (usually a header)
-
-The server:
-	•	Records the key
-	•	Rejects or reuses duplicate requests with the same key
-
-Example: Your ESP32 sends `POST /api/temp` with header `Idempotency-Key: esp32-temp-2024-01-30-12:34:56`. Your Pi records the key and creates the reading. If the ESP32 retries with the same key, your Pi recognizes it's a duplicate and returns the original `201 Created` response instead of creating a new reading. The key makes POST effectively idempotent.
-
-
-## 28) Idempotency Keys Are Not Magic
-
-They require:
-	•	Storage (e.g., database to store keys and responses)
-	•	Expiration policies (e.g., expire keys after 24 hours)
-	•	Consistent behavior (e.g., same key always returns same response)
-
-But they turn POST into effectively idempotent.
-
-Example: Your Pi stores idempotency keys in a database with expiration (keys expire after 24 hours). When your ESP32 retries with the same key, your Pi looks it up, finds the original response, and returns it. This requires storage and consistent behavior—but it turns POST into effectively idempotent. Not magic, but effective.
-
-
-## 29) Why PUT Often Beats POST
-
-If the client can choose the resource ID:
-	•	PUT is safer
-	•	PUT is retry-friendly
-	•	PUT avoids duplication
-
-POST is often used out of habit, not necessity.
-
-Example: Your dashboard creates a sensor with a known ID: `PUT /api/sensors/manual_sensor_1` with full configuration. PUT is idempotent—creating it twice yields the same result. Or your ESP32 registers itself without knowing its ID: `POST /api/sensors`, let the Pi assign the ID. If the client can choose the ID, PUT is safer—it's idempotent by design, no idempotency keys needed.
-
-
-## 30) Safety vs Idempotency Matrix
-
-Let’s make it explicit:
-
-Method	Safe	Idempotent
-GET	Yes	Yes (e.g., `GET /api/voltage`)
-HEAD	Yes	Yes
-OPTIONS	Yes	Yes
-PUT	No	Yes (e.g., `PUT /api/config`)
-DELETE	No	Yes (e.g., `DELETE /api/sensors/old_id`)
-PATCH	No	Depends (e.g., `PATCH /api/config`—depends on operation)
-POST	No	No (e.g., `POST /api/temp`)
-
-This table explains most HTTP bugs.
-
-Example: Your ESP32 uses `GET /api/voltage`—safe and idempotent, retry freely. Or uses `PUT /api/config`—unsafe but idempotent, safe to retry. Or uses `POST /api/temp`—unsafe and not idempotent, dangerous to retry. This table explains most HTTP bugs.
-
-
-## 31) Safety Is About Observation
-
-Safe methods:
-	•	Observe
-	•	Inspect
-	•	Query
-
-They should be invisible to the system’s evolution.
-
-
-## 32) Idempotency Is About Recovery
-
-Idempotent methods:
-	•	Survive retries
-	•	Tolerate duplication
-	•	Enable resilience
-
-They make failure survivable.
-
-Example: Your dashboard sends `PUT /api/config` and times out. PUT is idempotent—retrying survives the failure, tolerates duplication (same PUT twice = same result), enables resilience. Or sends `DELETE /api/sensors/old_id` and times out. DELETE is idempotent—retrying survives the failure. Idempotency is about recovery—making failures survivable through safe retries.
-
-
-## 33) Safety Is About Trust
-
-The web assumes:
-	•	GET is harmless
-	•	Links are safe
-	•	Crawling won’t destroy data
-
-Break that trust and everything else breaks too.
-
-
-## 34) Idempotency Is About Uncertainty
-
-Distributed systems assume:
-	•	Messages may be duplicated
-	•	Responses may be lost
-	•	Timeouts are ambiguous
-
-Idempotency is how we live with that.
-
-Example: Your ESP32 sends `POST /api/temp` and the message might be duplicated (network retransmission), the response might be lost (connection drop), the timeout is ambiguous (did the Pi receive it?). Idempotency is how we live with that uncertainty—if operations are idempotent, duplication and ambiguity don't break correctness. Idempotency makes uncertainty survivable.
-
-Example: Your ESP32 sends `POST /api/temp` and the message might be duplicated (network retransmission), the response might be lost (connection drop), the timeout is ambiguous (did the Pi receive it?). Idempotency is how we live with that uncertainty—if operations are idempotent, duplication and ambiguity don't break correctness. Idempotency makes uncertainty survivable.
-
-
-## 35) Why These Are Invariants
-
-These rules are not conventions.
-
-They are assumptions baked into the ecosystem:
-	•	Browsers
-	•	Proxies
-	•	Caches
-	•	CDNs
-	•	APIs
-	•	Tooling
-
-You violate them at your own risk.
-
-Example: Browsers assume GET is safe—they prefetch GET links. Proxies assume idempotent methods are retry-safe—they retry GET, PUT, DELETE automatically. Caches assume GET doesn't mutate—they cache GET responses. If you violate these invariants (e.g., GET mutates state), browsers, proxies, and caches break. These are invariants—violate them at your own risk.
-
-
-## 36) The Cost of Ignoring Them
-
-Ignoring safety and idempotency leads to:
-	•	Duplicate data (e.g., ESP32 retries POST, creates duplicate readings)
-	•	Inconsistent state (e.g., GET mutates state, caches break)
-	•	Phantom actions (e.g., crawlers trigger mutations)
-	•	Impossible debugging (e.g., "why did this happen twice?")
-	•	Fragile systems (e.g., breaks under retries, failures)
-
-Usually discovered too late.
-
-Example: Your ESP32 uses `GET /api/increment` that increments a counter. Works in development—counter increments. Breaks in production—browsers prefetch, crawlers index, caches cache mutations. Duplicate data, inconsistent state, phantom actions, impossible debugging, fragile systems. Usually discovered too late—after production deployment.
-
-
-## 37) The Mental Model
-
-Before choosing a method, ask:
-	•	Is this observational or mutational?
-	•	Can it be retried safely?
-	•	What happens if it runs twice?
-	•	What happens if the response is lost?
-
-The method should encode the answer.
-
-Example: Your ESP32 wants to send a temperature reading. Observational or mutational? Mutational—creates a reading. Can it be retried safely? No—might duplicate. What happens if it runs twice? Two readings created. What happens if the response is lost? Unknown if reading was created. Answer: `POST /api/temp`—not idempotent, handle retries carefully.
-
-
-## 38) Phase 0 Revisited
-
-This chapter is Phase 0 applied to HTTP:
-	•	Invariants must hold (e.g., GET must not mutate state)
-	•	Failure is normal (e.g., ESP32 timeouts, Pi crashes)
-	•	Boundaries matter (e.g., HTTP vs transport failures)
-	•	Absence ≠ error (e.g., timeout vs 500)
-	•	Retries are reality (e.g., automatic retries by libraries, proxies)
-
-HTTP methods exist to encode those truths.
-
-Example: Your ESP32 sends `GET /api/voltage`—invariant: GET must not mutate state. Or times out—failure is normal, retries are reality. HTTP methods encode these truths—safety and idempotency make systems survivable.
-
-
-## Reflection
-You send a POST to create an order.
-The request times out.
-You retry.
-
-How many orders exist now?
-
-If the answer is “I don’t know,” your design is incomplete.
-
-
-## Core Understanding
-
-Safety and idempotency are HTTP invariants:
-	•	Safe methods do not change state (GET, HEAD, OPTIONS)
-	•	Idempotent methods tolerate retries (GET, PUT, DELETE, HEAD, OPTIONS; PATCH depends)
-	•	GET is safe and idempotent (retry freely, cache, prefetch)
-	•	PUT and DELETE are idempotent but unsafe (safe to retry, not safe to prefetch)
-	•	POST is neither safe nor idempotent (dangerous to retry, requires careful design)
-	•	Retries are unavoidable (libraries, proxies, load balancers retry automatically)
-	•	Method choice is failure design (determines retry safety, cache behavior, system resilience)
-
-HTTP does not protect you from mistakes.
-It assumes you understand these invariants.
-
-This chapter builds on Chapter 2.13 (HTTP methods). Next: Chapter 2.15 — Headers: Overview and Purpose, where we explore how HTTP carries metadata, control signals, authentication, caching, and state without breaking statelessness. This is where HTTP stops being "requests and responses" and becomes a control plane.
-
-
-## What's Next
-Next is Chapter 2.15: Headers — Overview and Purpose, where we explore how HTTP carries metadata, control signals, authentication, caching, and state without breaking statelessness.
-
-This is where HTTP stops being “requests and responses” and becomes a control plane.
+This chapter built on Chapter 1.13, which covered HTTP methods. Next, Chapter 1.15 explores headers, showing how HTTP carries metadata, control signals, authentication, caching, and state without breaking statelessness. This is where HTTP stops being requests and responses and becomes a control plane.

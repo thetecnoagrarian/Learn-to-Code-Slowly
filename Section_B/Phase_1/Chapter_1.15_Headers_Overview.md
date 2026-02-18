@@ -1,639 +1,148 @@
-# Phase 2 · Chapter 2.15: Headers — Overview and Purpose
+# Section B Phase 1 · Chapter 1.15: Headers — Overview and Purpose
 
-This chapter builds on [Chapter 2.1: Request-Response](Chapter_2.1_Request-Response.md), [Chapter 2.2: HTTP on TCP](Chapter_2.2_HTTP_on_TCP.md), [Chapter 2.3: What HTTP Is](Chapter_2.3_What_HTTP_Is.md), [Chapter 2.4: HTTP as Text](Chapter_2.4_HTTP_as_Text.md), [Chapter 2.5: Statelessness and Connection Lifecycle](Chapter_2.5_Statelessness_and_Connection_Lifecycle.md), [Chapter 2.6: Request Structure](Chapter_2.6_Request_Structure.md), [Chapter 2.7: The Request Line](Chapter_2.7_The_Request_Line.md), [Chapter 2.8: Response Structure](Chapter_2.8_Response_Structure.md), [Chapter 2.9: Status Codes Overview](Chapter_2.9_Status_Codes_Overview.md), [Chapter 2.10: Status Codes — Success and Redirects](Chapter_2.10_Status_Codes_Success_and_Redirects.md), [Chapter 2.11: Status Codes — Client and Server Errors](Chapter_2.11_Status_Codes_Client_and_Server_Errors.md), [Chapter 2.12: Errors vs Failures](Chapter_2.12_Errors_vs_Failures.md), [Chapter 2.13: HTTP Methods](Chapter_2.13_HTTP_Methods.md), and [Chapter 2.14: Safety and Idempotency](Chapter_2.14_Safety_and_Idempotency.md).
+## Learning Objectives
 
-Headers are not decoration.
-They are not optional fluff.
-They are how HTTP works beyond “send bytes.”
+After this chapter, you will be able to:
+- Understand what HTTP headers are and how they differ from the body
+- Distinguish request headers from response headers and their roles
+- Recognize that headers are untrusted input and must be validated
+- Use common headers for content type, length, caching, and authentication
+- Understand how headers enable statelessness and protocol extension
+- Design systems that treat headers as control metadata, not payload
 
-The request line and status line establish what is happening.
-Headers establish how it should be interpreted, controlled, cached, authenticated, negotiated, retried, or rejected.
+## Key Terms
 
-If you misunderstand headers, you will misunderstand HTTP. Chapter 2.6 showed request structure; Chapter 2.8 showed response structure; this chapter focuses on headers—the metadata that controls how HTTP behaves. Whether your ESP32 sends authentication credentials, your dashboard negotiates content formats, or your Pi controls caching—headers are the control surface of HTTP.
+- **Header**: Key–value metadata attached to an HTTP request or response
+- **Request Header**: Header sent by the client to the server
+- **Response Header**: Header sent by the server to the client
+- **Content-Type**: Header that describes the format of the body
+- **Content-Length**: Header that specifies the exact byte length of the body
+- **Authorization**: Header that carries credentials
+- **Cache-Control**: Header that controls caching behavior
+- **Host**: Required header in HTTP/1.1 that identifies the target host
 
+## 1) What Headers Are and Why They Matter
 
-## 1) What Headers Actually Are
+Headers are not decoration. They are not optional fluff. They are how HTTP works beyond send bytes. The request line and status line establish what is happening. Headers establish how it should be interpreted, controlled, cached, authenticated, negotiated, retried, or rejected. If you misunderstand headers, you will misunderstand HTTP.
 
-Headers are key–value metadata attached to a request or response.
+Chapter 1.6 showed request structure. Chapter 1.8 showed response structure. This chapter focuses on headers, the metadata that controls how HTTP behaves. Whether your ESP32 sends authentication credentials, your dashboard negotiates content formats, or your Pi controls caching, headers are the control surface of HTTP.
 
-They:
-	•	Describe the body (e.g., `Content-Type: application/json`)
-	•	Control behavior (e.g., `Cache-Control: no-cache`)
-	•	Carry credentials (e.g., `Authorization: Bearer xyz`)
-	•	Enable caching (e.g., `ETag: "abc123"`)
-	•	Signal capabilities (e.g., `Accept: application/json`)
-	•	Negotiate formats (e.g., `Accept-Language: en`)
-	•	Encode constraints (e.g., `If-None-Match: "abc123"`)
+Headers are key–value metadata attached to a request or response. They describe the body, such as Content-Type application slash JSON. They control behavior, such as Cache-Control no-cache. They carry credentials, such as Authorization Bearer followed by a token. They enable caching, such as ETag. They signal capabilities, such as Accept application slash JSON. They negotiate formats, such as Accept-Language. They encode constraints, such as If-None-Match. They do not replace the body. They frame the body.
 
-They do not replace the body.
-They frame the body.
+When your ESP32 sends a POST request to the temperature API with a body containing a temperature reading and headers for Content-Type application slash JSON, Content-Length, and Authorization Bearer followed by a token, the headers frame the body. They describe it as JSON, indicate how many bytes, and carry credentials. Headers do not replace the body. They frame it.
 
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5}` and headers `Content-Type: application/json`, `Content-Length: 15`, `Authorization: Bearer xyz`. The headers frame the body—they describe it (JSON), control behavior (15 bytes), and carry credentials (auth token). Headers don't replace the body—they frame it.
+Your solar panel logger might send a POST request to the readings API with headers describing the payload as JSON and carrying an API key in Authorization. Your coop door controller might send a GET request to the fence status API with Accept application slash JSON so the Pi knows to return JSON. In every case, headers provide the context that turns raw bytes into a meaningful exchange.
 
+Headers live at the boundary. In HTTP, the request crosses from client to server, and headers are part of that boundary. They are untrusted input. Every header must be treated as data supplied by something outside your control. Headers are not the message itself. The body is the payload. Headers describe how to interpret the payload and modify how the exchange behaves. Confusing headers with body data leads to broken designs.
 
-## 2) Headers Live at the Boundary
+When your ESP32 sends a POST request to the temperature API with a body containing temperature and sensor ID and a Content-Type header of application slash JSON, the body is the payload, the temperature data. The header describes how to interpret it as JSON. Do not put the temperature data in a header. That is payload, not metadata. Headers are control. Body is content.
 
-Phase 0.8: boundaries are where validation lives.
+HTTP does not know what your data means, what format it is, how it should be cached, or who is allowed to see it. Headers provide that context. Without headers, HTTP would be uselessly vague. When your ESP32 sends a POST request to the temperature API with a body containing a temperature reading, HTTP does not know whether it is JSON, XML, or plain text, how it should be cached, or who is allowed to see it. Headers provide context: Content-Type for format, Cache-Control for caching, Authorization for permissions. Without headers, HTTP is uselessly vague.
 
-In HTTP:
-	•	The request crosses from client → server
-	•	Headers are part of that boundary
-	•	They are untrusted input
+## 2) Request Headers vs Response Headers
 
-Every header must be treated as:
+Headers mean different things depending on direction. Request headers go from client to server, such as Authorization and Accept. Response headers go from server to client, such as Set-Cookie and Location. Some headers are valid in both directions, such as Content-Type and Content-Length. Some are not. Authorization is request-only. Set-Cookie is response-only.
 
-“Data supplied by something outside my control.”
+When your ESP32 sends a GET request to the voltage API with Accept application slash JSON, that is a request header expressing client preference. Your Pi responds with Content-Type application slash JSON, a response header describing what the server returned. Or both use Content-Type: the request describes what you are sending, the response describes what you are returning. Direction matters.
 
+Request headers typically communicate who the client is, such as User-Agent ESP32-Sensor slash 1.0, what it can accept, such as Accept application slash JSON, how it wants the server to behave, such as Cache-Control no-cache, what credentials it presents, such as Authorization Bearer followed by a token, and how the request should be handled, such as Connection keep-alive. They express intent, not truth.
 
-## 3) Headers Are Not Payload
+When your ESP32 sends a GET request to the voltage API with User-Agent ESP32-Sensor slash 1.0, Accept application slash JSON, and Authorization Bearer followed by a token, these express intent. The ESP32 wants JSON, claims to be ESP32-Sensor, presents a token. But they are not truth. Validate everything. Do not trust blindly.
 
-Headers are not the message itself.
-	•	The body is the payload
-	•	Headers describe how to interpret the payload
-	•	Headers modify how the exchange behaves
+Common request headers include Host, such as Host pi dot local, User-Agent, Accept, Authorization, Content-Type, Content-Length, and Cookie. Each exists for a specific reason. When your ESP32 sends a GET request to the voltage API with Host pi dot local, User-Agent ESP32-Sensor slash 1.0, and Accept application slash JSON, these headers tell your Pi who is asking, what format is acceptable, and which host to route to.
 
-Confusing headers with body data leads to broken designs.
+Response headers typically communicate what the server returned, such as Content-Type, how to interpret it, such as Content-Length, whether it may be cached, such as Cache-Control max-age equals sixty, whether the client should store state, such as Set-Cookie, and what to do next, such as Location. They are instructions, not suggestions.
 
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5, "sensor_id": "esp32_coop"}` and header `Content-Type: application/json`. The body is the payload (temperature data), the header describes how to interpret it (JSON). Don't put `{"temp": 72.5}` in a header—that's payload, not metadata. Headers are control, body is content.
+When your Pi responds to a GET request to the voltage API with Content-Type application slash JSON, Content-Length, Cache-Control max-age equals sixty, and ETag, these are instructions. Your dashboard must obey them. Not suggestions. Instructions.
 
+Common response headers include Content-Type, Content-Length, Cache-Control, Set-Cookie, Location, and ETag. Clients are expected to obey them. When your Pi responds to a GET request to the voltage API with Content-Type application slash JSON, Content-Length, and Cache-Control max-age equals sixty, your dashboard must obey these headers: parse JSON, read exactly the stated number of bytes, cache for sixty seconds.
 
-## 4) Headers Exist Because HTTP Is Generic
+Your freezer monitor might request temperature history with Accept application slash JSON and receive response headers that describe the body format and caching. Your irrigation controller might send a POST request with Content-Type and Content-Length so the Pi knows how to parse the schedule data. Request and response headers work together to make each exchange unambiguous.
 
-HTTP does not know:
-	•	What your data means
-	•	What format it is
-	•	How it should be cached
-	•	Who is allowed to see it
+Certain headers apply in both directions. Cache-Control in a request expresses client preferences; in a response it gives server instructions. Content-Type in a request describes what you are sending; in a response what you are returning. Content-Length and Connection work similarly. The meaning depends on direction. When your ESP32 sends a POST request to the temperature API with Content-Type application slash JSON in the request, and your Pi responds with Content-Type application slash JSON in the response, same header name, different direction, different meaning.
 
-Headers provide that context.
+## 3) Headers as Extension Point and Format
 
-Without headers, HTTP would be uselessly vague.
+HTTP is deliberately conservative. Instead of changing the core grammar, new behavior is added via headers, old clients can ignore unknown headers, and new clients can opt into new features. This is how HTTP evolves without breaking everything. Changing the request line would break parsers, proxies, and caches. Adding headers preserves compatibility, enables gradual adoption, and keeps the protocol stable. Headers are evolutionary pressure relief.
 
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5}`. HTTP doesn't know what this means—is it JSON? XML? Plain text? How should it be cached? Who's allowed to see it? Headers provide context: `Content-Type: application/json` (format), `Cache-Control: no-cache` (caching), `Authorization: Bearer xyz` (permissions). Without headers, HTTP is uselessly vague.
+When you add idempotency via a header like Idempotency-Key, old clients ignore it and new clients use it. Changing the request line would break everything. Headers let you add features without breaking compatibility.
 
+Header names are case-insensitive. Content-Type, content-type, and CONTENT-TYPE are all equivalent. Header values may be case-sensitive depending on semantics. When your ESP32 sends content-type application slash JSON and your Pi receives it as Content-Type application slash JSON, same header, different casing, equivalent. The value application slash JSON is typically case-sensitive; Application slash Json may be different. Different implementations format differently, humans type them manually, and proxies rewrite them. The protocol does not care about capitalization. Case-insensitivity makes HTTP robust.
 
-## 5) Request Headers vs Response Headers
+Each header is name colon value, one header per line, colon separates name from value, optional whitespace around the value. Simple by design. When your ESP32 sends Host pi dot local, Content-Type application slash JSON, and Content-Length, one header per line, colon separates name from value.
 
-Headers mean different things depending on direction.
-	•	Request headers: client → server (e.g., `Authorization`, `Accept`)
-	•	Response headers: server → client (e.g., `Set-Cookie`, `Location`)
+The server reads the request line, then reads headers, then encounters the blank line, then decides how or whether to read the body. Headers control body parsing. When your ESP32 sends a POST request to the temperature API with headers Content-Type application slash JSON, Content-Length fifteen, then blank line, then body, your Pi reads the request line first, then headers, then blank line, then uses Content-Length to know exactly how many bytes to read. Headers control body parsing.
 
-Some headers are valid in both directions (e.g., `Content-Type`, `Content-Length`).
-Some are not (e.g., `Authorization` is request-only, `Set-Cookie` is response-only).
+Content-Type answers what does this body mean. Without it, the body is just bytes. Content-Length tells the receiver exactly how many bytes belong to the body. Without it, the receiver cannot safely parse the stream. When your ESP32 sends a POST request to the temperature API with a body and Content-Length fifteen, your Pi reads exactly fifteen bytes then stops. Without Content-Length, your Pi does not know when the body ends. Content-Length makes streaming safe. Because HTTP rides on TCP, the body is a byte stream and headers tell you where it ends. This prevents hanging reads, truncated parsing, and protocol confusion.
 
-Example: Your ESP32 sends `GET /api/voltage` with `Accept: application/json` (request header—client preference). Your Pi responds with `Content-Type: application/json` (response header—server description). Or both use `Content-Type`—request describes what you're sending, response describes what you're returning. Direction matters.
+Your dashboard might request sensor list with Accept application slash JSON and receive a large JSON array. Content-Length in the response tells the client exactly how many bytes to read before the body is complete. Without it, the client might wait forever or truncate the response. Headers enable streaming safety for both requests and responses. When your barn temperature sensor sends a batch of readings in the body, Content-Length ensures the Pi reads the full batch and does not mix it with the next request on a reused connection.
 
+## 4) Security and Validation
 
-## 6) Request Headers: Client Intent and Capabilities
+Headers can be forged. Never forget that clients control request headers, browsers can be spoofed, scripts can lie, and proxies can alter data. Headers are claims, not facts. When your ESP32 sends User-Agent ESP32-Sensor slash 1.0, it could be lying. When it sends Authorization Bearer followed by a token, it could be forged or stolen. Headers are claims. Validate everything. Trust nothing.
 
-Request headers typically communicate:
-	•	Who the client is (e.g., `User-Agent: ESP32-Sensor/1.0`)
-	•	What it can accept (e.g., `Accept: application/json`)
-	•	How it wants the server to behave (e.g., `Cache-Control: no-cache`)
-	•	What credentials it presents (e.g., `Authorization: Bearer xyz`)
-	•	How the request should be handled (e.g., `Connection: keep-alive`)
+You must validate presence, such as whether Authorization is present, format, such as whether Authorization Bearer token format is correct, allowed values, such as whether the token is valid and not expired, consistency with other headers, and consistency with the body, such as whether Content-Length matches actual body size. Headers are input. When your ESP32 sends Authorization Bearer followed by a token, your Pi validates presence, format, token validity, and expiration. Headers are input. Never trust headers blindly.
 
-They express intent, not truth.
+Host tells the server which site the client is trying to reach. Without it, one IP cannot host multiple sites and virtual hosting breaks. HTTP/1.1 requires it. User-Agent describes the client. It helps debugging and analytics and sometimes triggers workarounds. It should never be trusted for security decisions. When your ESP32 sends User-Agent ESP32-Sensor slash 1.0, your Pi may log it for debugging. But never trust it for security. User-Agent is descriptive, not authoritative.
 
-Example: Your ESP32 sends `GET /api/voltage` with `User-Agent: ESP32-Sensor/1.0` (who I am), `Accept: application/json` (what I can accept), `Authorization: Bearer xyz` (credentials I present). These express intent—the ESP32 wants JSON, claims to be ESP32-Sensor/1.0, presents a token. But they're not truth—validate everything, don't trust blindly.
+Accept tells the server which formats are acceptable to the client. It enables content negotiation, multiple representations, and graceful degradation. Authorization carries credentials. Examples include Basic with base64 username colon password, Bearer tokens, and custom schemes. This header is extremely sensitive. When your ESP32 sends a GET request to the sensors API with Authorization Bearer followed by a token, your Pi validates the token and allows access. This header is extremely sensitive. Protect it, validate it, never log it in plain form.
 
+The same request line with different headers may authenticate or not, cache or not, return JSON or HTML, or be accepted or rejected. Headers are not secondary. They are decisive. When your dashboard sends a GET request to the voltage API with Accept application slash JSON, it gets JSON. With Accept text slash HTML, it gets HTML. With Authorization it may be authenticated; without it, four hundred one Unauthorized. Same request line, different headers, completely different semantics.
 
-## 7) Common Request Headers
+## 5) Headers and Statelessness
 
-Examples:
-	•	Host (e.g., `Host: pi.local`)
-	•	User-Agent (e.g., `User-Agent: HomesteadDashboard/1.0`)
-	•	Accept (e.g., `Accept: application/json`)
-	•	Authorization (e.g., `Authorization: Bearer xyz`)
-	•	Content-Type (e.g., `Content-Type: application/json`)
-	•	Content-Length (e.g., `Content-Length: 24`)
-	•	Cookie (e.g., `Cookie: session=abc123`)
+HTTP is stateless because state is carried in headers: tokens, cookies, ETags, versions. The server does not remember you. You bring context each time. When your ESP32 sends a GET request to the sensors API with Authorization Bearer, Cookie session, and If-None-Match for an ETag, your Pi does not remember the ESP32. The ESP32 brings context each time via headers. Headers enable statelessness.
 
-Each exists for a specific reason.
+Cookies are just headers. Set-Cookie in the response, Cookie in the request. They are not magic. They are structured metadata. When your Pi responds to a POST request to the login API with Set-Cookie session equals value and path, your dashboard stores this. On the next request, your dashboard sends Cookie session equals value. Cookies are just headers. Set-Cookie sets state. Cookie carries state.
 
-Example: Your ESP32 sends `GET /api/voltage` with `Host: pi.local`, `User-Agent: ESP32-Sensor/1.0`, `Accept: application/json`. These headers tell your Pi who's asking, what format is acceptable, and which host to route to.
+Caching behavior is largely header-driven. Cache-Control, ETag, If-None-Match, Expires. Without headers, caching would be unsafe. When your Pi responds to a GET request to the voltage API with Cache-Control max-age equals sixty and ETag, your dashboard caches for sixty seconds. On the next request, your dashboard sends If-None-Match with that ETag. Your Pi may respond three hundred four Not Modified and the client uses cache. Headers control caching.
 
+Your coop controller might send a POST request to register a new device. The Pi responds with two hundred one Created and a Location header pointing to the new resource. The client then knows where to fetch or update that resource. Your soil moisture dashboard might cache sensor summaries using Cache-Control and ETag so it does not refetch unchanged data. Headers control redirection and caching across all these scenarios.
 
-## 8) Response Headers: Server Description and Control
+Location tells the client where to go instead. The status code tells why. The header tells where. Connection, Keep-Alive, and related headers tell intermediaries whether the connection should persist, whether it may be reused, and timeouts. This matters for performance and correctness. When your ESP32 sends a GET request to the voltage API with Connection keep-alive, your Pi may keep the connection open for reuse. Headers control connection behavior.
 
-Response headers typically communicate:
-	•	What the server returned (e.g., `Content-Type: application/json`)
-	•	How to interpret it (e.g., `Content-Length: 24`)
-	•	Whether it may be cached (e.g., `Cache-Control: max-age=60`)
-	•	Whether the client should store state (e.g., `Set-Cookie: session=abc123`)
-	•	What to do next (e.g., `Location: /api/sensors/esp32_coop`)
+## 6) Who Reads Headers
 
-They are instructions, not suggestions.
+Headers are interpreted by browsers, proxies, load balancers, gateways, caches, and firewalls. Your server is not the only reader. When your ESP32 sends a GET request to the voltage API with Host pi dot local, a load balancer may read Host and route to the correct server. A proxy may read Cache-Control and decide whether to cache. A firewall may read User-Agent and allow or block. Headers are read by many intermediaries.
 
-Example: Your Pi responds to `GET /api/voltage` with `Content-Type: application/json` (what I returned), `Content-Length: 24` (how to interpret it), `Cache-Control: max-age=60` (cache for 60 seconds), `ETag: "abc123"` (use this for conditional requests). These are instructions—your dashboard must obey them. Not suggestions—instructions.
+If your system breaks when a proxy reorders headers, adds headers, removes headers, or normalizes casing, the design is brittle. When your ESP32 sends a GET request with content-type in lowercase and a proxy normalizes it to Content-Type, your Pi must handle both. If it breaks on casing, the design is brittle. Headers must be designed for intermediaries. They will modify, normalize, and reorder. Design defensively.
 
+Some headers may appear multiple times. Set-Cookie can set session and theme in separate headers. Accept may list multiple types. You must handle repeated headers correctly. When your Pi responds to a POST request to the login API with two Set-Cookie headers, your dashboard must handle both. Header order is not semantically meaningful. Headers may be reordered, merged, or split. Never rely on order.
 
-## 9) Common Response Headers
+Never assume a header exists, is non-empty, or is well-formed. Missing headers are normal. When your ESP32 sends a GET request to the voltage API without an Accept header, your Pi must handle it. Or sends Authorization with an empty or invalid value. Design defensively. Some headers are required by spec, such as Host in HTTP/1.1. Most are optional. Design defensively and handle missing or malformed headers gracefully.
 
-Examples:
-	•	Content-Type (e.g., `Content-Type: application/json`)
-	•	Content-Length (e.g., `Content-Length: 24`)
-	•	Cache-Control (e.g., `Cache-Control: no-cache`)
-	•	Set-Cookie (e.g., `Set-Cookie: session=abc123`)
-	•	Location (e.g., `Location: /api/sensors/esp32_coop`)
-	•	ETag (e.g., `ETag: "abc123"`)
+When your poultry net controller sends a request without a User-Agent, your Pi might still serve the response but log a warning for debugging. When your dashboard sends a POST request with a body but forgets Content-Length, your Pi might read until connection close or timeout, depending on implementation. Servers that assume Content-Length is always present can hang or misparse when it is missing. Handling optional and missing headers correctly makes your API robust across different clients and network conditions.
 
-Clients are expected to obey them.
+## 7) Headers vs Query Parameters and Body
 
-Example: Your Pi responds to `GET /api/voltage` with `Content-Type: application/json`, `Content-Length: 24`, `Cache-Control: max-age=60`. Your dashboard must obey these headers—parse JSON, read exactly 24 bytes, cache for 60 seconds.
+Headers are metadata. They are not part of resource identity. Query parameters are part of the URI and often affect caching and routing. Do not confuse them. When your dashboard sends a GET request to the voltage API with unit equals V in the query string and Accept in a header, the query parameter is part of the URI; the header is metadata. Keep them separate.
 
+Body fields belong to the resource or command. Headers belong to the protocol exchange. Keep that boundary clean. When your ESP32 sends a POST request to the temperature API with a body containing temperature and sensor ID and a Content-Type header, the body fields belong to the resource; the header belongs to the protocol. Do not put resource data in headers. Do not put protocol metadata in the body.
 
-## 10) Some Headers Exist in Both Directions
+If it describes format, permissions, caching, encoding, or negotiation, it probably belongs in a header. The request line is what. The body is data. Headers are control. They orchestrate safety, performance, security, and compatibility.
 
-Certain headers apply symmetrically.
+Headers are numerous: dozens of standard headers plus custom ones. They interact subtly. Cache-Control interacts with ETag and Expires. Accept affects response format in ways that are not directly visible. They involve intermediaries: proxies and caches modify and forward headers. Headers are hard to learn because their effects are indirect, but they are unavoidable. Every header says I assume the other side understands this. Misaligned assumptions cause failure. When your electric fence monitor sends Accept application slash JSON and your Pi returns HTML because it misread the header, the client cannot parse the response. When your dashboard sends Cache-Control no-cache but the Pi ignores it and the proxy caches anyway, you get stale data. Headers encode assumptions. Get them right.
 
-Examples:
-	•	Cache-Control (request: client preferences; response: server instructions)
-	•	Content-Type (request: what you're sending; response: what you're returning)
-	•	Content-Length (request: body size you're sending; response: body size you're returning)
-	•	Connection (request: connection preferences; response: connection behavior)
+This chapter is Phase 0.8 applied to HTTP. Headers are boundary input. Validate everything. Absence is normal. Failure must be handled. Meaning lives in structure. When your ESP32 sends Authorization Bearer, treat it as boundary input and validate it. When it sends a request without Accept, absence is normal. When it sends invalid format, handle the failure. Headers are boundary input. Validate everything.
 
-The meaning depends on direction.
+In practice, this means your Pi should check that Authorization is present and well-formed before using it, that Content-Type matches what the server can handle, and that Content-Length if present matches the actual body size. Reject or respond with four hundred Bad Request when headers are invalid rather than guessing. Your webcam viewer might send odd Accept values; your drip irrigation controller might omit headers you expect. Defensive parsing and clear error responses keep the system predictable.
 
-Example: Your ESP32 sends `POST /api/temp` with `Content-Type: application/json` (request—what I'm sending). Your Pi responds with `Content-Type: application/json` (response—what I'm returning). Same header name, different direction, different meaning. Or `Cache-Control: no-cache` in request (client preference) vs response (server instruction).
+## Common Pitfalls
 
+Trusting headers blindly leads to security and correctness failures. Headers are untrusted input. Validate presence, format, and semantics. Never use User-Agent or other client-supplied headers for authorization.
 
-## 11) Headers Are the Protocol’s Extension Point
+Confusing headers with payload breaks design. Put application data in the body. Use headers for format, credentials, caching, and protocol control. Putting temperature data or resource IDs in headers mixes concerns and breaks caching and logging.
 
-HTTP is deliberately conservative.
+Assuming headers are present or well-formed causes crashes. Missing or malformed headers are normal. Check for presence and validity before using. Handle empty or invalid values gracefully.
 
-Instead of changing the core grammar:
-	•	New behavior is added via headers
-	•	Old clients can ignore unknown headers
-	•	New clients can opt into new features
+Relying on header order or casing breaks when proxies or gateways reorder or normalize. Parse headers by name. Treat names as case-insensitive. Do not depend on order.
 
-This is how HTTP evolves without breaking everything.
+Using headers for resource identity when query or path is appropriate confuses caching and routing. Resource identity belongs in the URI. Metadata belongs in headers.
 
+## Summary
 
-## 12) Why Headers Beat New Syntax
+Headers are key–value metadata that control HTTP behavior, describe bodies, enable statelessness, carry credentials, enable caching and negotiation, and extend the protocol safely. They are input and must be validated. They are the control surface of HTTP. Request headers express client intent and capabilities. Response headers give server description and instructions. Headers are untrusted boundary input. Validate everything. Headers enable streaming safety via Content-Length, content interpretation via Content-Type, and caching via Cache-Control and ETag. They are read by servers, browsers, proxies, load balancers, and caches. Design for intermediaries and missing or repeated headers. Headers are control, not content. Understanding them is essential to understanding HTTP.
 
-Changing the request line would:
-	•	Break parsers
-	•	Break proxies
-	•	Break caches
+## Next
 
-Adding headers:
-	•	Preserves compatibility
-	•	Enables gradual adoption
-	•	Keeps the protocol stable
-
-Headers are evolutionary pressure relief.
-
-Example: Adding idempotency keys via header `Idempotency-Key: abc123` preserves compatibility—old clients ignore it, new clients use it. Changing the request line from `GET /api/voltage HTTP/1.1` to `GET /api/voltage HTTP/2.0` breaks everything—parsers break, proxies break, caches break. Headers are evolutionary pressure relief—add features without breaking compatibility.
-
-Example: Adding idempotency keys via header `Idempotency-Key: abc123` preserves compatibility—old clients ignore it, new clients use it. Changing the request line from `GET /api/voltage HTTP/1.1` to `GET /api/voltage HTTP/2.0` breaks everything—parsers break, proxies break, caches break. Headers are evolutionary pressure relief—add features without breaking compatibility.
-
-
-## 13) Headers Are Case-Insensitive (Names Only)
-
-Header names are case-insensitive:
-	•	Content-Type
-	•	content-type
-	•	CONTENT-TYPE
-
-All equivalent.
-
-Header values may be case-sensitive depending on semantics.
-
-Example: Your ESP32 sends `content-type: application/json` and your Pi receives it as `Content-Type: application/json`—same header, different casing, equivalent. Or `CONTENT-TYPE: application/json`—still equivalent. But the value `application/json` is case-sensitive—`Application/Json` is different. Header names are case-insensitive, values depend on semantics.
-
-
-## 14) Why Case-Insensitivity Matters
-
-Because:
-	•	Different implementations format differently
-	•	Humans type them manually
-	•	Proxies rewrite them
-
-The protocol does not care about capitalization.
-
-Example: Your ESP32 sends `content-type: application/json` (lowercase), your Pi normalizes it to `Content-Type: application/json` (Title-Case), a proxy rewrites it to `CONTENT-TYPE: application/json` (uppercase). All equivalent—the protocol doesn't care. Or humans type headers manually—typos in capitalization don't break things. Case-insensitivity makes HTTP robust.
-
-
-## 15) Headers Are Line-Based Text
-
-Each header is:
-
-```
-Name: value
-```
-
-	•	One header per line
-	•	Colon separates name from value
-	•	Optional whitespace around the value
-
-Simple by design.
-
-Example: Your ESP32 sends:
-```
-Host: pi.local
-Content-Type: application/json
-Content-Length: 24
-```
-
-One header per line, colon separates name from value. Simple by design.
-
-
-## 16) Headers Are Parsed Before the Body
-
-The server:
-	1.	Reads request line
-	2.	Reads headers
-	3.	Encounters blank line
-	4.	Decides how (or whether) to read body
-
-Headers control body parsing.
-
-Example: Your ESP32 sends `POST /api/temp` with headers `Content-Type: application/json`, `Content-Length: 15`, then blank line, then body `{"temp": 72.5}`. Your Pi reads the request line first, then headers, then blank line, then uses `Content-Length: 15` to know exactly how many bytes to read. Headers control body parsing—they tell the server how to read the body before the body arrives.
-
-
-## 17) Content-Type: The Most Important Header
-
-Content-Type answers one question:
-
-“What does this body mean?”
-
-Without it, the body is just bytes.
-
-
-## 18) Content-Length: How Much to Read
-
-Content-Length tells the receiver:
-	•	Exactly how many bytes belong to the body
-
-Without it, the receiver cannot safely parse the stream.
-
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5}` and `Content-Length: 15`. Your Pi reads exactly 15 bytes, then stops. Without `Content-Length`, your Pi doesn't know when the body ends—does it wait for more? Does it hang? Content-Length makes streaming safe.
-
-
-## 19) Headers Enable Streaming Safety
-
-Because HTTP rides on TCP:
-	•	The body is a byte stream
-	•	Headers tell you where it ends
-
-This prevents:
-	•	Hanging reads
-	•	Truncated parsing
-	•	Protocol confusion
-
-Example: Your ESP32 sends `POST /api/temp` with `Content-Length: 15` and body `{"temp": 72.5}`. Your Pi reads exactly 15 bytes, then stops—knows the body is complete. Without `Content-Length`, your Pi doesn't know when the body ends—does it wait for more? Does it hang? Headers enable streaming safety—they tell you where the stream ends.
-
-
-## 20) Headers Can Be Forged
-
-Never forget:
-	•	Clients control request headers
-	•	Browsers can be spoofed
-	•	Scripts can lie
-	•	Proxies can alter data
-
-Headers are claims—not facts.
-
-Example: Your ESP32 sends `User-Agent: ESP32-Sensor/1.0`—but it could be lying, it could be a script spoofing the User-Agent. Or sends `Authorization: Bearer valid_token`—but it could be forged, it could be stolen. Headers are claims—not facts. Validate everything, trust nothing. Headers can be forged—treat them as untrusted input.
-
-
-## 21) Never Trust Headers Blindly
-
-You must validate:
-	•	Presence (e.g., is `Authorization` present?)
-	•	Format (e.g., is `Authorization: Bearer <token>` format correct?)
-	•	Allowed values (e.g., is the token valid? Not expired?)
-	•	Consistency with other headers (e.g., does `Content-Type` match `Accept`?)
-	•	Consistency with the body (e.g., does `Content-Length` match actual body size?)
-
-Headers are input.
-
-Example: Your ESP32 sends `Authorization: Bearer esp32_token_xyz`. Your Pi validates: is it present? Yes. Is format correct? Yes (`Bearer <token>`). Is token valid? Check database. Is token expired? Check timestamp. Headers are input—validate everything. Never trust headers blindly.
-
-
-## 22) Host Header: Virtual Routing
-
-Host tells the server:
-
-“Which site am I trying to reach?”
-
-Without it:
-	•	One IP cannot host multiple sites
-	•	Virtual hosting breaks
-
-HTTP/1.1 requires it.
-
-
-## 23) User-Agent: Identity Without Authority
-
-User-Agent describes the client.
-
-It:
-	•	Helps debugging
-	•	Helps analytics
-	•	Sometimes triggers workarounds
-
-It should never be trusted for security decisions.
-
-Example: Your ESP32 sends `User-Agent: ESP32-Sensor/1.0`. Your Pi logs this for debugging—"ESP32-Sensor/1.0 requested voltage." Or your dashboard sends `User-Agent: HomesteadDashboard/1.0`. Helps analytics—which clients are using your API? But never trust it for security—clients can lie. User-Agent is descriptive, not authoritative.
-
-
-## 24) Accept: Client Preferences
-
-Accept tells the server:
-
-“These formats are acceptable to me.”
-
-It enables:
-	•	Content negotiation
-	•	Multiple representations
-	•	Graceful degradation
-
-
-## 25) Authorization: Credentials at the Boundary
-
-Authorization carries credentials.
-
-Examples:
-	•	Basic (e.g., `Authorization: Basic base64(username:password)`)
-	•	Bearer tokens (e.g., `Authorization: Bearer xyz`)
-	•	Custom schemes (e.g., `Authorization: Custom scheme123`)
-
-This header is extremely sensitive.
-
-Example: Your ESP32 sends `GET /api/sensors` with `Authorization: Bearer esp32_token_xyz`. Your Pi validates the token and allows access. Or your dashboard sends `Authorization: Basic base64(admin:password)`. This header is extremely sensitive—it carries credentials. Protect it, validate it, never log it.
-
-
-## 26) Headers Can Change Semantics Entirely
-
-The same request line with different headers may:
-	•	Authenticate or not (e.g., with/without `Authorization`)
-	•	Cache or not (e.g., with/without `Cache-Control`)
-	•	Return JSON or HTML (e.g., with `Accept: application/json` vs `Accept: text/html`)
-	•	Be accepted or rejected (e.g., with valid/invalid `Authorization`)
-
-Headers are not secondary—they are decisive.
-
-Example: Your dashboard sends `GET /api/voltage` with `Accept: application/json`—gets JSON. Or sends the same request with `Accept: text/html`—gets HTML. Or with `Authorization: Bearer xyz`—authenticated. Or without—`401 Unauthorized`. Same request line, different headers, completely different semantics. Headers are decisive—they change everything.
-
-
-## 27) Headers Enable Statelessness
-
-HTTP is stateless because:
-	•	State is carried in headers
-	•	Tokens, cookies, etags, versions
-
-The server does not remember you—you bring context each time.
-
-Example: Your ESP32 sends `GET /api/sensors` with `Authorization: Bearer esp32_token_xyz` (token in header), `Cookie: session=abc123` (session in header), `If-None-Match: "etag123"` (version in header). Your Pi doesn't remember the ESP32—the ESP32 brings context each time via headers. Headers enable statelessness—state is carried in headers, not server memory.
-
-
-## 28) Cookies Are Headers
-
-Cookies are just headers:
-	•	Set-Cookie (response) (e.g., `Set-Cookie: session=abc123; Path=/`)
-	•	Cookie (request) (e.g., `Cookie: session=abc123`)
-
-They are not magic.
-They are structured metadata.
-
-Example: Your Pi responds to `POST /api/login` with `Set-Cookie: session=abc123; Path=/; HttpOnly`. Your dashboard stores this cookie. Next request, your dashboard sends `Cookie: session=abc123`. Cookies are just headers—not magic, just structured metadata. `Set-Cookie` sets state, `Cookie` carries state.
-
-
-## 29) Headers Control Caching
-
-Caching behavior is almost entirely header-driven.
-
-Examples:
-	•	Cache-Control (e.g., `Cache-Control: max-age=60`)
-	•	ETag (e.g., `ETag: "abc123"`)
-	•	If-None-Match (e.g., `If-None-Match: "abc123"`)
-	•	Expires (e.g., `Expires: Wed, 31 Jan 2024 12:00:00 GMT`)
-
-Without headers, caching would be unsafe.
-
-Example: Your Pi responds to `GET /api/voltage` with `Cache-Control: max-age=60`, `ETag: "abc123"`. Your dashboard caches for 60 seconds. Next request, your dashboard sends `If-None-Match: "abc123"`. Your Pi responds `304 Not Modified`—use cache. Headers control caching—without them, caching would be unsafe (when to cache? when to invalidate?).
-
-
-## 30) Headers Control Redirection
-
-Location tells the client:
-
-“Go here instead.”
-
-The status code tells why.
-The header tells where.
-
-
-## 31) Headers Control Connection Behavior
-
-Connection, Keep-Alive, and related headers tell intermediaries:
-	•	Whether the connection should persist (e.g., `Connection: keep-alive`)
-	•	Whether it may be reused (e.g., `Keep-Alive: timeout=60`)
-
-This matters for performance and correctness.
-
-Example: Your ESP32 sends `GET /api/voltage` with `Connection: keep-alive`. Your Pi keeps the connection open for reuse. Or sends `Connection: close`—close after this request. Or your Pi responds with `Keep-Alive: timeout=60`—reuse connection for 60 seconds. Headers control connection behavior—persistence, reuse, timeouts. This matters for performance (reuse connections) and correctness (know when to close).
-
-
-## 32) Headers Are Read by More Than Servers
-
-Headers are interpreted by:
-	•	Browsers (e.g., `Set-Cookie` → store cookie)
-	•	Proxies (e.g., `Cache-Control` → cache or not)
-	•	Load balancers (e.g., `Host` → route to server)
-	•	Gateways (e.g., `Authorization` → forward or reject)
-	•	Caches (e.g., `ETag` → cache validation)
-	•	Firewalls (e.g., `User-Agent` → allow or block)
-
-Your server is not the only reader.
-
-Example: Your ESP32 sends `GET /api/voltage` with `Host: pi.local`. A load balancer reads `Host` and routes to the correct server. Or a proxy reads `Cache-Control` and decides whether to cache. Or a firewall reads `User-Agent` and decides whether to allow. Your server is not the only reader—headers are interpreted by many intermediaries.
-
-
-## 33) Headers Must Be Designed for Intermediaries
-
-If your system breaks when a proxy:
-	•	Reorders headers
-	•	Adds headers
-	•	Removes headers
-	•	Normalizes casing
-
-Then the design is brittle.
-
-Example: Your ESP32 sends `GET /api/voltage` with `content-type: application/json` (lowercase). A proxy normalizes it to `Content-Type: application/json` (Title-Case). Your Pi must handle both—if it breaks on casing differences, the design is brittle. Or a proxy reorders headers—your Pi must handle any order. Headers must be designed for intermediaries—they will modify headers, normalize them, reorder them. Design defensively.
-
-
-## 34) Headers Can Be Repeated
-
-Some headers may appear multiple times.
-
-Examples:
-	•	Set-Cookie (e.g., `Set-Cookie: session=abc123` and `Set-Cookie: theme=dark`)
-	•	Accept (e.g., `Accept: application/json` and `Accept: text/plain`—usually combined)
-	•	Warning (e.g., multiple warnings)
-
-You must handle this correctly.
-
-Example: Your Pi responds to `POST /api/login` with `Set-Cookie: session=abc123` and `Set-Cookie: theme=dark`. Your dashboard receives two cookies—must handle both. Or your ESP32 sends `Accept: application/json` and `Accept: text/plain`—usually combined into `Accept: application/json, text/plain`, but may appear separately. Headers can be repeated—handle this correctly.
-
-
-## 35) Header Order Is Not Semantically Meaningful
-
-Headers:
-	•	May be reordered (e.g., proxy reorders `Host` and `Accept`)
-	•	May be merged (e.g., `Accept: application/json` and `Accept: text/plain` → `Accept: application/json, text/plain`)
-	•	May be split (e.g., long header value split across lines)
-
-Never rely on order.
-
-Example: Your ESP32 sends `Host: pi.local` then `Accept: application/json`. A proxy reorders to `Accept: application/json` then `Host: pi.local`. Your Pi must handle both orders—never rely on order. Or headers may be merged or split—handle all cases. Header order is not semantically meaningful—don't rely on it.
-
-
-## 36) Headers Are Not Guaranteed to Be Present
-
-Never assume:
-	•	A header exists
-	•	A header is non-empty
-	•	A header is well-formed
-
-Missing headers are normal.
-
-Example: Your ESP32 sends `GET /api/voltage` without `Accept` header. Your Pi must handle this—missing headers are normal. Or sends `Authorization:` (empty value). Or sends `Authorization: invalid format`. Never assume headers exist, are non-empty, or are well-formed. Missing headers are normal—design defensively.
-
-
-## 37) Headers Are Optional Unless Required
-
-Some headers are required by spec:
-	•	Host in HTTP/1.1 (e.g., `Host: pi.local`)
-
-Most are optional.
-
-Design defensively.
-
-Example: Your ESP32 sends `GET /api/voltage`—must include `Host: pi.local` (required in HTTP/1.1). Or sends `POST /api/temp`—`Content-Type` is optional (but recommended), `Content-Length` is optional (but recommended), `Authorization` is optional (but may be required by your API). Most headers are optional—design defensively, handle missing headers gracefully.
-
-
-## 38) Headers vs Query Parameters
-
-Headers:
-	•	Are metadata
-	•	Are not part of resource identity
-
-Query parameters:
-	•	Are part of the URI
-	•	Often affect caching and routing
-
-Do not confuse them.
-
-Example: Your dashboard sends `GET /api/voltage?unit=V` with `Accept: application/json`. Query parameter `unit=V` is part of the URI (resource identity), header `Accept` is metadata (format preference). Or `GET /api/voltage` with `Authorization: Bearer xyz`. Header `Authorization` is metadata (credentials), not part of resource identity. Keep them separate.
-
-
-## 39) Headers vs Body Fields
-
-Body fields:
-	•	Belong to the resource or command
-
-Headers:
-	•	Belong to the protocol exchange
-
-Keep that boundary clean.
-
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5, "sensor_id": "esp32_coop"}` and header `Content-Type: application/json`. Body fields (`temp`, `sensor_id`) belong to the resource/command, header (`Content-Type`) belongs to the protocol exchange. Keep that boundary clean—don't put resource data in headers, don't put protocol metadata in body.
-
-
-## 40) Headers Are Control, Not Content
-
-If it describes:
-	•	Format (e.g., `Content-Type: application/json`)
-	•	Permissions (e.g., `Authorization: Bearer xyz`)
-	•	Caching (e.g., `Cache-Control: max-age=60`)
-	•	Encoding (e.g., `Content-Encoding: gzip`)
-	•	Negotiation (e.g., `Accept: application/json`)
-
-It probably belongs in a header.
-
-Example: Your ESP32 sends `POST /api/temp` with body `{"temp": 72.5}`. Format? `Content-Type: application/json` (header). Permissions? `Authorization: Bearer xyz` (header). Caching? `Cache-Control: no-cache` (header). The body contains content (`temp: 72.5`), headers contain control (format, permissions, caching). Headers are control, not content.
-
-
-## 41) Headers Are the Web’s Control Plane
-
-The request line is what.
-The body is data.
-Headers are control.
-
-They orchestrate:
-	•	Safety
-	•	Performance
-	•	Security
-	•	Compatibility
-
-
-## 42) Why Headers Are Hard to Learn
-
-Because:
-	•	They are numerous (dozens of standard headers, plus custom ones)
-	•	They interact subtly (e.g., `Cache-Control` interacts with `ETag`, `Expires`)
-	•	Their effects are indirect (e.g., `Accept` affects response format, not directly visible)
-	•	They involve intermediaries (e.g., proxies, caches modify headers)
-
-But they are unavoidable.
-
-Example: Your ESP32 sends `GET /api/voltage` with `Accept: application/json`, `Cache-Control: no-cache`, `If-None-Match: "abc123"`. These headers interact subtly—`Accept` affects format, `Cache-Control` affects caching, `If-None-Match` affects conditional requests. Their effects are indirect—you don't see them directly, but they control everything. Headers are hard to learn but unavoidable.
-
-
-## 43) Headers Encode Assumptions
-
-Every header says:
-
-“I assume the other side understands this.”
-
-Misaligned assumptions cause failure.
-
-
-## 44) Phase 0 Revisited
-
-This chapter is Phase 0.8 applied to HTTP:
-	•	Headers are boundary input (e.g., untrusted data from client)
-	•	Validate everything (e.g., format, presence, consistency)
-	•	Absence is normal (e.g., missing headers are expected)
-	•	Failure must be handled (e.g., invalid headers, malformed values)
-	•	Meaning lives in structure (e.g., `Name: value` format)
-
-Example: Your ESP32 sends `Authorization: Bearer xyz`—boundary input, validate it. Or sends request without `Accept`—absence is normal, handle it. Or sends `Authorization: invalid format`—failure must be handled. Or sends `Content-Type: application/json`—meaning lives in structure (`Name: value`). Phase 0.8 applied to HTTP—headers are boundary input, validate everything.
-
-
-## Reflection
-Pick one HTTP exchange you’ve seen.
-	•	Which headers are required?
-	•	Which are optional?
-	•	Which affect behavior?
-	•	Which are ignored?
-	•	Which must be validated?
-
-If you can answer that, you understand the boundary.
-
-
-## Core Understanding
-Headers are key–value metadata that:
-	•	Control HTTP behavior
-	•	Describe bodies
-	•	Enable statelessness
-	•	Carry credentials
-	•	Enable caching and negotiation
-	•	Extend the protocol safely
-
-They are input.
-They must be validated.
-They are the control surface of HTTP.
-
-
-## What's Next
-Next: Chapter 2.16 — Headers: Content and Type, where we zoom in on:
-	•	Content-Type
-	•	Content-Length
-	•	Accept
-	•	Encoding and negotiation
-
-This is where “bytes on the wire” become meaningful data.
+This chapter built on Chapter 1.14, which covered safety and idempotency. Next, Chapter 1.16 zooms in on Content-Type, Content-Length, Accept, and encoding and negotiation. This is where bytes on the wire become meaningful data.

@@ -1,449 +1,139 @@
-# Phase 2 · Chapter 2.12: Errors vs Failures
+# Section B Phase 1 · Chapter 1.12: Errors vs Failures
 
-This chapter builds on [Chapter 2.1: Request-Response](Chapter_2.1_Request-Response.md), [Chapter 2.2: HTTP on TCP](Chapter_2.2_HTTP_on_TCP.md), [Chapter 2.3: What HTTP Is](Chapter_2.3_What_HTTP_Is.md), [Chapter 2.4: HTTP as Text](Chapter_2.4_HTTP_as_Text.md), [Chapter 2.5: Statelessness and Connection Lifecycle](Chapter_2.5_Statelessness_and_Connection_Lifecycle.md), [Chapter 2.6: Request Structure](Chapter_2.6_Request_Structure.md), [Chapter 2.7: The Request Line](Chapter_2.7_The_Request_Line.md), [Chapter 2.8: Response Structure](Chapter_2.8_Response_Structure.md), [Chapter 2.9: Status Codes Overview](Chapter_2.9_Status_Codes_Overview.md), [Chapter 2.10: Status Codes — Success and Redirects](Chapter_2.10_Status_Codes_Success_and_Redirects.md), and [Chapter 2.11: Status Codes — Client and Server Errors](Chapter_2.11_Status_Codes_Client_and_Server_Errors.md).
+## Learning Objectives
 
-Phase 0.6 taught that errors occur when assumptions break.
-Phase 0.10 taught that failure is normal and must be designed for.
+After this chapter, you will be able to:
+- Distinguish between HTTP error responses and network failures
+- Understand why presence of a response differs fundamentally from absence
+- Recognize when failures occur at the transport layer versus the application layer
+- Implement proper retry logic that accounts for ambiguity
+- Handle partial responses and connection drops correctly
+- Design client code that branches on response presence before status codes
 
-HTTP makes a critical distinction that many developers miss:
+## Key Terms
 
-An error is not the same thing as a failure.
+- **HTTP Error**: A response with a 4xx or 5xx status code indicating the server responded intentionally
+- **Network Failure**: No HTTP response received due to transport layer problems
+- **Presence**: The arrival of an HTTP response, even if it contains an error status code
+- **Absence**: No HTTP response received, creating ambiguity about what happened
+- **Timeout**: A failure where the client waited but received no response
+- **Partial Response**: Headers or partial body received before connection drops
+- **Idempotency**: Property of requests that can be safely retried without side effects
 
-This chapter draws a hard boundary between:
-	•	HTTP errors (where the server responds)
-	•	Network failures (where no response arrives)
+## 1) Two Kinds of Something Went Wrong
 
-If you do not understand this distinction, you will write fragile clients, mis-handle retries, and misdiagnose production incidents. Chapter 2.11 covered HTTP error codes (4xx and 5xx); this chapter distinguishes those errors from network failures—when no HTTP response arrives at all. Whether your ESP32 times out waiting for a response, your dashboard gets `500 Internal Server Error`, or your Pi's connection drops mid-transfer—understanding errors vs failures is critical for robust systems.
+When you make an HTTP request and something goes wrong, one of two fundamentally different things happened. Either the server responded with an error, or the request never completed. These are not variations of the same problem. They live in different layers and require different handling.
 
+When your ESP32 temperature sensor sends a POST request to the temperature API and gets four hundred Bad Request, that's an HTTP error because the Pi responded. Or your ESP32 sends the same request and times out after thirty seconds. That's a failure with no response. Different problems require different handling.
 
-## 1) Two Kinds of “Something Went Wrong”
-
-When you make an HTTP request and something goes wrong, one of two fundamentally different things happened:
-	1.	The server responded with an error
-	2.	The request never completed
-
-These are not variations of the same problem.
-They live in different layers.
-They require different handling.
-
-Example: Your ESP32 sends `POST /api/temp` and gets `400 Bad Request`—that's an HTTP error, the Pi responded. Or your ESP32 sends the same request and times out after 30 seconds—that's a failure, no response. Different problems, different handling.
-
+HTTP makes a critical distinction that many developers miss. An error is not the same thing as a failure. This chapter draws a hard boundary between HTTP errors, where the server responds, and network failures, where no response arrives. If you do not understand this distinction, you will write fragile clients, mishandle retries, and misdiagnose production incidents. Chapter 1.11 covered HTTP error codes, the four hundred and five hundred status codes. This chapter distinguishes those errors from network failures, when no HTTP response arrives at all. Whether your ESP32 times out waiting for a response, your dashboard gets five hundred Internal Server Error, or your Pi's connection drops mid-transfer, understanding errors versus failures is critical for robust systems.
 
 ## 2) HTTP Error Responses Are Still Communication
 
-An HTTP error response means:
-	•	The request reached the server
-	•	The server parsed the request
-	•	The server made a decision
-	•	The server replied intentionally
+An HTTP error response means the request reached the server, the server parsed the request, the server made a decision, and the server replied intentionally. Even if the response is four hundred four or five hundred, the protocol exchange completed. This is a successful communication with an unsuccessful outcome.
 
-Even if the response is 404 or 500, the protocol exchange completed.
+When your dashboard requests a sensor endpoint with a nonexistent sensor ID and gets four hundred four Not Found, the request reached the Pi, the Pi parsed it, decided the resource doesn't exist, and replied. Communication succeeded, outcome failed.
 
-This is a successful communication with an unsuccessful outcome.
+A network failure means no HTTP response was received, the client does not know what happened, and the server may never have seen the request. This is not an HTTP event. This is silence. When your ESP32 sends a POST request to the temperature API and waits thirty seconds with no response arriving, did the Pi receive it? Did it crash? Did the Wi‑Fi drop? Unknown. This is absence, not an HTTP error. No status code, no response body, just silence.
 
-Example: Your dashboard requests `GET /api/sensors/nonexistent_id` and gets `404 Not Found`. The request reached the Pi, the Pi parsed it, decided the resource doesn't exist, and replied. Communication succeeded, outcome failed.
+This entire chapter reduces to one idea. An HTTP error equals presence of a response. A failure equals absence of a response. Presence contains information. Absence does not. When your ESP32 gets five hundred Internal Server Error, that's presence with information. The Pi received the request and crashed. Or your ESP32 times out, which is absence with no information. Did the Pi see it? Did it crash? Unknown.
 
+## 3) Where Errors and Failures Live
 
-## 3) Network Failures Are Absence
+HTTP errors occur after DNS resolution, TCP connection establishment, and request transmission. They live inside the HTTP protocol. Examples include four hundred Bad Request when your ESP32 sends malformed JSON, four hundred one Unauthorized when your dashboard is missing credentials, four hundred four Not Found when your coop controller requests a nonexistent endpoint, or five hundred Internal Server Error when your Pi crashes while processing a request. The server spoke.
 
-A network failure means:
-	•	No HTTP response was received
-	•	The client does not know what happened
-	•	The server may never have seen the request
+Failures occur before or during HTTP. DNS resolution fails when pi dot local doesn't resolve. TCP connection cannot be established when the Pi is offline. Connection drops mid-transfer when Wi‑Fi disconnects while your ESP32 sends data. Request times out when your dashboard waits thirty seconds with no response. HTTP never completed.
 
-This is not an HTTP event.
-This is silence.
+HTTP assumes a working transport. When that assumption breaks, HTTP has nothing to say. There is no status code. There is no response body. The protocol ends before it begins. When your dashboard tries to connect to pi dot local but DNS resolution fails, HTTP can't help because it assumes DNS works. The protocol never starts. Or your ESP32 sends a request but the TCP connection drops before the Pi can respond. HTTP assumes TCP works. When it doesn't, HTTP has nothing to say.
 
-Example: Your ESP32 sends `POST /api/temp` and waits 30 seconds. No response arrives. Did the Pi receive it? Did it crash? Did the Wi‑Fi drop? Unknown—this is absence, not an HTTP error. No status code, no response body, just silence.
+## 4) Five Hundred Is Not a Failure
 
+A five hundred Internal Server Error means the server received your request, tried to process it, and failed. This is not ambiguity. This is explicit communication. You know the server exists. You know the server received the request.
 
-## 4) Presence vs Absence
+When your dashboard requests the voltage API and gets five hundred Internal Server Error, you know the Pi exists, you know it received the request, you know it tried to process it and failed. This is explicit communication, not ambiguity.
 
-This entire chapter reduces to one idea:
-	•	HTTP error = presence of a response
-	•	Failure = absence of a response
+A timeout means the client waited and nothing came back. You do not know whether the server received the request, whether it processed it, whether it crashed, or whether the response was lost. Timeouts are uncertainty. When your ESP32 sends a POST request to the temperature API and times out after thirty seconds, did the Pi receive it? Did it process it? Did it crash? Did the response get lost? Unknown. Timeout is uncertainty, not information.
 
-Presence contains information.
-Absence does not.
+If you treat a timeout like a five hundred error, you may retry unsafe requests, duplicate operations, or corrupt state. Timeouts require caution, not confidence. When your solar panel logger sends a POST request to the readings API and times out, if you retry blindly, you might send duplicate readings. The Pi might have processed the first request. You don't know. Timeouts require caution, not automatic retries.
 
-Example: Your ESP32 gets `500 Internal Server Error`—presence, information: the Pi received the request and crashed. Or your ESP32 times out—absence, no information: did the Pi see it? Did it crash? Unknown.
+## 5) Four Hundred Four Is Not a Failure
 
+A four hundred four Not Found means the server is here, understood the request, and that resource does not exist. This is information. The client can stop retrying, correct the path, or update stored links.
 
-## 5) HTTP Errors Live at the Application Layer
+When your dashboard requests a sensor endpoint with a nonexistent sensor ID and gets four hundred four Not Found, the dashboard knows the resource doesn't exist. Stop retrying, fix the path, or update stored links. This is information, not failure.
 
-HTTP errors occur after:
-	•	DNS resolution
-	•	TCP connection
-	•	Request transmission
+DNS failure means the client cannot find the server. This is not about a resource. This is about location. No HTTP request occurred. When your ESP32 tries to connect to pi dot local but DNS resolution fails, no HTTP request happened. DNS failed before HTTP could start. This is not four hundred four Not Found. This is DNS failure, a transport problem.
 
-They live inside the HTTP protocol.
+From the client's point of view, an HTTP error means the server spoke. A failure means silence. Your client code must branch here first. When your dashboard sends a GET request to the voltage API and gets five hundred Internal Server Error, the Pi spoke, so handle as HTTP error. Or your dashboard sends the same request and times out, which is silence, so handle as failure. Your code must branch on whether you got a response before anything else.
 
-Examples:
-	•	400 Bad Request (e.g., ESP32 sends malformed JSON)
-	•	401 Unauthorized (e.g., dashboard missing credentials)
-	•	404 Not Found (e.g., coop controller requests nonexistent endpoint)
-	•	500 Internal Server Error (e.g., Pi crashes while processing request)
+## 6) The First Question Your Code Should Ask
 
-The server spoke.
+When something goes wrong, your code should ask whether you received an HTTP response. Everything else depends on this answer. When your ESP32 sends a POST request to the temperature API and something goes wrong, first question: did you get an HTTP response? If yes, inspect the status code, whether it's four hundred, four hundred one, five hundred, or something else. If no, treat as transport failure, whether it's a timeout, DNS failure, or connection drop. Everything else, retry logic, error handling, logging, depends on this first answer.
 
+Sometimes you receive headers, part of the body, then the connection drops. This is not an HTTP error. This is a transport failure mid-response. When your dashboard requests the voltage API and receives headers plus part of the JSON body, then the connection drops, this is not an HTTP error. The response was incomplete. Transport failed mid-response.
 
-## 6) Failures Live Below HTTP
+Partial responses are dangerous because the server may have completed the action, the client may not know the result, and retrying may duplicate side effects. This is the hardest failure mode to reason about. When your ESP32 sends a POST request to the temperature API and receives two hundred OK headers but the connection drops before the body arrives, did the Pi process the temperature? Unknown. Retrying might send duplicate data. This is ambiguity at its worst.
 
-Failures occur before or during HTTP:
-	•	DNS resolution fails (e.g., `pi.local` doesn't resolve)
-	•	TCP connection cannot be established (e.g., Pi is offline)
-	•	Connection drops mid-transfer (e.g., Wi‑Fi disconnects while ESP32 sends data)
-	•	Request times out (e.g., dashboard waits 30 seconds, no response)
+HTTP status codes assume a complete request and a complete response. Partial failure exists outside the protocol. When your ESP32 sends a POST request to the temperature API and receives two hundred OK headers but the connection drops before the body arrives, HTTP has no status code for partial success. The protocol assumes complete responses. This is a transport failure, not an HTTP error. You're on your own.
 
-HTTP never completed.
+## 7) Why Idempotency Matters Here
 
+Idempotent requests like GET, PUT, and DELETE can often be retried safely. Non-idempotent requests like POST may cause duplicate side effects. Failures force you to care about this distinction.
 
-## 7) Why This Distinction Exists
+When your dashboard sends a GET request to the voltage API, which is idempotent, and times out, it's safe to retry. Or your ESP32 sends a POST request to the temperature API, which is non-idempotent, and times out. Retrying is dangerous and might duplicate. Failures force you to understand idempotency.
 
-HTTP assumes a working transport.
+You should handle HTTP errors and failures differently. For HTTP error handling, inspect the status code, parse the response body, and decide based on semantics. For failure handling, decide whether to retry, decide when to give up, and decide how to surface uncertainty.
 
-When that assumption breaks:
-	•	HTTP has nothing to say
-	•	There is no status code
-	•	There is no response body
+When your dashboard gets four hundred one Unauthorized, that's an HTTP error. Inspect the status code, parse the body for an error message, fetch a new token, and retry. Or your dashboard times out, which is a failure. No status code, no body. Decide whether to retry, when to give up, how long to wait. Different handling for different problems.
 
-The protocol ends before it begins.
+Retrying blindly can cause duplicate orders, double billing, corrupted state, or cascading failures. Retries must be intentional. When your solar panel logger sends a POST request to the readings API and times out, blindly retrying might send duplicate readings, corrupting your data. Retries must be intentional. Understand what you're retrying and why.
 
-Example: Your dashboard tries to connect to `pi.local` but DNS resolution fails. HTTP can't help—it assumes DNS works. The protocol never starts. Or your ESP32 sends a request but the TCP connection drops before the Pi can respond. HTTP assumes TCP works—when it doesn't, HTTP has nothing to say.
+## 8) Errors Are Explicit, Failures Are Ambiguous
 
+Errors are explicit. Failures are ambiguous. Ambiguity is expensive. When your ESP32 gets five hundred Internal Server Error, that's explicit. The Pi received the request and crashed. Or your ESP32 times out, which is ambiguous. Did the Pi see it? Did it process it? Did it crash? Unknown. Ambiguity forces you to make assumptions, and assumptions are expensive. They lead to bugs.
 
-## 8) 500 Is Not a Failure
+Good systems log errors and failures differently. For HTTP errors, log status, headers, and body. For failures, log timing, connection state, DNS, and transport info. They tell different stories. When your Pi logs five hundred Internal Server Error with a stack trace, that's a server bug. Investigate the code. Or your Pi logs a timeout with connection state, which indicates a network issue. Investigate the network. Different logs, different stories, different fixes.
 
-A 500 Internal Server Error means:
+From an operations perspective, rising four hundred status codes indicate client misuse. Rising five hundred status codes indicate server bugs. Rising timeouts indicate network or load issues. If you lump these together, you lose signal. When rising four hundred one Unauthorized means clients need new tokens, fix authentication. Rising timeouts mean network or load issues, fix infrastructure. Lumping them together loses signal. You can't tell what's wrong.
 
-“I received your request, I tried to process it, and I failed.”
+Many HTTP libraries throw exceptions for both errors and failures, blur semantics, and encourage catch-all handling. This is dangerous. You must know what you caught. When your ESP32 catches an exception from an HTTP library, is it a four hundred Bad Request, which is an HTTP error, or a timeout, which is a failure? The library might throw the same exception type for both. You must inspect what you caught. Don't treat them the same. HTTP errors have status codes. Failures don't.
 
-This is not ambiguity.
-This is explicit communication.
+An exception may represent a timeout, a DNS failure, a connection reset, or a malformed response. You must inspect what kind of exception it is. When your ESP32 catches an exception, is it a timeout? DNS failure? Connection reset? Malformed response? Each requires different handling. You must inspect what kind of exception it is. Don't treat them all the same.
 
-You know the server exists.
-You know the server received the request.
+## 9) No Response Is a First-Class Outcome
 
-Example: Your dashboard requests `GET /api/voltage` and gets `500 Internal Server Error`. You know the Pi exists, you know it received the request, you know it tried to process it and failed. This is explicit communication, not ambiguity.
+No response is not a bug. It is a valid system state. Design for it. When your solar panel logger sends a POST request to the readings API and gets no response, this isn't a bug. It's a valid outcome. Networks fail, servers restart, connections drop. Design your system to handle no response as a first-class outcome, not an exception to ignore.
 
+Networks fail. Packets drop. Servers restart. Connections reset. This is not exceptional behavior. It is baseline reality. When your Pi reboots, Wi‑Fi drops, DNS fails, connections reset, this happens all the time. Your ESP32 sending temperature readings will encounter these failures regularly. Design for it. Failure is normal, not exceptional.
 
-## 9) Timeout Is Not an Error
+HTTP errors are normal too. APIs return four hundred fours. Authentication expires. Permissions change. Errors are not disasters. They are communication. When your dashboard requests a sensor endpoint with a nonexistent ID and gets four hundred four Not Found, that's normal. The resource doesn't exist. Or your ESP32's authentication token expires and gets four hundred one Unauthorized. That's normal. Fetch a new token. Errors are communication, not disasters. Handle them gracefully.
 
-A timeout means:
+Silence gives you no certainty. All resilient systems are designed around silence. When your ESP32 sends a POST request to the temperature API and gets silence, no response, no error, nothing, did the Pi receive it? Did it process it? Unknown. All resilient systems are designed around this uncertainty. Handle silence explicitly. Don't assume success. Don't assume failure. Handle the ambiguity.
 
-“I waited, and nothing came back.”
+## 10) Client Strategy Summary
 
-You do not know:
-	•	Whether the server received the request
-	•	Whether it processed it
-	•	Whether it crashed
-	•	Whether the response was lost
+When a request fails, first ask whether you received an HTTP response. If yes, inspect the status code. If no, treat as transport failure. Decide retry behavior carefully and preserve idempotency guarantees.
 
-Timeouts are uncertainty.
+When your dashboard sends a GET request to the voltage API, which is idempotent, and times out, retry safely. Or your ESP32 sends a POST request to the temperature API, which is non-idempotent, and times out. Retry cautiously, might duplicate. Always preserve idempotency guarantees.
 
-Example: Your ESP32 sends `POST /api/temp` and times out after 30 seconds. Did the Pi receive it? Did it process it? Did it crash? Did the response get lost? Unknown—timeout is uncertainty, not information.
+Most bugs in distributed systems come from treating silence like an error, treating errors like silence, retrying blindly, or assuming success without confirmation. This chapter prevents that. Understanding the distinction between HTTP errors and network failures is fundamental to building robust systems that handle uncertainty correctly.
 
+## Common Pitfalls
 
-## 10) Why Treating Timeouts Like Errors Is Dangerous
+Treating timeouts like five hundred errors leads to dangerous retry behavior. Timeouts create ambiguity about whether the server processed the request. Retrying non-idempotent requests after timeouts can cause duplicate operations and corrupted state.
 
-If you treat a timeout like a 500:
-	•	You may retry unsafe requests
-	•	You may duplicate operations
-	•	You may corrupt state
+Lumping HTTP errors and network failures together in monitoring obscures the root cause. Four hundred status codes indicate client problems. Five hundred status codes indicate server problems. Timeouts indicate network or load problems. Each requires different investigation and fixes.
 
-Timeouts require caution, not confidence.
+Assuming partial responses are complete leads to data corruption. When headers arrive but the body doesn't, the server may have completed the action. Retrying without checking can duplicate side effects.
 
-Example: Your solar logger sends `POST /api/readings` and times out. If you retry blindly, you might send duplicate readings. The Pi might have processed the first request—you don't know. Timeouts require caution, not automatic retries.
+Ignoring the distinction between presence and absence breaks client logic. Always branch on whether you received an HTTP response before inspecting status codes. No response means transport failure, not an HTTP error.
 
+Using the same exception handling for all failures hides critical differences. Timeouts, DNS failures, connection resets, and malformed responses each require different handling. Inspect what kind of failure occurred before deciding how to respond.
 
-## 11) 404 Is Not a Failure
+## Summary
 
-A 404 Not Found means:
+HTTP errors and network failures are fundamentally different. HTTP errors mean the server responded with a status code, providing explicit information. Network failures mean no response arrived, creating ambiguity. Presence contains information. Absence does not. HTTP errors occur at the application layer after transport succeeds. Failures occur at the transport layer before HTTP completes. Always branch on whether you received an HTTP response before inspecting status codes. Handle errors and failures differently. Preserve idempotency guarantees when retrying. Design for silence as a first-class outcome. Most bugs in distributed systems come from confusing errors and failures. Understanding this distinction is critical for robust systems.
 
-“I am here. I understood you. That resource does not exist.”
+## Next
 
-This is information.
-
-The client can:
-	•	Stop retrying
-	•	Correct the path
-	•	Update stored links
-
-Example: Your dashboard requests `GET /api/sensors/nonexistent_id` and gets `404 Not Found`. The dashboard knows the resource doesn't exist—stop retrying, fix the path, or update stored links. This is information, not failure.
-
-
-## 12) DNS Failure Is Not a 404
-
-DNS failure means:
-
-“I cannot find the server.”
-
-This is not about a resource.
-This is about location.
-
-No HTTP request occurred.
-
-Example: Your ESP32 tries to connect to `pi.local` but DNS resolution fails. No HTTP request happened—DNS failed before HTTP could start. This is not `404 Not Found`—this is DNS failure, a transport problem.
-
-
-## 13) The Client’s Perspective Matters
-
-From the client’s point of view:
-	•	HTTP error → server spoke
-	•	Failure → silence
-
-Your client code must branch here first.
-
-Example: Your dashboard sends `GET /api/voltage` and gets `500 Internal Server Error`—the Pi spoke, handle as HTTP error. Or your dashboard sends the same request and times out—silence, handle as failure. Your code must branch on "did I get a response?" before anything else.
-
-
-## 14) The First Question Your Code Should Ask
-
-When something goes wrong, your code should ask:
-
-“Did I receive an HTTP response?”
-
-Everything else depends on this answer.
-
-Example: Your ESP32 sends `POST /api/temp` and something goes wrong. First question: did I get an HTTP response? If yes, inspect the status code (400, 401, 500, etc.). If no, treat as transport failure (timeout, DNS, connection drop). Everything else—retry logic, error handling, logging—depends on this first answer.
-
-
-## 15) Partial Responses
-
-Sometimes you receive:
-	•	Headers
-	•	Part of the body
-	•	Then the connection drops
-
-This is not an HTTP error.
-
-This is a transport failure mid-response.
-
-Example: Your dashboard requests `GET /api/voltage` and receives headers plus part of the JSON body, then the connection drops. This is not an HTTP error—the response was incomplete. Transport failed mid-response.
-
-
-## 16) Partial Data Is Dangerous
-
-Partial responses are dangerous because:
-	•	The server may have completed the action
-	•	The client may not know the result
-	•	Retrying may duplicate side effects
-
-This is the hardest failure mode to reason about.
-
-Example: Your ESP32 sends `POST /api/temp` and receives `200 OK` headers but the connection drops before the body arrives. Did the Pi process the temperature? Unknown. Retrying might send duplicate data. This is ambiguity at its worst.
-
-
-## 17) HTTP Cannot Represent Partial Failure
-
-HTTP status codes assume:
-	•	A complete request
-	•	A complete response
-
-Partial failure exists outside the protocol.
-
-Example: Your ESP32 sends `POST /api/temp` and receives `200 OK` headers but the connection drops before the body arrives. HTTP has no status code for "partial success"—the protocol assumes complete responses. This is a transport failure, not an HTTP error. You're on your own.
-
-
-## 18) Why Idempotency Matters Here
-
-Idempotent requests (GET, PUT, DELETE):
-	•	Can often be retried safely
-
-Non-idempotent requests (POST):
-	•	May cause duplicate side effects
-
-Failures force you to care about this distinction.
-
-Example: Your dashboard sends `GET /api/voltage` (idempotent) and times out—safe to retry. Or sends `POST /api/temp` (non-idempotent) and times out—dangerous to retry, might duplicate. Failures force you to understand idempotency.
-
-
-## 19) Error Handling vs Failure Handling
-
-You should handle them differently:
-
-HTTP Error Handling
-	•	Inspect status code
-	•	Parse response body
-	•	Decide based on semantics
-
-Failure Handling
-	•	Decide whether to retry
-	•	Decide when to give up
-	•	Decide how to surface uncertainty
-
-Example: Your dashboard gets `401 Unauthorized`—HTTP error. Inspect status code, parse body for error message, fetch new token, retry. Or your dashboard times out—failure. No status code, no body. Decide: retry? Give up? How long to wait? Different handling for different problems.
-
-
-## 20) Why Retries Are Dangerous Without This Model
-
-Retrying blindly can cause:
-	•	Duplicate orders
-	•	Double billing
-	•	Corrupted state
-	•	Cascading failures
-
-Retries must be intentional.
-
-Example: Your solar logger sends `POST /api/readings` and times out. Blindly retrying might send duplicate readings, corrupting your data. Retries must be intentional—understand what you're retrying and why.
-
-
-## 21) Failures Create Ambiguity
-
-Errors are explicit.
-Failures are ambiguous.
-
-Ambiguity is expensive.
-
-Example: Your ESP32 gets `500 Internal Server Error`—explicit: the Pi received the request and crashed. Or your ESP32 times out—ambiguous: did the Pi see it? Did it process it? Did it crash? Unknown. Ambiguity forces you to make assumptions, and assumptions are expensive—they lead to bugs.
-
-
-## 22) Logging Errors vs Failures
-
-Good systems log them differently:
-	•	HTTP errors: log status, headers, body
-	•	Failures: log timing, connection state, DNS, transport info
-
-They tell different stories.
-
-Example: Your Pi logs `500 Internal Server Error` with stack trace—server bug, investigate code. Or logs timeout with connection state—network issue, investigate network. Different logs, different stories, different fixes.
-
-
-## 23) Monitoring Implications
-
-From an ops perspective:
-	•	Rising 4xx → client misuse
-	•	Rising 5xx → server bugs
-	•	Rising timeouts → network or load issues
-
-If you lump these together, you lose signal.
-
-Example: Rising `401 Unauthorized` means clients need new tokens—fix authentication. Rising timeouts mean network or load issues—fix infrastructure. Lumping them together loses signal—you can't tell what's wrong.
-
-
-## 24) Client Libraries Often Hide This Distinction
-
-Many HTTP libraries:
-	•	Throw exceptions for both errors and failures
-	•	Blur semantics
-	•	Encourage catch-all handling
-
-This is dangerous.
-
-You must know what you caught.
-
-Example: Your ESP32 catches an exception from an HTTP library. Is it a `400 Bad Request` (HTTP error) or a timeout (failure)? The library might throw the same exception type for both. You must inspect what you caught—don't treat them the same. HTTP errors have status codes; failures don't.
-
-
-## 25) Exceptions Are Not Semantics
-
-An exception may represent:
-	•	A timeout
-	•	A DNS failure
-	•	A connection reset
-	•	A malformed response
-
-You must inspect what kind of exception it is.
-
-Example: Your ESP32 catches an exception. Is it a timeout? DNS failure? Connection reset? Malformed response? Each requires different handling. You must inspect what kind of exception it is—don't treat them all the same.
-
-
-## 26) “No Response” Is a First-Class Outcome
-
-“No response” is not a bug.
-It is a valid system state.
-
-Design for it.
-
-Example: Your solar logger sends `POST /api/readings` and gets no response. This isn't a bug—it's a valid outcome. Networks fail, servers restart, connections drop. Design your system to handle "no response" as a first-class outcome, not an exception to ignore.
-
-
-## 27) Failure Is Normal
-
-Networks fail.
-Packets drop.
-Servers restart.
-Connections reset.
-
-This is not exceptional behavior.
-It is baseline reality.
-
-Example: Your Pi reboots, Wi‑Fi drops, DNS fails, connections reset. This happens all the time. Your ESP32 sending temperature readings will encounter these failures regularly. Design for it—failure is normal, not exceptional.
-
-
-## 28) HTTP Errors Are Normal Too
-
-APIs return 404s.
-Auth expires.
-Permissions change.
-
-Errors are not disasters.
-They are communication.
-
-Example: Your dashboard requests `/api/sensors/nonexistent_id` and gets `404 Not Found`—normal, the resource doesn't exist. Or your ESP32's auth token expires and gets `401 Unauthorized`—normal, fetch a new token. Errors are communication, not disasters. Handle them gracefully.
-
-
-## 29) Silence Is the Hardest Case
-
-Silence gives you no certainty.
-
-All resilient systems are designed around silence.
-
-Example: Your ESP32 sends `POST /api/temp` and gets silence—no response, no error, nothing. Did the Pi receive it? Did it process it? Unknown. All resilient systems are designed around this uncertainty. Handle silence explicitly—don't assume success, don't assume failure, handle the ambiguity.
-
-
-## 30) Client Strategy Summary
-
-When a request fails:
-	1.	Did I receive an HTTP response?
-	2.	If yes → inspect status code
-	3.	If no → treat as transport failure
-	4.	Decide retry behavior carefully
-	5.	Preserve idempotency guarantees
-
-Example: Your dashboard sends `GET /api/voltage` (idempotent) and times out—retry safely. Or sends `POST /api/temp` (non-idempotent) and times out—retry cautiously, might duplicate. Always preserve idempotency guarantees.
-
-
-## 31) Why This Chapter Exists
-
-Most bugs in distributed systems come from:
-	•	Treating silence like an error
-	•	Treating errors like silence
-	•	Retrying blindly
-	•	Assuming success without confirmation
-
-This chapter prevents that.
-
-
-## Reflection
-
-Think about real failure scenarios—your ESP32 timing out, your dashboard getting no response, your Pi's connection dropping mid-transfer.
-	•	Your client waits 30 seconds and throws. Did the server return 500?
-	•	Did DNS fail?
-	•	Did the connection drop mid-body?
-	•	Did the server process the request anyway?
-
-What do you know?
-What do you not know?
-What is safe to retry?
-
-Consider failure modes:
-	•	Your ESP32 sends `POST /api/temp` and times out after 30 seconds. Did the Pi return `500`? No—you got no response, so no status code. Did DNS fail? Maybe—check DNS resolution. Did the connection drop mid-body? Maybe—check connection state. Did the Pi process the request anyway? Unknown—this is ambiguity. What do you know? Nothing—timeout is absence. What do you not know? Everything—did the Pi see it? Process it? Crash? Unknown. What is safe to retry? Depends on idempotency—if the request is idempotent, retry cautiously; if not, be very careful.
-	•	Your dashboard sends `GET /api/voltage` and gets `500 Internal Server Error`. What do you know? The Pi exists, received the request, tried to process it, and failed. What do you not know? Why it failed—bug, crash, exception? What is safe to retry? Maybe—`500` suggests transient failure, but retry cautiously.
-	•	Your solar logger sends `POST /api/readings` and receives headers but the connection drops before the body. Did the Pi process it? Unknown. Retrying might duplicate readings. This is the hardest case—partial response, maximum ambiguity.
-
-If you can answer that, you understand distributed systems.
-
-
-## Core Understanding
-
-The critical distinction:
-	•	HTTP error = the server responded (4xx / 5xx)
-	•	Failure = no response, timeout, or broken connection
-	•	Errors are explicit and informative
-	•	Failures are ambiguous and dangerous
-	•	Silence is not a response
-
-Handle them differently. Always.
-
-This chapter builds on Chapter 2.11 (client and server errors). Next: Chapter 2.13 — HTTP Methods, where we define GET, POST, PUT, PATCH, and DELETE, and explain why method semantics matter even more once failures enter the picture.
+This chapter built on Chapter 1.11, which covered client and server errors. Next, Chapter 1.13 explores HTTP methods, defining GET, POST, PUT, PATCH, and DELETE, and explaining why method semantics matter even more once failures enter the picture.

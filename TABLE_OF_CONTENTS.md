@@ -58,24 +58,24 @@ Section A: Foundations
 
 Language-agnostic mental models of how programs and real systems behave over time. Focuses on inputs, state, instructions, conditions, repetition, failure, time, and complexity—so later phases feel like translation, not new theory.
 
-**Chapters:**
-- **Chapter 1.1:** What Programs Actually Are (`Chapter_1.1_What_Programs_Are.md`)
+**Chapters (core 1.1–1.8; 1.9–1.15 extend):**
+- **Chapter 1.1:** What Programs Actually Are (`Chapter_1.01_What_Programs_Are.md`)
   - Programs as systems that transform inputs and state into outputs and new state.
-- **Chapter 1.2:** Conditions and Branching (`Chapter_1.2_Conditions_and_Branching.md`)
+- **Chapter 1.2:** Conditions and Branching (`Chapter_1.02_Conditions_and_Branching.md`)
   - True/false tests, branching paths, and how state determines execution flow.
-- **Chapter 1.3:** Loops and Repetition (`Chapter_1.3_Loops_and_Repetition.md`)
+- **Chapter 1.3:** Loops and Repetition (`Chapter_1.03_Loops_and_Repetition.md`)
   - Re-execution over time, termination, drift, and why automation lives in loops.
-- **Chapter 1.4:** Functions and Behavior (`Chapter_1.4_Functions_and_Behavior.md`)
+- **Chapter 1.4:** Functions and Behavior (`Chapter_1.04_Functions_and_Behavior.md`)
   - Naming behavior, isolating responsibilities, and structuring actions humans can reason about.
-- **Chapter 1.5:** Data and Variables (`Chapter_1.5_Data_and_Variables.md`)
+- **Chapter 1.5:** Data and Variables (`Chapter_1.05_Data_and_Variables.md`)
   - State, naming, meaning, and how programs remember and manipulate information.
-- **Chapter 1.6:** Errors and Failure (`Chapter_1.6_Errors_and_Failure.md`)
-  - Assumptions breaking, failure modes, and designing systems that fail safely.
-- **Chapter 1.7:** Time and State Changes (`Chapter_1.7_Time_and_State_Changes.md`)
+- **Chapter 1.6:** Errors and Failure (`Chapter_1.06_Errors_and_Failure.md`)
+  - Assumptions breaking, failure modes, how all bugs map to the model, and designing systems that fail safely.
+- **Chapter 1.7:** Time and State Changes (`Chapter_1.07_Time_and_State_Changes.md`)
   - Time as an implicit input: delays, cooldowns, staleness, and temporal logic.
-- **Chapter 1.8:** Boundaries (`Chapter_1.8_Boundaries.md`)
-  - Where systems touch the outside world and why validation lives at the edges.
-- **Chapter 1.9:** Invariants (`Chapter_1.9_Invariants.md`)
+- **Chapter 1.8:** Boundaries (`Chapter_1.08_Boundaries.md`)
+  - Where systems touch the outside world, why validation lives at the edges, and the phase anchor (program as sequence of instructions transforming data and state over time).
+- **Chapter 1.9:** Invariants (`Chapter_1.09_Invariants.md`)
   - Rules that must always hold true to keep systems stable over time.
 - **Chapter 1.10:** Failure Is Normal (`Chapter_1.10_Failure_Is_Normal.md`)
   - Designing for missing data, partial truth, and degraded operation.
@@ -86,7 +86,7 @@ Language-agnostic mental models of how programs and real systems behave over tim
 - **Chapter 1.13:** Complexity Grows Sideways (`Chapter_1.13_Complexity_Grows_Sideways.md`)
   - Why small systems become hard quickly and how branching multiplies paths.
 - **Chapter 1.14:** Putting the System Together (`Chapter_1.14_Putting_the_System_Together.md`)
-  - How all Phase 0 concepts interlock into one coherent execution model.
+  - How all Phase 1 concepts interlock into one coherent execution model.
 - **Chapter 1.15:** Section A Phase 1 Consolidation (`Chapter_1.15_Consolidation.md`)
   - Unified mental model and readiness check before moving into Python.
 

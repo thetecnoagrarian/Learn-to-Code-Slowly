@@ -1,403 +1,145 @@
-# Phase 1 · Chapter 1.10: Dictionaries and Named Systems
+# Section A Phase 2 · Chapter 2.10: Dictionaries and Named Systems
 
-Phase 0.10 established a critical rule: failure is normal. Missing data is not exceptional. Phase 0.8 established that boundaries validate data. Dictionaries are Python's primary tool for working honestly with that reality.
+Chapter 1.10 established that failure is normal and missing data is not exceptional. Chapter 1.8 established that boundaries validate data. Dictionaries are Python's primary tool for working honestly with that reality. Chapter 2.09 showed how lists, tuples, and sets group values—by position or by uniqueness. This chapter introduces dictionaries, which group values by name. Where lists answer "what is the nth item?," dictionaries answer "what value is associated with this name?" That difference changes how systems are designed, reasoned about, and debugged. This chapter covers what dictionaries are, why named access matters, how missing keys represent real failure modes, and how dictionaries become system boundaries, configuration, and state.
 
-Chapter 1.9 showed how lists, tuples, and sets group values—by position (list, tuple) or by uniqueness (set). This chapter introduces dictionaries, which group values by name. Where lists answer "what is the nth item?," dictionaries answer "what value is associated with this name?" That difference changes how systems are designed, reasoned about, and debugged.
+## Learning Objectives
 
-This chapter is about:
-	•	What dictionaries really are
-	•	Why named access matters
-	•	How missing keys represent real failure modes
-	•	How dictionaries become system boundaries, configuration, and state
+After this chapter, you will be able to:
+- Understand dictionaries as key-to-value mappings and named state containers
+- Distinguish when to use bracket access (key must exist) vs .get() (absence allowed)
+- Use .get() with defaults for optional config and graceful degradation
+- Interpret KeyError as a boundary violation and design for missing keys
+- Iterate over keys, values, or key-value pairs as appropriate
+- Model configuration, sensor packets, and system state with dictionaries
+- Apply invariants and validation to dictionary structure (required keys, types)
+
+## Key Terms
+
+- **Dictionary**: A collection that maps keys (names) to values; access by key, not position
+- **Key**: The name used to look up a value; keys in a dictionary are unique
+- **KeyError**: The exception raised when you access a missing key with bracket notation
+- **.get()**: Method that returns the value for a key if present, otherwise None or a default you supply
 
 ## 1) Why Dictionaries Exist at All
 
-Lists answer the question:
-
-“What is the nth item?”
-
-Dictionaries answer a different question:
-
-“What value is associated with this name?”
-
-As soon as meaning matters more than order, lists stop being enough. Homestead example: readings[0] might be voltage or timestamp—you have to remember. sensor_data["voltage"] is explicit. coop_sensor["temp"] is explicit. Named access documents meaning.
+Lists answer: what is the nth item? Dictionaries answer: what value is associated with this name? As soon as meaning matters more than order, lists are not enough. With a list, the element at index zero might be voltage or timestamp—you have to remember. With a dictionary, you use the key: sensor data under the key "voltage" is explicit, coop sensor under "temp" is explicit. Named access documents meaning. Homestead example: a sensor packet might have voltage, timestamp, and source. In a list you would have to remember which index is which. In a dictionary, the keys tell you: voltage, timestamp, source.
 
 ## 2) Dictionaries Are Named State
 
-A dictionary is a collection of key → value mappings (Chapter 1.2: state is tracked in variables—a dict is one variable holding named state).
-
-sensor_data = {
-    "voltage": 12.1,
-    "timestamp": "2025-01-30"
-}
-
-Or: coop_sensor = {"temp": 75.3, "humidity": 0.65, "timestamp": "2025-01-30"}. Or: fence_packet = {"voltage": 4.2, "energized": True}. Or: solar_packet = {"watts": 1200, "producing": True}.
-
-Here:
-	•	Keys are names
-	•	Values are data
-	•	The dictionary is a state container
-
-This is not cosmetic.
-This is structure.
+A dictionary is a collection of key-to-value mappings (Chapter 2.02: state is tracked in variables—a dictionary is one variable holding named state). You might have sensor data with keys voltage and timestamp; coop sensor with temp, humidity, and timestamp; fence packet with voltage and energized; or solar packet with watts and producing. Keys are names. Values are data. The dictionary is a state container. That is not cosmetic; it is structure. You can pass one variable—the dictionary—and the recipient knows what each value means by its key.
 
 ## 3) Keys Are Meaning, Not Position
 
-In a list:
-
-readings = [12.1, "2025-01-30"]
-
-What is readings[0]?
-What is readings[1]?
-
-You have to remember.
-The code does not tell you.
-
-In a dictionary:
-
-sensor_data["voltage"]
-sensor_data["timestamp"]
-
-The meaning is explicit.
+In a list, to know what the first or second element is you have to remember or document it. The code does not tell you. In a dictionary, you access by key: sensor data at the key "voltage" and sensor data at the key "timestamp." The meaning is explicit. No one has to remember that index zero is voltage; the key "voltage" says it. That reduces bugs and makes code easier to read and change. When you add a new field, you add a key; you do not shift indices or break callers who assumed a position.
 
 ## 4) Dictionaries Compress Reality Without Lying
 
-Recall Phase 0.11: abstraction must not lie.
-
-A dictionary compresses:
-	•	Multiple variables
-	•	Into one named structure
-	•	Without losing meaning
-
-Each key documents what the value represents.
-
-This is abstraction done correctly.
+Chapter 1.11: abstraction must not lie. A dictionary compresses multiple variables into one named structure without losing meaning. Each key documents what the value represents. You are not collapsing "voltage" and "timestamp" into "first" and "second"; you keep the names. That is abstraction done correctly. The structure is honest about what each value is.
 
 ## 5) Dictionary Keys Must Be Unique
 
-Each key appears at most once.
-
-{"voltage": 12.1, "voltage": 12.0}
-
-The second value overwrites the first.
-
-This is intentional.
-A key represents the value for that concept.
+Each key appears at most once in a dictionary. If you assign the same key twice, the second value overwrites the first. That is intentional. A key represents the single value for that concept at that time. So "voltage" has one value in a sensor packet; "temp" has one value in a coop reading. Uniqueness keeps the contract clear: one name, one value.
 
 ## 6) Dictionary Values Can Be Anything
 
-Values can be:
-	•	Numbers
-	•	Strings
-	•	Booleans
-	•	None
-	•	Lists
-	•	Other dictionaries
+Values in a dictionary can be numbers, strings, booleans, None, lists, or other dictionaries. That makes dictionaries ideal for modeling real systems: a sensor packet might have a float for voltage, a string for timestamp, and a boolean for energized. A config might have thresholds, cooldowns, and enabled flags. Nested dictionaries can represent hierarchy: system to subsystem to component. The key is always a name; the value carries the data, in whatever form it takes.
 
-This makes dictionaries ideal for modeling real systems.
+## 7) Accessing Values With Brackets
 
-## 7) Accessing Values With []
-
-The simplest access form:
-
-voltage = sensor_data["voltage"]
-
-This means:
-
-“I expect this key to exist.”
-
-If the key is missing, Python raises a KeyError (Chapter 1.1: programs can have errors—KeyError is explicit failure).
-
-This is not a bug.
-This is enforcement. Failure mode: sensor_data["voltage"] when ESP32 sends {"temp": 75, "humidity": 0.65} without "voltage"—KeyError. The key documents the contract. Missing key = contract violated.
+The simplest form of access is bracket notation: get the value for a key. That means: I expect this key to exist. If the key is missing, Python raises KeyError (Chapter 2.01: programs can have errors—KeyError is explicit failure). That is not a bug; it is enforcement. Failure mode: you access sensor data for "voltage" when the ESP32 sent a packet with only "temp" and "humidity." KeyError. The key documents the contract; a missing key means the contract was violated. You then fix the sender, the validation at the boundary, or the assumption in the code.
 
 ## 8) KeyError Is a Boundary Violation
 
-A KeyError tells you:
-	•	You assumed data existed
-	•	Reality disagreed
-	•	Your boundary was wrong or missing
+A KeyError tells you: you assumed the data existed, reality disagreed, and your boundary was wrong or missing. That is Chapter 1.8 and 1.10 in action. Sometimes you want this failure: when the key must exist, failing fast is correct. When the key might be missing, you should not use bracket access; use .get() instead. The choice between bracket access and .get() is a design decision about whether absence is allowed.
 
-This is Phase 0.8 and 0.10 in action.
+## 9) When Bracket Access Is the Right Choice
 
-Sometimes you want this failure.
-
-## 9) When [] Is the Right Choice
-
-Use [] when:
-	•	The key must exist
-	•	Absence indicates a programmer error
-	•	The system cannot proceed safely without it
-
-Examples:
-	•	Required configuration
-	•	Internal invariants
-	•	Critical system state
-
-Fail fast.
-Fail loud.
+Use bracket access when the key must exist, when absence indicates a programmer or configuration error, and when the system cannot proceed safely without that value. Examples: required configuration keys, internal invariants, critical system state. Fail fast and fail loud. That way the failure points to the real cause—missing required data—instead of propagating as None or wrong defaults.
 
 ## 10) The .get() Method: Designing for Absence
 
-.get() accesses a key safely.
-
-voltage = sensor_data.get("voltage")
-
-Or: coop_temp = coop_sensor.get("temp"). Or: fence_v = fence_packet.get("voltage"). Or: solar_w = solar_packet.get("watts").
-
-If the key is missing:
-	•	No error
-	•	None is returned (Chapter 1.7: None represents absence)
-
-This encodes:
-
-“Absence is allowed.”
-
-That is a design choice.
+.get() accesses a key safely. You ask for the value for a key; if the key is missing, no error is raised and None is returned (Chapter 2.07: None represents absence). That encodes: absence is allowed. It is a design choice. You use .get() when the key might be missing and you are prepared to handle None—or when you supply a default. Homestead example: coop sensor might have temp and humidity; if humidity is missing because the DHT22 had a partial read, .get("humidity") returns None and you can skip or default instead of crashing.
 
 ## 11) .get() With Defaults
 
-You can supply a default:
+You can supply a default value to .get(): if the key is present, you get its value; if the key is missing, you get the default. So config might have a threshold with a default of twelve point one, coop config a temp threshold default of eighty-five, or fence config a low voltage threshold default of two point zero. That means: use the configured value if present, otherwise fall back to the default. Defaults should be intentional, not accidental. Choose defaults that match safe or typical behavior so that missing config does not silently break the system.
 
-threshold = config.get("threshold", 12.1)
+## 12) .get() vs Brackets Is a Design Decision
 
-Or: temp_threshold = coop_config.get("temp_threshold", 85). Or: fence_threshold = fence_config.get("low_voltage_threshold", 2.0).
-
-This means:
-	•	Use the configured value if present
-	•	Otherwise, fall back to a default
-
-Defaults should be intentional, not accidental.
-
-## 12) .get() vs [] Is a Design Decision
-
-This is not a syntax choice.
-It’s a semantic choice.
-	•	[] → “This must exist.”
-	•	.get() → “This might not exist.”
-
-Mixing them carelessly creates bugs.
+This is not a syntax preference; it is a semantic choice. Brackets mean: this key must exist. .get() means: this key might not exist. Mixing them carelessly creates bugs. Using brackets when the key might be missing causes KeyError in production. Using .get() when the key must exist can hide bugs: you get None or a default and never notice the missing required data. Decide per key: required or optional. Then use brackets for required and .get() (with or without default) for optional.
 
 ## 13) Dictionaries Make Failure Explicit
 
-A missing key is not:
-	•	A crash
-	•	A surprise
-	•	A weakness
-
-It is information.
-
-Dictionaries allow you to decide:
-	•	Crash
-	•	Default
-	•	Skip
-	•	Log
-	•	Degrade
-
-That choice belongs in code, not assumptions.
+A missing key is not inherently a crash, a surprise, or a weakness—it is information. Dictionaries let you decide how to respond: crash (bracket access), default (.get() with default), skip (check for None after .get()), log (log the missing key and continue or stop), or degrade (use a fallback value or mode). That choice belongs in code, not in assumptions. Design for missing keys at boundaries (Chapter 1.8) and treat failure as normal (Chapter 1.10).
 
 ## 14) Iterating Over Dictionaries
 
-Dictionaries support iteration (Chapter 1.4: for loops iterate over sequences—dicts are iterable):
+Dictionaries support iteration (Chapter 2.04: for loops iterate over sequences—dicts are iterable). By default, iterating over a dictionary yields its keys. You can also iterate explicitly over keys, over values, or over key-value pairs. Each form communicates intent. When you only need keys, iterate over keys. When you only need values, iterate over values. When you need both name and value together, iterate over key-value pairs. Choosing the right form makes the code clearer and avoids unnecessary lookups.
 
-for key in sensor_data:
-    ...
+## 15) Key-Value Pairs Keep Meaning Attached
 
-This iterates over keys by default.
-
-You can also be explicit:
-
-for key in sensor_data.keys():
-    ...
-for value in sensor_data.values():
-    ...
-for key, value in sensor_data.items():
-    ...
-
-Each form communicates intent.
-
-## 15) .items() Is the Most Honest Form
-
-When you care about both name and value:
-
-for key, value in sensor_data.items():
-    log(key, value)
-
-This keeps meaning attached to data.
+When you care about both the name and the value, iterate over key-value pairs. That way each value is seen together with its key—you do not lose the meaning. Logging, validation, and serialization often need both. Keeping key and value together in the loop keeps meaning attached to data and avoids looking up the value again by key.
 
 ## 16) Nested Dictionaries: Hierarchical Systems
 
-Dictionaries can contain dictionaries.
-
-system = {
-    "battery": {"voltage": 12.1},
-    "generator": {"state": "running"}
-}
-
-Or: system = {"coop": {"temp": 75, "fan_on": True}, "fence": {"voltage": 4.2, "energized": True}}. Or: system = {"solar": {"watts": 1200}, "battery": {"voltage": 12.1}}.
-
-This models hierarchy naturally.
+Dictionaries can contain other dictionaries. You might have a system dictionary with a "battery" key whose value is another dictionary with "voltage," and a "generator" key whose value has "state." Or coop with temp and fan_on, fence with voltage and energized, solar with watts. That models hierarchy naturally. Real systems are nested: system to subsystem to component to value. Nested dictionaries reflect that structure without forcing an artificial order. Access like "system, then generator, then state" reads like the system itself.
 
 ## 17) Nested Dictionaries Mirror Real Systems
 
-Real systems are nested:
-	•	System → subsystem → component → value
-
-Nested dictionaries reflect this structure without forcing artificial order.
-
-system["generator"]["state"]
-
-This reads like the system.
+Real systems are nested: system, then subsystem, then component, then value. Nested dictionaries mirror this. You might have a top-level key for each subsystem—battery, coop, fence, solar—and each of those is a dictionary of that subsystem's state or config. The code that reads "system, then generator, then state" or "system, then coop, then temp" matches how you think about the system. Structure in code matches structure in the world.
 
 ## 18) Nested Access Requires Careful Boundaries
 
-Each level might be missing.
-
-system.get("generator", {}).get("state")
-
-This is defensive.
-It assumes failure is normal.
-
-Alternatively:
-
-system["generator"]["state"]
-
-This assumes invariants hold.
-
-Choose deliberately.
+Each level of nesting might be missing. You might have "generator" but not "state," or "coop" but not "temp." Defensive access uses .get() at each level: get the inner dictionary with a default of empty dictionary, then get the value from that. That assumes failure is normal and avoids KeyError when any level is missing. Alternatively, you can use bracket access at each level and assume invariants hold—required keys exist. Choose deliberately. At boundaries where data comes from the outside, defensive access is usually safer; inside your own code where you control the structure, invariants and bracket access can be acceptable.
 
 ## 19) Dictionaries as Configuration Models
 
-Configuration is named data.
-
-That makes dictionaries perfect.
-
-config = {
-    "threshold": 12.1,
-    "cooldown": 300,
-    "enabled": True
-}
-
-Or: coop_config = {"temp_threshold": 85, "fan_cooldown": 60}. Or: fence_config = {"low_voltage_threshold": 2.0, "alert_enabled": True}. Or: solar_config = {"log_interval": 300}.
-
-Keys document intent.
-Values carry meaning.
+Configuration is named data: threshold, cooldown, enabled, temp threshold, fan cooldown, low voltage threshold, alert enabled, log interval. That makes dictionaries a natural fit. Keys document intent; values carry meaning. You might have a config dictionary for the battery monitor, coop controller, fence monitor, or solar logger—each with keys that match the concepts in the system. Config loaded from a file or environment can be parsed into a dictionary so the rest of the program accesses settings by name.
 
 ## 20) Configuration Should Be Read-Mostly
 
-Config dictionaries:
-	•	Are usually loaded once
-	•	Are rarely modified
-	•	Should be treated as immutable by convention
-
-Changing config at runtime is powerful—and dangerous.
+Config dictionaries are usually loaded once, rarely modified, and should be treated as read-mostly or immutable by convention. Changing config at runtime is powerful—you can adjust thresholds without restarting—but it is also dangerous: it can make behavior hard to reason about and can introduce race conditions. If you do change config at runtime, do it deliberately and document it. Prefer loading config at startup and using it as read-only for the rest of the run.
 
 ## 21) Dictionaries vs Lists Revisited
 
-Use a list when:
-	•	Order matters
-	•	You iterate sequentially
-	•	You process history
-
-Use a dictionary when:
-	•	Meaning matters
-	•	You look up by name
-	•	Order is irrelevant or secondary
-
-This distinction is foundational.
+Use a list when order matters, you iterate sequentially, and you process history—readings over time, event logs, queues. Use a dictionary when meaning matters, you look up by name, and order is irrelevant or secondary—sensor packets, configuration, system state. This distinction is foundational. Mixing them wrongly—using a list when you need named fields, or a dictionary when you need ordered history—makes code harder to write and easier to break.
 
 ## 22) Dictionaries as State Containers
 
-Instead of:
-
-voltage = 12.1
-generator_running = True
-last_update = "2025-01-30"
-
-You can group state:
-
-state = {
-    "voltage": 12.1,
-    "generator_running": True,
-    "last_update": "2025-01-30"
-}
-
-Or: coop_state = {"temp": 75, "fan_on": False, "last_update": "2025-01-30"}. Or: fence_state = {"voltage": 4.2, "energized": True}. Or: solar_state = {"watts": 1200, "producing": True}.
-
-This makes state explicit and portable.
+Instead of many separate variables—voltage, generator running, last update—you can group state in one dictionary: voltage, generator running, last update as keys. Same for coop state (temp, fan on, last update), fence state (voltage, energized), or solar state (watts, producing). That makes state explicit and portable. You can pass the whole state, log it, snapshot it for persistence, or reset it by replacing the dictionary. Grouped state scales better than a pile of loose global variables.
 
 ## 23) Grouped State Improves Reasoning
 
-When state lives together:
-	•	Passing state is easier
-	•	Logging is easier
-	•	Snapshotting is easier
-	•	Testing is easier
-
-State containers scale better than loose globals.
+When state lives together in a dictionary, passing state is easier (one argument instead of many), logging is easier (log the dict), snapshotting is easier (copy or serialize the dict), and testing is easier (build a dict with known values). State containers also make invariants easier to state: "this dictionary always has these keys" or "voltage is always a float when present." You reason about one object and its keys instead of many unrelated variables.
 
 ## 24) Dictionaries and Mutability
 
-Dictionaries are mutable (Chapter 1.9: like lists, dicts can change in place).
-
-state["voltage"] = 12.0
-
-Or: coop_state["temp"] = 76. Or: fence_state["voltage"] = 4.1. This updates state in place.
-
-Mutability means:
-	•	Shared references see changes
-	•	Side effects are possible
-	•	Discipline is required
+Dictionaries are mutable (Chapter 2.09: like lists, dicts can change in place). You can assign to a key to update a value, or add a new key. All references to that dictionary see the change. Mutability means shared references see changes, side effects are possible, and discipline is required. When you pass a dictionary to a function, that function can modify it. When that is not desired, pass a copy or use a structure that cannot be changed. When you do want shared, updatable state, the dictionary is the right tool.
 
 ## 25) Dictionaries Need Invariants Too
 
-Examples:
-	•	Required keys must exist ("voltage" in sensor_data, "temp" in coop_sensor)
-	•	Certain values must be types (voltage is float, fan_on is bool)
-	•	Certain combinations must be valid (if generator_running, voltage must exist)
-
-Dictionaries do not enforce invariants.
-You must. Failure mode: assuming config["threshold"] exists when it might not—KeyError or logic error. Design: document required keys, validate on load, use .get() with intentional defaults for optional keys.
+Dictionaries do not enforce invariants; you must. Examples: required keys must exist (voltage in sensor data, temp in coop sensor); certain values must be types (voltage is float, fan_on is bool); certain combinations must be valid (if generator running, voltage must exist). Failure mode: assuming a config key exists when it might not—KeyError or wrong logic. Design: document required keys, validate on load or at the boundary, and use .get() with intentional defaults for optional keys. Invariants are boundaries (Chapter 1.8); apply them to dictionary structure as well as to single values.
 
 ## 26) Homestead System Framing
 
-In your systems—battery monitor, coop controller, poultry net, solar logger, pig barn, cow barn, ESP32:
-	•	Sensor packets → dictionary (voltage, coop temp/humidity, fence voltage, solar watts—each with timestamp)
-	•	Configuration → dictionary (thresholds, cooldowns, enabled flags per subsystem)
-	•	System state → dictionary (voltage, generator_running; coop temp, fan_on; fence voltage, energized)
-	•	Metadata → dictionary (sensor_id, timestamp, source)
+In your systems—battery monitor, coop controller, poultry net, solar logger, barn sensors, ESP32 nodes—sensor packets are dictionaries: voltage, timestamp, source; or temp, humidity, timestamp; or fence voltage, energized; or watts, producing. Configuration is a dictionary: thresholds, cooldowns, enabled flags per subsystem. System state is a dictionary: voltage and generator running; coop temp and fan on; fence voltage and energized; solar watts and producing. Metadata—sensor ID, timestamp, source—is a dictionary. Each key is a contract. Each missing key is a question: is it optional? Should we default? Should we fail? Answer that in code with brackets or .get() and defaults.
 
-Each key is a contract.
-Each missing key is a question.
+## Common Pitfalls
 
-## Reflection
+Using bracket access when the key might be missing causes KeyError. Use .get() when absence is allowed, and supply a default when a fallback is correct.
 
-Think about a real system—battery monitor, coop controller, poultry net, solar logger, pig barn, cow barn, ESP32. While driving or working, ask:
-	•	Which data is positional? (voltage history over time → list. sensor packet with named fields → dict.)
-	•	Which data is named? (voltage, temp, humidity, timestamp → dict. Keys document meaning.)
-	•	Where can data be missing? (ESP32 might omit "voltage" if sensor failed. Coop sensor might omit "humidity" if DHT22 partial read.)
-	•	Where should absence crash the system? (Required config key missing → use [], fail fast.)
-	•	Where should it degrade gracefully? (Optional "alert_enabled" missing → use .get("alert_enabled", False).)
+Using .get() when the key must exist hides bugs: you get None or a default and never detect missing required data. Use bracket access for required keys so that missing data fails fast.
 
-Consider failure modes:
-	•	What if a key you assume exists is missing? (KeyError or wrong default.)
-	•	What if you use [] when you should use .get()? (Crashes on optional data.)
-	•	What if you use .get() when the key must exist? (Hides bugs, returns None.)
+Assuming a nested key exists. Each level can be missing. Use chained .get() with empty dict default for optional nesting, or validate structure at the boundary.
 
-Those answers determine whether to use lists or dictionaries—and how.
+Treating config as mutable without a plan. Prefer read-mostly; if you change it at runtime, document and control where it happens.
 
-## Core Understanding
+Forgetting that dictionaries are mutable and shared. Passing a dict to a function gives that function the ability to change it. If that is not intended, pass a copy or an immutable view.
 
-Say this until it feels obvious:
+## Summary
 
-Dictionaries map names to values (key → value).
-Keys represent meaning (voltage, temp, timestamp—not position).
-Values carry data.
-Use [] when keys must exist (fail fast on KeyError).
-Use .get() when keys may be missing (return None or default).
-Missing keys are a design case, not an error (Phase 0.10: failure is normal).
-Dictionaries model structured data, configuration, and system state.
+Dictionaries map names (keys) to values. They are named state: access by meaning, not position. Use bracket access when the key must exist—fail fast on KeyError. Use .get() when the key may be missing—return None or a default. Missing keys are a design case (Chapter 1.10: failure is normal); choose how to handle them at boundaries (Chapter 1.8). Dictionaries model sensor packets, configuration, and system state; they support nesting for hierarchy and are mutable so state can be updated in place. They need invariants (required keys, types) just like other state. Lists are for order and history; dictionaries are for meaning and lookup. Choose the structure that matches the question you are asking. When you need "value for this name," use a dictionary; when you need "the nth item" or "the last N items," use a list.
 
-If this feels like Phase 0.10 fully grounded in Python mechanics, you’re exactly where you should be.
+## Next
 
-This chapter builds on Chapter 1.9 (collections—dicts are another collection type, keyed by name not position). Next up: Chapter 1.11 — Input, Output, and Program Boundaries, where we finally cross the line between your program and the outside world—and talk about why boundaries matter more than logic.
+Chapter 2.11 (Input, Output, and Program Boundaries) is where config and state meet the outside world. Dictionaries often hold what was read from files, environment, or network, and what will be written back. That chapter covers how data enters and leaves the program in Python—print, input, file I/O, and type conversion—and why validation and explicit checks belong at those boundaries. Dictionaries and boundaries together define how your program talks to the world.

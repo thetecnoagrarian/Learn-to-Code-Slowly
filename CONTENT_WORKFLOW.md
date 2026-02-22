@@ -23,10 +23,10 @@ These rules apply to all instructional content in this project.
 ### Chapter Length
 
 - Target 15-20 minutes per chapter (read or listen)
-- Character count target: 18,000-26,000 characters
+- Character count target: 24,000-27,000 meaningful characters
 - One chapter = one core mental model
 - Split topics if they exceed the time or clarity limit
-- If a chapter exceeds 26k characters, it's too wordy—tighten it
+- If a chapter exceeds 27k characters, it's too wordy—tighten it
 
 ### Audio-First
 
@@ -429,7 +429,7 @@ Each chapter file should follow this structure:
 
 1. **Guiding principle:** Teach how systems behave, not how to memorize tools.
 2. **resources.md** = single source of truth for external links. Don’t paste URLs into chapter files.
-3. **Content constraints:** 15-20 min per chapter (18k-26k characters), audio-first, one mental model per chapter, include failure modes and anchor takeaways.
+3. **Content constraints:** 15-20 min per chapter (24k-27k meaningful characters), audio-first, one mental model per chapter, include failure modes and anchor takeaways.
 4. **Fetch and integrate** from resource URLs when expanding concepts.
 5. **ChatGPT** = drafting, brainstorming, long-form generation.
 6. **Cursor** = fetching, editing, consistency, technical accuracy, tightening.
@@ -440,4 +440,4 @@ Each chapter file should follow this structure:
 11. **Challenges and projects** — Progressive difficulty, homestead-focused, clearly marked "when not driving." Solutions provided separately.
 12. **ChatGPT chapter drop** — When user drops a ChatGPT-expanded chapter: (1) remove meta-commentary, (2) remove horizontal rules, (3) standardize headings to numbered `## 1)` style, (4) broaden homestead examples per Homestead Example Variety. Do these four every time before refinement.
 13. **Tightening chapters** — Remove FAQ sections, Review sections, Checklists, Roadmaps, Extended Scenarios, "When Things Go Wrong" sections. Move Key Terms to top. Keep Learning Objectives, core content, concise Common Pitfalls, concise Summary, brief Bridge. More direct language, less explanatory, remove rhetorical questions, less nested structure,no bullet points.
-14. **Character count** — Check character count before finalizing. If over 26k characters, tighten further. Target 18k-26k characters for 15-20 minute audio.
+14. **Character count** — Check character count before finalizing. If over 27k characters, tighten further. Target 24k-27k meaningful characters for 15-20 minute audio.

@@ -253,36 +253,54 @@ Understanding how web communication works at the protocol level. Requests, respo
 Deep understanding of HyperText Markup Language — the structure of every web page. Elements, attributes, document structure, semantics, accessibility, and how HTML is delivered and rendered. Essential before CSS (which styles HTML) and before server-rendered or client-rendered content. Bridge between HTTP (which transports HTML) and the actual document.
 
 **Chapters:**
-- **Chapter 2.1:** What HTML Is (`Chapter_2.1_What_HTML_Is.md`)
+- **Chapter 2.01:** What HTML Is (`Chapter_2.01_What_HTML_Is.md`)
   - Markup vs content; tags and elements; HTML as a tree; separation of structure and presentation. Bridge to Section B Phase 1 (HTTP delivers HTML).
-- **Chapter 2.2:** Document Structure and the DOCTYPE (`Chapter_2.2_Document_Structure.md`)
-  - DOCTYPE; html, head, body; character encoding (meta charset); title; viewport and meta tags.
-- **Chapter 2.3:** Text and Headings (`Chapter_2.3_Text_and_Headings.md`)
-  - Headings (h1–h6); paragraphs; line breaks; horizontal rules; semantic hierarchy and accessibility.
-- **Chapter 2.4:** Links and Anchors (`Chapter_2.4_Links_and_Anchors.md`)
-  - a href; absolute vs relative URLs; target and rel; fragment identifiers; links as boundaries (Section A Phase 1 Chapter 1.8).
-- **Chapter 2.5:** Lists (`Chapter_2.5_Lists.md`)
+- **Chapter 2.02:** Document Structure and the DOCTYPE (`Chapter_2.02_Document_Structure.md`)
+  - DOCTYPE; html, head, body; character encoding (meta charset); minimal document.
+- **Chapter 2.03:** The Head — Meta, Title, and Linked Resources (`Chapter_2.03_The_Head_Meta_Title_and_Linked_Resources.md`)
+  - Meta charset, viewport, title; link for stylesheets and favicons; script in head; metadata and linked resources.
+- **Chapter 2.04:** Text and Headings (`Chapter_2.04_Text_and_Headings.md`)
+  - Headings (h1–h6); semantic hierarchy and accessibility.
+- **Chapter 2.05:** Paragraphs and Inline Text (`Chapter_2.05_Paragraphs_and_Inline_Text.md`)
+  - Paragraphs, line breaks, horizontal rules; strong, em, small, mark; flow and phrasing content.
+- **Chapter 2.06:** Links and Anchors (`Chapter_2.06_Links_and_Anchors.md`)
+  - a href; absolute vs relative URLs; target and rel; fragment identifiers; links as boundaries.
+- **Chapter 2.07:** Lists (`Chapter_2.07_Lists.md`)
   - ul, ol, li; dl, dt, dd; when to use each; nesting lists.
-- **Chapter 2.6:** Images and Media (`Chapter_2.6_Images_and_Media.md`)
+- **Chapter 2.08:** Images and Media (`Chapter_2.08_Images_and_Media.md`)
   - img (src, alt, width, height); picture and source; figure and figcaption; accessibility and performance.
-- **Chapter 2.7:** Tables (`Chapter_2.7_Tables.md`)
-  - table, thead, tbody, th, td; scope and headers; when tables are appropriate (tabular data); accessibility.
-- **Chapter 2.8:** Forms — Structure and Input Types (`Chapter_2.8_Forms_Structure.md`)
-  - form, action, method; input types (text, number, email, password, checkbox, radio); label and id; name and submission.
-- **Chapter 2.9:** Forms — Select, Textarea, and Buttons (`Chapter_2.9_Forms_Select_Textarea_Buttons.md`)
-  - select and option; textarea; button vs input type="submit"; fieldset and legend; validation attributes.
-- **Chapter 2.10:** Semantic HTML and Landmarks (`Chapter_2.10_Semantic_HTML.md`)
-  - header, main, footer, nav, aside, section, article; ARIA landmarks; document outline and screen readers.
-- **Chapter 2.11:** Div and Span — Generic Containers (`Chapter_2.11_Div_and_Span.md`)
-  - When to use div vs semantic elements; span for inline grouping; class and id; structure without semantics.
-- **Chapter 2.12:** Attributes — class, id, data-*, ARIA (`Chapter_2.12_Attributes.md`)
-  - class and id; data-* for custom data; aria-* for accessibility; boolean attributes.
-- **Chapter 2.13:** Character Entities and Encoding (`Chapter_2.13_Character_Entities.md`)
+- **Chapter 2.09:** Audio, Video, and Embedded Content (`Chapter_2.09_Audio_Video_and_Embedded_Content.md`)
+  - audio, video, source, track; embed and object; captions and accessibility.
+- **Chapter 2.10:** Tables (`Chapter_2.10_Tables.md`)
+  - table, thead, tbody, th, td; scope and headers; when tables are appropriate; accessibility.
+- **Chapter 2.11:** Forms — Structure and Input Types (`Chapter_2.11_Forms_Structure.md`)
+  - form, action, method; input types (text, number, email, password, checkbox, radio); label and id; name.
+- **Chapter 2.12:** Forms — Select, Textarea, and Buttons (`Chapter_2.12_Forms_Select_Textarea_Buttons.md`)
+  - select and option; textarea; button vs input type="submit"; fieldset and legend.
+- **Chapter 2.13:** Forms — Validation and Submission (`Chapter_2.13_Forms_Validation_and_Submission.md`)
+  - HTML5 validation attributes; action and method; name and submitted data; security (server-side validation, HTTPS).
+- **Chapter 2.14:** Semantic HTML and Landmarks (`Chapter_2.14_Semantic_HTML.md`)
+  - header, main, footer, nav, aside; ARIA landmarks; one main per page.
+- **Chapter 2.15:** Sections, Articles, and the Document Outline (`Chapter_2.15_Sections_Articles_and_the_Document_Outline.md`)
+  - section vs article; heading hierarchy and outline; assistive tech and SEO.
+- **Chapter 2.16:** Div and Span — Generic Containers (`Chapter_2.16_Div_and_Span.md`)
+  - When to use div vs semantic elements; span for inline grouping; class and id.
+- **Chapter 2.17:** Attributes — class, id, and data-* (`Chapter_2.17_Attributes.md`)
+  - class and id; data-* for custom data; boolean attributes.
+- **Chapter 2.18:** ARIA and Accessibility Attributes (`Chapter_2.18_ARIA_and_Accessibility_Attributes.md`)
+  - When to use ARIA; aria-label, aria-labelledby; roles; live regions; prefer semantic HTML.
+- **Chapter 2.19:** Character Entities and Encoding (`Chapter_2.19_Character_Entities.md`)
   - &amp;, &lt;, &gt;, &quot;; numeric entities; UTF-8 and meta charset.
-- **Chapter 2.14:** HTML and HTTP (`Chapter_2.14_HTML_and_HTTP.md`)
-  - How HTML is requested (GET); Content-Type: text/html; caching and validation; bridge to Section B Phase 1 and Express serving HTML.
-- **Chapter 2.15:** Validation and Best Practices (`Chapter_2.15_Validation_and_Best_Practices.md`)
+- **Chapter 2.20:** Block and Inline — Display Semantics (`Chapter_2.20_Block_and_Inline.md`)
+  - Flow content vs phrasing content; nesting rules; bridge to CSS display.
+- **Chapter 2.21:** Script, Style, and Iframe (`Chapter_2.21_Script_Style_and_Iframe.md`)
+  - Including scripts (defer, async) and styles; iframe, sandbox, security.
+- **Chapter 2.22:** HTML and HTTP (`Chapter_2.22_HTML_and_HTTP.md`)
+  - How HTML is requested (GET); Content-Type: text/html; caching and validation; bridge to Section B Phase 1.
+- **Chapter 2.23:** Validation and Best Practices (`Chapter_2.23_Validation_and_Best_Practices.md`)
   - Validators (W3C); common errors; nesting rules; closing tags; accessibility checklist.
+- **Chapter 2.24:** HTML in Practice — From Markup to Page (`Chapter_2.24_HTML_in_Practice.md`)
+  - Putting it together; view source and DevTools; accessibility checklist; bridge to CSS and JavaScript.
 
 **Key Concepts:** Elements, attributes, document structure, semantics, forms, accessibility, validation
 

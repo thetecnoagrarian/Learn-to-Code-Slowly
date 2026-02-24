@@ -1,61 +1,111 @@
-# Phase 2.5 · Chapter 2.5.5: Lists
+# Section B Phase 2 · Chapter 2.07: Lists
 
-ul, ol, li; dl, dt, dd; when to use each; nesting lists.
-
----
+Lists group related items and give them structure: unordered for sets where order does not matter, ordered for sequences where it does, and description lists for term–value pairs. This chapter covers ul, ol, li, dl, dt, and dd so you can mark up navigation menus, sensor lists, step-by-step instructions, and key–value data correctly for your dashboard and status pages. Correct list markup improves accessibility, makes styling and scripting easier, and keeps the document structure clear for validators and assistive technology. This chapter assumes you have read Chapter 2.06 (Links and Anchors); nav lists are typically ul or ol elements whose li children contain anchors.
 
 ## Learning Objectives
 
-- Mark up unordered lists (ul/li) and ordered lists (ol/li).
-- Mark up description lists (dl, dt, dd) for name-value pairs.
-- Choose the right list type for content (order matters vs doesn’t; key-value).
-- Nest lists correctly (li can contain ul or ol).
+By the end of this chapter, you should be able to:
+- Mark up unordered lists (ul and li) and ordered lists (ol and li) and choose the right one when order does or does not matter
+- Mark up description lists (dl, dt, dd) for name–value pairs such as sensor labels and readings
+- Nest lists correctly by placing ul or ol inside an li when you have submenus or outlines
+- Use list markup so structure and semantics support accessibility and styling
 
----
+## Key Terms
+
+- **ul (unordered list)**: A list whose items have no inherent order; the browser typically shows bullets
+- **ol (ordered list)**: A list whose items have a meaningful order (steps, rankings); the browser typically shows numbers or letters
+- **li (list item)**: A single item in a ul or ol; only li may be direct children of ul or ol
+- **dl (description list)**: A list of term–description pairs; contains dt and dd elements
+- **dt (description term)**: The term or name in a description list (e.g. sensor name, label)
+- **dd (description details)**: The description or value that goes with a dt (e.g. sensor value, definition)
+- **Nesting**: Putting a ul or ol inside an li to create sublists (e.g. nav with submenus)
+
+Lists are flow content and can appear wherever flow content is allowed: inside main, section, nav, aside, or other block-level containers. They work with headings to form the outline of the page (Chapter 2.04) and with landmarks (Chapter 2.14) to identify regions. Using the correct list type and valid structure from the start avoids having to refactor later when you add accessibility checks or change the design.
 
 ## 1) Unordered Lists (ul, li)
 
-- [Expand: <ul> contains <li> items; order not semantically significant (bullets by default).]
-- [Expand: use for nav menus, feature lists, checklist-like content.]
-- [Expand: only li may be direct children of ul (in HTML5).]
+An unordered list is marked up with a ul element that contains one or more li elements. Each li is a list item. The order of the items is not semantically significant: the list represents a set of related items, not a sequence. Browsers typically render ul with bullet points, but the important part is the structure: the document says "this is a list of items" and assistive technology can announce the list and the number of items. When a screen reader user enters a list, they often hear the list role and the count (e.g. "List with 4 items"); then each item is announced in order. That helps users skip or scan the list as a unit. If you use a ul for nav, the list becomes a navigable group; if you use a div with a bunch of links and no list, there is no list structure and the user does not get that grouping. So use list elements when the content is genuinely a list, not when you just want indentation or bullets from CSS. You can remove the default bullets with CSS (list-style-type: none) and still keep the semantic list; the markup stays correct for accessibility.
 
----
+In HTML5 only li may be direct children of ul. You cannot put a div or a paragraph directly inside ul; wrap content in an li. Each li can contain phrasing content, flow content, or both: text, links, paragraphs, or even another list (ul or ol) for nesting. Use unordered lists when the order does not matter: navigation menus (e.g. Voltage, Coop, Solar, Drip), feature lists, checklists, or any set of related items where "first" and "second" are not meaningful. For a dashboard nav, a ul of links is appropriate because the user can jump to any page; the order might be for visual grouping but is not a required sequence.
+
+Screen readers can list "List of 4 items" and then each item; the list structure helps users understand that these items belong together. Styling can remove bullets or use custom markers; the semantics stay the same. Chapter 2.06 showed how to put anchors inside list items for nav; the list gives the group structure, and each li wraps one link. If you have a list of links, put one anchor per li and keep the link text descriptive so that when a user hears "List of 5 items, link Voltage, link Coop, link Solar…" the list is useful. Do not use a ul for a single item unless you expect to add more later or the single item is part of a repeated pattern (e.g. a template that usually renders several items). A single li inside a ul is valid and can be styled; just ensure the list is the right choice semantically.
 
 ## 2) Ordered Lists (ol, li)
 
-- [Expand: <ol> contains <li>; order is significant (numbers/steps).]
-- [Expand: use for steps, rankings, numbered instructions.]
-- [Expand: start and reversed attributes when needed.]
+An ordered list is marked up with an ol element that contains one or more li elements. Here the order is semantically significant: the list represents a sequence, such as steps in a procedure or a ranking. Browsers typically render ol with numbers (1, 2, 3) or letters; the exact style can be changed with CSS (e.g. list-style-type: upper-alpha for A, B, C), but the underlying meaning is "this order matters." The type attribute (e.g. type="a" for letters) is deprecated in favor of CSS; use list-style-type in a stylesheet if you need a different marker style. The semantic is still "ordered list" regardless of whether the user sees numbers, letters, or Roman numerals.
 
----
+Only li may be direct children of ol, same as with ul. Use ordered lists for procedures (e.g. how to calibrate a sensor, how to open the coop door manually), ranked items (e.g. top three power draws), or any content where the user needs to follow or interpret order.
+
+The start attribute lets you begin numbering from a value other than 1. For example if you split a long procedure across two pages, the second page could use start so the steps continue as 4, 5, 6 instead of restarting at 1. The reversed attribute indicates that the order is descending: the first item in the list is the highest or newest, and the counter goes down. That is useful for "newest first" or "highest to lowest" without changing the DOM order. Not all screen readers announce "reversed" explicitly; the order of items in the document is still read in DOM order, so reversed mainly affects visual numbering. For maximum clarity you can put the most important or first step as the first li and use CSS to reverse the display if needed, or rely on reversed when the semantic order really is descending.
+
+Screen readers can announce "List of 5 items" and then "Item 1 of 5," "Item 2 of 5," and so on, so users know where they are in the sequence. For a homestead dashboard you might use ol for "Steps to reset the poultry net" or "Drip zones in run order"; use ul when the order is just for display and could be shuffled without changing meaning. Ordered lists are also useful for tables of contents (where the order matches the document order), for rankings (e.g. "Top 3 power consumers"), or for any numbered reference the user might cite ("See step 2 above"). Avoid using ol for a list that is only visually ordered (e.g. alphabetized for convenience); in that case the order is not inherent to the content, so ul is more accurate.
 
 ## 3) Description Lists (dl, dt, dd)
 
-- [Expand: <dl> wraps term (<dt>) and description (<dd>); one or more dt/dd pairs.]
-- [Expand: use for definitions, key-value (e.g. sensor name and value), metadata.]
-- [Expand: multiple dd per dt (or multiple dt per dd) when appropriate.]
+A description list groups terms with their descriptions. The container is dl. Inside it you have one or more term–description pairs: dt for the term (the name or label) and dd for the description (the value or definition). So dl contains dt and dd elements; dt and dd are siblings, and together they form a pair. The browser typically renders dt and dd on separate lines, with dd indented or styled under dt. In HTML5 the only direct children of dl should be dt and dd; do not put divs or other wrappers between the dl and its dt/dd children. Groupings of dt and dd are implied by order: the first dt goes with the following dd(s) until the next dt, and so on.
 
----
+You can have one dd per dt (one description per term), multiple dd per dt (one term, several descriptions), or multiple dt per dd (several terms sharing one description). For example one sensor name (dt) might have several readings over time (multiple dd), or several sensor names (multiple dt) might share one note (one dd). Use description lists for definitions, metadata, key–value pairs, or any content that is "label: value."
+
+On a sensor status page you might have a dt for "Battery voltage" and a dd for "12.4 V"; a dt for "Coop door" and a dd for "Closed." That makes the relationship explicit: the term is the label, the description is the value. Screen readers can announce "Battery voltage, 12.4 V" as a pair. Description lists are also useful for glossaries (term then definition), for settings (setting name then value), or for a list of sensors with their current readings. Do not use dl for arbitrary pairs of "thing and thing"; use it when the relationship is term–description or name–value. If you have a simple list of items with no such pairing, use ul or ol instead. Styling can make dt and dd appear inline (term: value on one line) or stacked; the semantics are the same. Some authors use dl for FAQ content (question as dt, answer as dd); that fits as long as the relationship is term–description. For long answers, the dd can contain paragraphs, lists, or other flow content. The dl element does not have a built-in "list of N pairs" announcement in all screen readers the way ul and ol do for item count, but the dt/dd pairing is still exposed so that "term, description" is clear. When you have many pairs (e.g. a long sensor list), consider grouping them under a heading or splitting into multiple dl elements by category (e.g. "Voltage sensors" as one dl, "Temperature sensors" as another) so that the page structure stays scannable. Validators will flag invalid dl content (e.g. non-dt/dd direct children in strict parsing); keep the structure clean. When the same term has more than one description (e.g. one sensor with multiple readings at different times), use one dt followed by multiple dd elements; when several terms share one description (e.g. several sensors in "OK" state), use multiple dt elements followed by one dd. The HTML spec allows these patterns; choose the one that matches your data.
 
 ## 4) Nesting Lists
 
-- [Expand: put ul or ol inside an li to nest; valid and common for outlines.]
-- [Expand: don’t put list items outside ul/ol; keep structure valid.]
-- [Expand: example: nav with submenus.]
+You nest a list by placing a ul or an ol inside an li. The inner list is a sublist of that list item. The structure stays valid: ul and ol may only contain li as direct children, and the nested list is inside an li, so the rule is satisfied. Nesting is common for outlines, nav with submenus, or multi-level instructions. Each level of nesting adds one ul or ol inside an li; the outer list's li wraps both the outer content (e.g. a link or heading) and the inner list. Screen readers that support list navigation can move by list, by list item, or into and out of nested lists, so a well-structured nav is easier to traverse than a flat set of links with no hierarchy.
 
----
+For example a nav might have top-level items (Voltage, Coop, Solar) and under "Voltage" you might have subitems (Battery, Solar input, Load). You would have a ul for the main nav; one li would contain the link "Voltage" and a nested ul with li items for Battery, Solar input, and Load. Do not put list items outside a ul or ol; every li must be a direct child of a ul or an ol. If you put a div or a raw li between the closing ul and the next content, the structure is invalid and browsers and assistive technology may interpret the list incorrectly.
+
+Keep nesting logical: one level of sublist per conceptual level. Deep nesting (many levels) is harder to navigate and to style; if you have more than two levels, consider whether the content could be split across pages or simplified. Screen readers announce nested lists as "List of 3 items" and then "Item 1 of 3, sublist, list of 2 items," so users understand the hierarchy. Chapter 2.14 and 2.15 cover landmarks and headings; lists work with those to give the page a clear structure. When you nest, ensure every ul and ol has at least one li; an empty list is valid but useless. The inner list is part of the outer list item's content, so the outer li can also contain text or a link before the nested list (e.g. "Voltage" as a link, then a nested ul of sublinks). That pattern is common for dropdown or expandable nav menus.
+
+## 5) When to Use Which List Type
+
+Use an unordered list (ul) when you have a set of items and the order does not matter. Nav menus, feature lists, and groups of links or options fit here. Use an ordered list (ol) when the order is meaningful: steps, rankings, or sequences the user must follow or interpret. Use a description list (dl) when you have term–description or name–value pairs: sensor name and reading, definition and explanation, setting and value.
+
+Do not use dl for two-column layouts where the relationship is not term–description; use a table (Chapter 2.19) or structured divs for that. Do not use ol when the order is only visual (e.g. alphabetized); use ul so the semantics match. If you are unsure, ask: "If I reordered these items, would the meaning change?" If yes, use ol; if no, use ul. For key–value data where the label and value are a pair, use dl with dt and dd. Sometimes content could be either a list or a set of paragraphs; if the items are tightly related and you want them announced as a group with a count, prefer a list. If the items are separate statements or blocks of prose, paragraphs may be better. Lists also make it easier to style a group (e.g. spacing between items, markers) and to script (e.g. "all items in this list"). When you use a nav landmark (Chapter 2.14), the main nav is often a ul or ol of links inside that landmark; the landmark identifies the region and the list identifies the group of links. Headings (Chapter 2.04) can introduce a list (e.g. "Sensor readings" as an h2, then a dl of readings) so that both the heading hierarchy and the list structure are available to assistive technology. Keeping lists valid and choosing the right type (ul, ol, dl) ensures that the page structure matches the content model and that future styling or scripting has a solid basis.
+
+## 6) Homestead Examples: Lists in Practice
+
+Your dashboard nav can be a ul of links: one li per link, each with an anchor to Voltage, Coop, Solar, Drip, Settings. The list groups the main sections and gives screen readers a "list of 5 items" to navigate. A voltage status page might show sensor readings in a dl: dt "Battery voltage," dd "12.4 V"; dt "Solar input," dd "18.2 V"; dt "Load," dd "2.1 A." Each pair is one term and its current value. A coop status page might have a ul of "Last 5 events" (order might be newest first, but the list is a set of events) or an ol of "Steps to manually close the door" (order matters). Your drip schedule page might use an ol for "Zone run order" (zone 1, then 2, then 3) and a ul for "Zones enabled this week." A freezer or barn temperature page could list sensors in a dl: dt "Freezer internal," dd "−18 °C"; dt "Freezer external," dd "−12 °C." A poultry net status page might have a dl for "Energizer voltage," "Fence status," "Last trigger," and a ul for "Related links" (Voltage, Coop, Alerts). A Pi or Home Assistant dashboard that shows multiple systems might use a ul for the main nav and nested uls for submenus (e.g. under "Sensors" you have Battery, Coop, Freezer, Poultry net). Use descriptive text inside each li and dt/dd so the list is understandable when read aloud. Keep the pattern consistent: nav as ul of links, sensor data as dl when it is name–value, steps or rankings as ol.
+
+A soil moisture or garden page could list zones in a ul (set of zones) or an ol if they run in a fixed order. Each zone's readings could be a dl: dt "Zone 1 moisture," dd "42%"; dt "Zone 2 moisture," dd "38%." An ESP32 or network status page might use a dl for "IP address," "Signal strength," "Last seen," and a ul for "Connected devices" or "Recent events." When you add a new section to the dashboard, add it as an li in the nav ul (or as a subitem in a nested ul) so the structure stays consistent. Lists are the backbone of nav and of many status displays; choosing ul, ol, or dl correctly makes the page easier to use and to maintain.
+
+A "Troubleshooting" or "Help" page might use an ol for "Steps to check the coop door" (order matters) and a dl for "Common error codes" (code as dt, meaning as dd). A chicken counter or door logic page could list "Conditions for door close" as a ul (set of conditions) and "Event log" as an ol (newest or oldest first). For a live webcam or property overview page, a ul of "Camera views" or "Areas" (Barn, Coop, Garden) gives a clear set of options. Across all these examples the pattern is the same: group related items with a list, choose the list type by meaning (order or not, term–value or not), and keep the markup valid so structure and semantics stay correct. When you validate your HTML (Chapter 2.23), the validator will report any ul or ol that has non-li children or any li outside a list; fix those first. Then test with a screen reader or keyboard: enter the list, move by item, and confirm that list boundaries and counts are announced as expected. Lists are one of the most common structures in dashboards and status pages; getting them right from the start saves time and improves accessibility. If a list is long (e.g. dozens of sensors), consider grouping under headings or splitting into multiple lists so that navigation by list remains manageable.
+
+## 7) What Breaks When Lists Are Wrong
+
+Putting content other than li directly inside ul or ol is invalid; validators will report it and browsers may treat the list as ended at the first non-li child. Fix by wrapping every direct child of ul or ol in an li. Putting an li outside any ul or ol (e.g. a stray li between two lists) is also invalid; every li must be inside a ul or an ol. Using dl for content that is not term–description pairs (e.g. two columns of unrelated data) misuses the element; use a table or other structure. Using ol when order does not matter can confuse screen reader users who hear "step 1, step 2" when there are no steps; use ul instead. Using ul for a clear sequence (e.g. numbered instructions) loses the semantic meaning of order; use ol. Empty list items (li with no content or only whitespace) are valid but unhelpful; add content or remove the item. Deep or inconsistent nesting (e.g. mixing ul and ol in confusing ways) makes the structure hard to follow; keep nesting simple and consistent. Styling can hide list markers or change appearance, but if the markup is wrong the semantics are wrong and accessibility and maintainability suffer. After changing list structure, test with a screen reader or validator to ensure lists are announced correctly and markup is valid.
+
+If a dl has a dt without a following dd (or vice versa), the structure may be valid in some cases but can confuse assistive technology; keep pairs complete. Mixing dt and dd order (e.g. dd before dt) can break the expected term–description pairing. When you copy content from another source, check that list markup was preserved and that no extra divs or spans were inserted as direct children of ul or ol. Fix any invalid nesting or missing li wrappers before relying on the list for navigation or styling. Using a list when the content is not really a list (e.g. a row of buttons marked up as ul/li only for layout) can confuse screen reader users who hear "list of 4 items" and expect a set of related items; use semantic elements that match the content. Conversely, not using a list when you have a clear set of items (e.g. nav links in plain divs) loses the list semantics and makes the page harder to navigate by list. When in doubt, prefer the semantic list if the content is a group of related items, and use the checklist in section 8 to verify structure.
+
+## 8) List Checklist
+
+When you add or edit a list, confirm: ul and ol contain only li as direct children; every li is inside a ul or an ol. For dl, each dt has at least one dd (or vice versa) and the pairs are in a sensible order. Choose ul when order does not matter, ol when it does, and dl for term–value pairs. If you nest lists, the inner ul or ol is inside an li of the outer list. Use descriptive text in each li and in dt/dd so the list makes sense when read aloud. You can style lists to look nothing like a traditional list (e.g. horizontal nav with no bullets, or a grid of cards): use list-style: none or list-style-type: none and layout with flexbox or grid; the markup stays ul/li and keeps the list semantics for accessibility. After changing nav or status structure, run a validator and test with a screen reader or keyboard to ensure list counts and order are announced correctly. Chapter 2.08 (Images and Media) covers how to add icons or images next to list items if you want visual markers beyond the default bullets or numbers.
+
+## Common Pitfalls
+
+Using divs or paragraphs as direct children of ul or ol: only li may be direct children; wrap content in li.
+
+Putting li outside ul or ol: every li must be inside a ul or an ol; fix stray list items.
+
+Using ol for a set of items where order does not matter: use ul so "first, second" is not implied.
+
+Using ul for steps or rankings: use ol when order is meaningful so semantics and announcements match.
+
+Using dl for layout or arbitrary pairs: reserve dl for term–description or name–value pairs; use tables or other markup for other structures.
+
+Nesting lists incorrectly: the nested list must be inside an li (e.g. ul contains li, and one li contains another ul); do not put a ul or ol as a direct sibling of an li outside of being inside that li.
+
+Leaving list items empty: add content or remove the item so the list is usable.
+
+Splitting a dl pair across unrelated elements: keep each dt and its dd(s) adjacent so the pairing is clear to assistive technology.
+
+Relying on list appearance alone (e.g. bullets or numbers) without correct markup: screen readers and scripts depend on ul/ol/dl elements; use the right list type and valid structure even if you hide markers with CSS.
+
+Using lists for layout only (e.g. a row of buttons): if the content is not a list of related items, use divs or other elements and style them; reserve lists for actual list content.
 
 ## Summary
 
-- ul/ol for lists of items (unordered vs ordered); dl/dt/dd for term-description pairs.
-- Nest lists by placing ul/ol inside li; keep semantics clear for accessibility.
+Use ul and li for unordered lists (nav, feature lists, sets of items); use ol and li for ordered lists (steps, rankings, sequences). Use dl, dt, and dd for term–description or name–value pairs (sensor labels and values, definitions, metadata). Only li may be direct children of ul or ol; nest lists by placing ul or ol inside an li. Choose the list type that matches the meaning: order matters or not, and term–value or not. List markup gives structure and semantics for accessibility and styling; keep it valid and consistent. Use the list checklist when you add or change nav or status lists so that structure stays correct and screen readers can announce lists properly. Avoid using divs or spans to fake list structure when the content is a real list; use ul, ol, or dl so validators and assistive technology get the right semantics. Chapter 2.08 (Images and Media) covers how to add images and media to your pages so you can include diagrams, sensor snapshots, or icons in your dashboard and in list items.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.5.6 — Images and Media**.
-
----
-
-*Expansion note for ChatGPT: One example each of ul, ol, and dl. Target ~150 lines.*
+Next: Chapter 2.08 (Images and Media) covers the img element, alternative text, and when and how to embed images and media so your status pages can show sensor data, diagrams, or live views alongside your lists and links. Lists and images together form the backbone of most dashboard and status page layouts. Use both with correct semantics for accessible and maintainable pages. Chapter 2.08 continues with images.

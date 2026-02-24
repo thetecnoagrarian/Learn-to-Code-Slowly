@@ -1,61 +1,100 @@
-# Phase 2.5 · Chapter 2.5.11: Div and Span — Generic Containers
+# Section B Phase 2 · Chapter 2.16: Div and Span
 
-When to use div vs semantic elements; span for inline grouping; class and id; structure without semantics.
-
----
+This chapter covers when and how to use div and span: generic containers that add no semantics. It builds on Chapter 2.15 (Sections, Articles, and the Document Outline), where you used section and article for thematic and self-contained content; here we focus on the cases where no semantic element fits and you need a block-level or inline wrapper for layout, styling, or scripting. Chapter 2.17 (Attributes — class, id, data-*) goes deeper on class, id, and data attributes that you typically use with div and span.
 
 ## Learning Objectives
 
-- Use div when no semantic element fits; avoid div for everything.
-- Use span for inline grouping (e.g. styling a phrase); no block semantics.
-- Apply class and id for styling and scripting; id must be unique, class reusable.
-- Prefer semantic elements first; fall back to div/span when structure has no meaning.
+By the end of this chapter, you should be able to:
+- Use div when you need a block-level container and no semantic element (main, section, article, nav, header, footer, aside) applies.
+- Use span when you need to group inline content (e.g. a phrase or a number) for styling or scripting without block semantics.
+- Apply class for reusable styling and scripting hooks; apply id for a unique identifier when one element must be targeted (anchors, ARIA, JavaScript).
+- Prefer semantic elements first; fall back to div or span only when the structure has no meaning that matches an existing element.
 
----
+## Key Terms
 
-## 1) div — Block-Level Generic Container
+- **div**: A block-level generic container with no inherent meaning; used for layout wrappers or grouping when section, article, nav, and other semantic elements do not apply.
+- **span**: An inline generic container with no inherent meaning; used to group text or inline content for styling or scripting (e.g. highlighting a term, wrapping a value).
+- **class**: An attribute that assigns one or more space-separated names to an element; reusable (many elements can share a class); used for CSS and JavaScript targeting and for styling groups.
+- **id**: An attribute that assigns a unique identifier to one element in the document; used for in-page anchors, ARIA relationships, and JavaScript when a single element must be identified.
 
-- [Expand: <div> has no meaning; use for layout wrappers or grouping when section/article/nav don’t apply.]
-- [Expand: block-level by default; often used with class for CSS/JS.]
-- [Expand: don’t overuse: ask "is there a semantic element?" first.]
+## 1) Div as Block-Level Generic Container
 
----
+Div has no semantic meaning. The browser and assistive technology treat it as a neutral block: it groups content visually and in the DOM but does not announce a role like "main", "navigation", or "section". Use div when you need a block-level wrapper and no semantic element fits. Typical uses are layout containers (e.g. a wrapper around header, main, and footer for flex or grid), rows or columns in a grid, or any grouping that is purely for styling or scripting and has no thematic or structural meaning that matches section, article, nav, header, footer, aside, or main.
 
-## 2) span — Inline Generic Container
+Div is block-level by default: it starts on a new line and stretches to fill the available width (unless CSS changes that). You can nest divs. A common pattern is a top-level div with a class like "layout" or "page" that wraps the whole page, then header, main, and footer inside it. That outer div is purely for layout (e.g. a sticky footer or a grid); the semantic elements inside still expose landmarks. Another pattern is a div wrapping a set of cards or tiles when the group itself has no heading and no theme (e.g. "card-grid" or "tile-row"); the individual cards might be articles or sections if they are self-contained or thematic, but the row is just a row.
 
-- [Expand: <span> has no meaning; inline; use to group text for styling or scripting.]
-- [Expand: example: highlighting a term with a class; wrapping a number for JS.]
-- [Expand: don’t use for block-level grouping—use div or semantic block.]
+Do not use div for everything. Before adding a div, ask whether a semantic element fits. If the block is the main content, use main. If it is a thematic group with a heading, use section. If it is self-contained (e.g. a sensor card), use article. If it is navigation, use nav. If it is tangential content, use aside. Reserve div for the remaining cases: layout wrappers, styling hooks, or grouping that has no semantic match. That keeps the page meaningful for assistive technology and for tools that rely on structure. In HTML5, div is flow content and can contain other flow content (headings, paragraphs, lists, other divs, semantic blocks); it does not create an outline entry and does not expose a landmark, so it is the right choice when you need a neutral container and nothing more. Screen readers do not announce "div"; they move past it and read the content inside. So a div used for layout does not add or subtract from the accessibility tree except by grouping content. That is why wrapping header, main, and footer in a div for layout is safe: the landmarks come from header, main, and footer, not from the wrapper. If you used div for all of them (e.g. div with class "header", div with class "main"), you would lose the landmarks unless you added ARIA roles, which is more work and easier to maintain incorrectly. Prefer semantic elements for the structure and div for the layout glue.
 
----
+## 2) Span as Inline Generic Container
 
-## 3) class and id
+Span has no semantic meaning and is inline. It does not start a new line; it sits inside a line of text or other inline content. Use span when you need to wrap a phrase, a word, or a number for styling (e.g. a CSS class that highlights or colors it) or for scripting (e.g. JavaScript that updates a value in place). For example, you might wrap the current temperature reading in a span with a class so you can style it or update it via script without affecting the rest of the sentence. Or you might wrap a term in a span with a class for definition styling.
 
-- [Expand: class = reusable identifier; multiple elements can share; multiple classes per element (space-separated).]
-- [Expand: id = unique in document; one element; used for anchors, ARIA, and JS.]
-- [Expand: naming: descriptive, lowercase-with-hyphens; avoid presentational names.]
+Do not use span for block-level grouping. If you need to group blocks (e.g. several paragraphs or a heading and a list), use a block-level element: div or a semantic element like section or article. Span is for inline content only. If you put a div inside a span, the HTML is invalid in most contexts because div is flow content and can break the inline context. Use span only when the content you are wrapping is inline: text, links, or other inline elements. For grouping block-level content, use div or a semantic block.
 
----
+Span does not change the meaning of the content for assistive technology. Screen readers typically do not announce "span"; they read the content inside. So using span for styling or scripting is fine and does not add noise. If you need to expose meaning (e.g. a status or a live region), use ARIA or semantic elements (e.g. strong, em, or time) where they fit; use span when you only need a styling or scripting hook with no semantic change. Multiple spans can sit next to each other in a paragraph or heading; each can have its own class or id so you can target them separately. For example, a sentence might have "Battery voltage: " as plain text, then a span with class "reading-value" and id "battery-voltage" for the number, then " V" as plain text. Script can update the span; CSS can style it; the rest of the sentence is unchanged. You can also use span to wrap a unit or label (e.g. "°F" or "V" after a number) so you can style units differently, or to wrap a term that has a definition elsewhere so it can be styled as a term. The key is that span stays inline and does not introduce a new block or change the document outline; it is a minimal wrapper for styling or scripting.
+
+## 3) Class and Id in Practice
+
+Class and id are attributes you add to elements (including div and span) to identify them for CSS and JavaScript. Class is reusable: many elements can share the same class name. You can give one element multiple classes by listing them in the class attribute, separated by spaces. Use class when you want to style or target a group of elements the same way (e.g. all "card" elements, all "reading" values). Id is unique: in a valid document, only one element should have a given id. Use id when you need to point to exactly one element: for example an in-page anchor (a link whose href is "#section-id"), an ARIA relationship (e.g. aria-labelledby pointing to the id of a label), or JavaScript that must find a single element (e.g. the main dashboard container or a form).
+
+Naming matters. Prefer descriptive, lowercase names with hyphens (e.g. "sensor-card", "battery-voltage", "alert-list"). Avoid presentational names that describe only appearance (e.g. "red-box" or "big-text") because the appearance may change; a name like "alert-critical" or "reading-value" is more stable. Class names often describe the role or content (e.g. "coop-status", "solar-production"); id names often describe the unique thing (e.g. "main-content", "form-alert-settings"). Chapter 2.17 goes deeper on class, id, and data attributes.
+
+When you use div or span with no semantic role, class and id are the main way to give them meaning for CSS and script. A div with class "card-row" and no other semantics is still just a generic block, but your styles and scripts can target it. An id on the main content wrapper can be used for a "skip to main content" link. Keep id unique and use class for repeated patterns so your markup stays valid and your selectors stay predictable. Do not use the same id on more than one element; if you need to target several elements the same way, use a class. Id is for one-off targets: the main content region, a specific form, or an element that ARIA or an anchor must reference. In HTML, the id value must be unique within the document. Browsers and assistive technology use id for in-page links (e.g. href="#main-content" jumps to the element with id "main-content"), for aria-labelledby and aria-describedby (which take id references), and for form labels (the for attribute on label can match the id of an input). If two elements share the same id, only the first is reliably found; the second is undefined behavior. So when you have many similar items (e.g. sensor cards), give each a class like "sensor-card" and only give an id to the one element that must be uniquely referenced (e.g. the main content container or a specific form).
 
 ## 4) When to Prefer Semantic Elements
 
-- [Expand: nav, main, article, section, header, footer, figure, etc. convey meaning and improve a11y.]
-- [Expand: div/span when you need a hook for CSS/JS but no semantic element fits.]
-- [Expand: "wrapper" or "container" div is fine when it’s purely layout.]
+Semantic elements (main, nav, header, footer, aside, section, article, figure, and others) convey meaning to the browser, assistive technology, and other tools. They expose landmarks, improve the document outline, and help screen-reader users navigate. Use them whenever the content matches their meaning. Prefer main for the primary content, nav for navigation blocks, section for thematic groups with a heading, article for self-contained units, and so on. Reserve div and span for when no semantic element fits.
 
----
+If you need a hook for CSS or JavaScript but the block has no semantic meaning, div or span is correct. A "wrapper" or "container" div that only exists to hold header, main, and footer for layout is a valid use of div. A span around a number that you update via script is a valid use of span. Do not use semantic elements as styling hooks when they do not match the content: for example, do not use nav for a list of links that is not navigation, or section for every box. Use the right element for the content; then add class or id for styling and scripting. When the content is purely presentational or structural with no theme or role, div and span are the right choice.
+
+The order of operations is: first choose the right element for the meaning (main, section, article, nav, etc.); then add class or id if you need to style or script that element. Do not choose div first and then add ARIA or classes to simulate semantics when a native semantic element already exists. Native elements (main, nav, section, article) give you correct behavior for free; div with role attributes is more work and easier to get wrong. Use div and span when the content has no matching semantic element, not as a shortcut to avoid thinking about structure.
+
+## 5) When to Use What
+
+Use div when you need a block-level container and no semantic element applies: layout wrappers, grid rows, or any block that has no theme, no self-contained unit, and no landmark role. Use span when you need to group inline content (a word, phrase, or number) for styling or scripting. Use class when you want to target multiple elements (reusable); use id when you need to target exactly one element (anchors, ARIA, script). Prefer semantic elements first; use div or span when structure has no meaning that matches an existing element.
+
+For block-level grouping: if the block is the main content, use main. If it is a thematic group with a heading, use section. If it is self-contained (e.g. a sensor card, a blog post), use article. If it is navigation, use nav. If it is tangential (sidebar, related links), use aside. If it is none of those, use div. For inline grouping: if you need emphasis or strong importance, use em or strong. If you need a styling or scripting hook with no semantic change, use span. Do not overuse div: ask "is there a semantic element?" before wrapping in div. Do not use span for block-level content. Keep id unique and use descriptive, stable names for both class and id. When you have both a semantic element and a need for layout (e.g. a section that needs an inner grid), put a div inside the section for the layout; the section keeps the semantics and the outline, and the div handles the visual grouping. That way you get both structure and layout without overusing div at the top level. If you are unsure whether to use div or a semantic element, describe the content: "This is the main content" → main; "This is a group of navigation links" → nav; "This is a thematic block with a heading" → section; "This is a self-contained item" → article; "This is just a layout row or wrapper" → div. The same applies to span: "This phrase needs to be styled or updated" → span; "This is strong emphasis" → strong; "This is a date or time" → time. Choosing the right element first keeps the document meaningful and makes div and span the exception rather than the default.
+
+## 6) Homestead Examples: Div and Span in Practice
+
+On a homestead dashboard, a top-level div often wraps the whole page (header, main, footer) for layout (e.g. flexbox or grid so the footer sticks to the bottom). That div has no semantic role; it is just a layout container. Inside main, you might have sections for "Battery status", "Solar production", and "Coop status", each with a heading. Between or around those sections you might have a div with class "card-row" that holds the section elements in a grid; the row itself has no theme, so div is correct. Inside a "Battery status" section, you might have a paragraph that includes the current voltage: the number could be wrapped in a span with class "reading-value" so you can style it or update it via JavaScript when new data arrives. The span is inline and adds no semantics; it is just a hook for presentation or script.
+
+For a sensor card (e.g. freezer temperature), the card might be an article (self-contained). Inside it, a div might wrap the card's inner layout (icon, label, value, timestamp) if that inner group has no semantic meaning. The current temperature value might be in a span with class "temperature-value" so it can be updated or styled. For a coop door status widget, a div might wrap the status text and the "Open" or "Close" button for layout; the status text might include a span around the time of last open so script can refresh it. For drip irrigation zones, each zone might be an article; inside it, a div could wrap the zone name and schedule for layout, and a span could wrap the "Next run" time for script updates.
+
+On a solar production page, a div might wrap the chart and the summary numbers for grid layout; the numbers might be in spans so they can be updated when new data is fetched. On an alerts page, the list of alerts might be in a section; each alert could be an article or a div depending on whether it is self-contained; the alert time or severity might be in a span for styling. For a Raspberry Pi or ESP32 status list, a div might wrap the list of devices for layout; each device name or IP might be in a span for scripting. The pattern is the same: use semantic elements (main, section, article, nav, aside) where they fit; use div for block-level layout or grouping with no semantics; use span for inline hooks (values, terms) that need styling or script updates.
+
+For electric fence voltage or energizer status, a section might have the heading "Fence status"; inside it a div could wrap the voltage reading and the energizer state for layout, and the voltage number could be in a span with class "voltage-value" for script updates. For soil moisture or garden sensors, each sensor reading might be in a paragraph with the label and a span for the value; a div might wrap the set of readings for a grid. For a webcam or live stream page, a div might wrap the video and the controls for layout; a span might wrap the connection status text that updates when the stream connects or drops. For network or Wi‑Fi status, a div could wrap the list of ESP32 or Pi devices; each device row might use spans for the name, IP, and status so they can be updated independently. In every case, div is for block-level layout or neutral grouping; span is for inline values or phrases that need a styling or scripting hook; and semantic elements (section, article, main, nav, aside) are used where the content has a clear role. When you build a new dashboard or status page, start with the semantic skeleton (header, main, footer, nav, section, article); add one wrapper div for the page layout if needed; use div for any inner rows or grids that have no theme; and use span for any inline value (voltage, temperature, time, status text) that you will style or update via script. That keeps the document outline and landmarks correct while giving you the layout and scripting hooks you need.
+
+## 7) What Breaks When Div and Span Are Misused
+
+Using div for everything (e.g. div instead of main, section, article, nav) removes meaning from the page. Assistive technology cannot expose landmarks or a clear outline; screen-reader users may not be able to jump to main or to sections. Fix by using main for primary content, section for thematic groups, article for self-contained units, nav for navigation, and div only when no semantic element fits. Using span for block-level content (e.g. wrapping a div or a section in a span) is invalid or breaks layout; span is inline only. Fix by using div or a block-level semantic element for block grouping.
+
+Duplicate ids break validity and cause unpredictable behavior: "skip to main" links, ARIA references, and JavaScript getElementById may target the wrong element or only the first one. Fix by ensuring each id is unique in the document. Overusing id where class would work (e.g. giving every card the same id) is wrong; use class for repeated patterns. Using presentational class or id names (e.g. "blue", "left") ties markup to one design; when you change styles, the names become misleading. Prefer descriptive names (e.g. "alert-critical", "reading-value"). Using semantic elements as pure styling hooks (e.g. section for every box) clutters the outline and confuses assistive technology; use section only for thematic groups and use div for neutral layout. Testing with a screen reader or the accessibility tree helps confirm that div and span are not replacing semantic structure where it is needed.
+
+Putting block-level elements inside a span (e.g. a div or p inside a span) is invalid in HTML; span is phrasing content and cannot contain flow content. The browser may recover in unexpected ways. Fix by using a block-level wrapper (div or semantic element) for block content and span only for inline content. Using too many nested divs with no class or id can make the DOM hard to target and maintain; add meaningful class names to divs that you need to style or script so the structure stays clear. Relying on div and span alone for a whole page (no main, no headings, no sections) makes the page inaccessible for outline and landmark navigation; always prefer semantic elements where they fit and use div and span as fallbacks for the rest. Empty or meaningless divs and spans (e.g. div with no class or id and no structural purpose) add DOM noise and make the document harder to maintain; remove them or give them a clear purpose. Conversely, avoid wrapping every single element in a div; only add a div when you need a container for layout, grouping, or targeting. The goal is a clear DOM: semantic elements for structure, div for neutral block grouping, span for inline hooks, and class and id used consistently so CSS and script stay simple.
+
+## 8) Checklist for Div and Span
+
+When you add a div or span, use this list so structure stays correct. Before adding a div, ask: could this be main, section, article, nav, header, footer, or aside? If yes, use that element. Use div only for block-level layout or grouping with no semantic match. Before adding a span, confirm the content is inline; do not wrap block-level content in span. Use span for styling or scripting hooks on phrases, words, or numbers. Use class for reusable targeting (multiple elements); use id for unique targeting (one element). Keep id unique in the document. Use descriptive, lowercase-with-hyphens names; avoid purely presentational names. When you wrap header, main, and footer in a layout container, that container can be a div; the semantic elements inside still expose landmarks. When you have a row or grid of cards with no thematic label, a div with a class like "card-row" is fine; use section or article for the cards themselves if they are thematic or self-contained. Test with the accessibility tree or a screen reader to ensure div and span are not hiding structure that should be semantic. Do not put block-level elements (div, p, section, etc.) inside a span; span is for inline content only. Add class or id to divs and spans that you need to style or script so the markup stays maintainable. Chapter 2.17 (Attributes — class, id, data-*) covers class, id, and data-* in more detail.
+
+## Common Pitfalls
+
+Using div for everything instead of semantic elements: The page loses landmarks and outline; prefer main, section, article, nav, header, footer, aside where they fit.
+
+Using span for block-level content: Span is inline only; use div or a block-level semantic element for grouping blocks.
+
+Duplicate ids: Only one element per id; duplicate ids break anchors, ARIA, and script; use class for repeated patterns.
+
+Presentational class or id names: Names like "blue" or "big" break when design changes; use descriptive names (e.g. "alert-critical", "reading-value").
+
+Using semantic elements as styling hooks: Do not use section or article for every box; use them when content is thematic or self-contained; use div for neutral layout.
+
+Forgetting to check semantics: Before adding a div, confirm no semantic element applies; assistive technology and tools rely on that structure. When in doubt, describe the block in plain language and match it to main, section, article, nav, or div.
 
 ## Summary
 
-- div = generic block; span = generic inline; use when no semantic element applies.
-- class for reuse and styling; id for uniqueness and anchors; prefer semantics first.
+Div is a block-level generic container; use it when no semantic element (main, section, article, nav, header, footer, aside) fits. Span is an inline generic container; use it to group text or inline content for styling or scripting. Prefer semantic elements first; use div and span only when structure has no meaning that matches an existing element. Use class for reusable styling and scripting; use id for a unique identifier (anchors, ARIA, script). Keep id unique and use descriptive names. Homestead pages use div for layout wrappers and neutral grouping (e.g. card rows, page wrapper) and span for inline values (e.g. readings, times) that are styled or updated by script. Do not use span for block-level content; do not put flow content inside span. Do not use div for every block when main, section, article, or nav would convey meaning. The checklist in section 8 and the common pitfalls help keep structure correct. Chapter 2.17 (Attributes — class, id, data-*) covers class, id, and data-* attributes in full, including naming conventions, multiple classes, and the data-* attribute for custom data.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.5.12 — Attributes: class, id, data-*, ARIA**.
-
----
-
-*Expansion note for ChatGPT: Short examples of div vs section, span for inline. Target ~150 lines.*
+Next: **Chapter 2.17: Attributes — class, id, data-***. That chapter goes deeper on the class and id attributes you use with div and span, plus the data-* attributes for custom data, and how to name and use them for styling, scripting, and accessibility.

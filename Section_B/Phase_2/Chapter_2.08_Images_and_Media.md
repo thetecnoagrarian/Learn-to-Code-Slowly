@@ -1,61 +1,95 @@
-# Phase 2.5 · Chapter 2.5.6: Images and Media
+# Section B Phase 2 · Chapter 2.08: Images and Media
 
-img (src, alt, width, height); picture and source; figure and figcaption; accessibility and performance.
-
----
+Images and media add diagrams, sensor snapshots, icons, and visual context to your dashboard and status pages. This chapter covers the img element (source, alternative text, and dimensions), the picture and source elements for responsive and multi-format images, and figure with figcaption for captioned or grouped content. Getting images right improves accessibility, avoids layout shift, and keeps your pages fast and understandable. This chapter focuses on static images; Chapter 2.09 covers audio, video, and embedded content. Images can be the largest part of page weight; getting alt, dimensions, and format right improves both accessibility and performance with minimal extra effort.
 
 ## Learning Objectives
 
-- Use img with required alt; choose width/height to avoid layout shift.
-- Use picture and source for art direction or multiple formats (optional).
-- Use figure and figcaption for images with captions or semantic grouping.
-- Balance accessibility (alt text) and performance (sizing, format).
+By the end of this chapter, you should be able to:
+- Use the img element with a required alt attribute and choose when to use meaningful alt text versus empty alt for decorative images
+- Set width and height (or aspect ratio) to reduce layout shift and improve perceived performance
+- Use picture and source when you need multiple formats or art direction (e.g. different crops or resolutions)
+- Use figure and figcaption to group an image with a caption or to give it semantic context
+- Balance accessibility (alt, captions) and performance (sizing, format, lazy loading)
 
----
+## Key Terms
+
+- **img**: The element that embeds an image; requires src (the URL of the image) and alt (alternative text or empty string)
+- **src**: Attribute on img (or source) that points to the image URL; can be relative or absolute
+- **alt**: Alternative text for the image; required—describe the content or function, or use empty string for decorative images
+- **picture**: Wrapper that provides multiple sources (e.g. different formats or crops) with source elements; contains one img as fallback
+- **source**: Child of picture; specifies srcset, type, and/or media so the browser can pick a source
+- **figure**: Semantic container for self-contained content (e.g. image, diagram, code block) that can have an optional figcaption
+- **figcaption**: Caption for a figure; one per figure, can be first or last child
+- **Layout shift**: When content moves as images or other resources load; specifying width and height (or aspect ratio) reduces it
+
+Images are replaced content: the browser reserves space and then replaces it with the fetched resource. They fit in both phrasing and flow content, so you can use img inside a paragraph (e.g. an icon) or as a block-level element in the main content. Chapter 2.07 (Lists) showed how list items can contain text and links; list items can also contain images (e.g. a thumbnail next to each sensor name). Always pair images with text or alt so that the page is usable when images are disabled or unavailable.
 
 ## 1) The img Element
 
-- [Expand: <img src="..." alt="...">; alt is required—describe the image or use "" for decorative.]
-- [Expand: width and height in HTML reduce layout shift (CLS); use same aspect ratio as image.]
-- [Expand: src can be relative or absolute; avoid hotlinking.]
+The img element embeds an image in the page. It is a replaced element: the browser fetches the resource from the URL in the src attribute and displays it in place. You must provide both src and alt. The src can be a relative path (e.g. images/coop-status.png) or an absolute URL; use relative paths for your own assets so the project stays portable. The same rules as for links (Chapter 2.06) apply: relative paths are resolved against the current document or site root, so moving the page or the asset may require updating the path. Keep image assets in a dedicated folder (e.g. images/ or assets/) so that paths stay consistent and you can update them in one place if you reorganize. Avoid hotlinking: do not use another site’s image URL in your src unless you have permission and accept the risk that the image can change or disappear.
 
----
+The alt attribute is required. It provides alternative text when the image cannot be seen: for screen reader users, when images are off, or when the resource fails to load. For content images (images that convey information), write concise alt text that describes the content or function. For example a graph of battery voltage over time might have alt text like "Line graph: battery voltage 12.2 V to 12.6 V over 24 hours." A photo of the coop door closed might have "Coop door closed, latch engaged." Do not start alt with "image of" or "picture of"; screen readers often announce "image" before the alt text, so "image of battery graph" becomes redundant. For decorative images (spacers, icons that duplicate adjacent text, or purely visual flair with no information), use an empty alt (alt="") so assistive technology can skip them. If you omit alt, validators will report an error and screen readers may read the filename or "image," which is unhelpful. When the image is a link (e.g. a logo that links home), the alt should describe the link destination (e.g. "Go to dashboard"), not the image itself, as noted in Chapter 2.06.
+
+Width and height attributes (or CSS) help avoid layout shift. When the browser does not know the image dimensions, it may reserve no space at first; when the image loads, the page jumps and content below moves. That is cumulative layout shift (CLS) and hurts both usability and performance metrics. If you know the intrinsic size of the image, set width and height in the markup (in pixels or as numbers; the browser interprets them as CSS pixels). The browser then reserves that space before the image loads. If you use CSS to scale the image (e.g. max-width: 100%), use the same aspect ratio so the reserved space matches the displayed size. Modern practice often uses width and height with CSS that constrains one dimension (e.g. width: 100%; height: auto) so the aspect ratio is preserved and shift is minimized. In CSS you can also use aspect-ratio on a wrapper or on the img so that even without explicit width and height the reserved space has the right proportions. That is useful when the image is responsive and you know the ratio (e.g. 16/9) but not the final pixel size. The key is to give the browser enough information to reserve space before the image loads so that surrounding content does not jump. If you cannot know dimensions in advance (e.g. user-uploaded images), consider a default aspect-ratio in CSS or a placeholder so layout stays stable. The img element is void (self-closing in HTML5): it has no content and no end tag. You cannot put text or child elements inside img. To add a caption or surrounding context, use figure and figcaption (section 3) or place the img inside a block (e.g. div or section) with a heading or paragraph. Images are inline by default but often displayed as block (e.g. display: block in CSS) so they do not sit on the same line as text; the layout is controlled by the document flow and your styles.
 
 ## 2) picture and source
 
-- [Expand: <picture> for multiple sources (e.g. WebP + fallback, different crops).]
-- [Expand: <source> with srcset, type, media; last img is fallback.]
-- [Expand: use when you need art direction or format negotiation.]
+When you need multiple sources for an image—for example different file formats (WebP for supporting browsers, PNG fallback) or different crops/sizes for different viewport sizes (art direction)—you use the picture element. Inside picture you place one or more source elements and exactly one img element. The browser chooses the first source that matches (e.g. by media query or type) and uses it; if none match or picture is not supported, it falls back to the img. The img’s src points to the default or fallback image and must be present. So picture does not replace img; it wraps sources and the fallback img.
 
----
+Each source can specify srcset (one or more image URLs, optionally with width or density descriptors), type (e.g. image/webp for format negotiation), and media (a media query so that source is used only when the query matches). For format negotiation you might have a source with type image/webp and srcset pointing to a WebP file, and the img with src pointing to a PNG; browsers that support WebP use the source, others use the img. For art direction you might have a source with media="(max-width: 600px)" and srcset to a cropped or different image for small screens, and the img for the default. The order of source elements matters: the browser picks the first match. Put the most specific or preferred source first and the fallback img last. Picture and source are optional; use them when you have multiple formats or need different images per viewport. For a simple dashboard with a single image per slot, a single img with a well-chosen format and dimensions is often enough. The srcset attribute can include width descriptors (e.g. 400w, 800w) so the browser knows the intrinsic width of each candidate and can pick one that matches the display size; that helps with responsive images without art direction. The sizes attribute on the img (or on a source) tells the browser how wide the image will be displayed so it can choose an appropriate source from srcset. For art direction you combine media on source with srcset to serve different crops or compositions per breakpoint. Validators will flag a picture that has no img or an img without src; always provide the fallback. When you use only one source (e.g. one format), a single img with a good format and dimensions is simpler and easier to maintain than a picture with one source and an img. Adopt picture when you have a real need: multiple formats for compatibility or different images per viewport for art direction.
 
 ## 3) figure and figcaption
 
-- [Expand: <figure> groups image (or code, diagram) with optional <figcaption>.]
-- [Expand: improves semantics and accessibility; caption can be read with the figure.]
-- [Expand: one figcaption per figure; can be first or last child.]
+The figure element groups self-contained content that is referred to from the main flow (e.g. a diagram, chart, photo, or code block). It can have an optional figcaption as a direct child. There must be at most one figcaption per figure, and it can be the first or last child. The figcaption provides a caption or legend for the figure. Screen readers can associate the caption with the figure, and styling can position the caption above or below the content.
 
----
+Use figure when the image (or other content) has a caption or when it is a distinct unit that you might reference (e.g. "see Figure 1"). For a dashboard, a sensor graph with a title like "Battery voltage, last 24 hours" can be wrapped in figure with that text in figcaption. That improves semantics and gives you a single wrapper to style or reference. Do not use figure for every image; use it when the grouping or caption is meaningful. Decorative or inline images (e.g. icons next to list items) typically do not need figure. If the caption is the only way users get critical information, ensure that information is also in alt or in the main text so that users who skip the caption still get the content. Figure can contain more than one image (e.g. a before-and-after pair) as long as they form one logical unit; one figcaption describes the whole group. The figure element is a sectioning root in the outline algorithm: it does not contribute to the document outline the way section or article do, but it groups its contents as a single figure. That makes it a good wrapper for diagrams, charts, or photos that are referenced from the main text (e.g. "as shown in Figure 1"). Do not nest figure inside figure; keep one level of grouping per figure.
 
 ## 4) Accessibility and Performance
 
-- [Expand: meaningful alt for content images; empty alt for decorative.]
-- [Expand: avoid "image of" or "picture of" in alt; describe content/function.]
-- [Expand: performance: appropriate size, format (WebP/AVIF where supported), lazy loading (loading="lazy").]
+**Accessibility.** Meaningful alt text is the main requirement for content images. Describe what the image shows or what function it has (e.g. "Coop door status: closed"). Keep alt concise; long descriptions belong in the surrounding text or in a longdesc (rarely used) or in the figcaption. For charts and graphs, summarize the trend or key data rather than reading every value. Empty alt for decorative images ensures they are ignored by assistive technology. If the image contains text, include that text in alt (or avoid putting important text in an image). Color alone should not convey information; pair with text or patterns so colorblind users get the same information. Chapter 2.14 and 2.15 cover landmarks and headings; images sit inside that structure, and figcaption can complement alt. When you test with a screen reader, listen to how each image is announced; if the announcement is vague or redundant, improve the alt or make the image decorative (empty alt) when appropriate.
 
----
+**Performance.** Large images slow down the page and consume data. Use appropriately sized images: match the display size (e.g. do not serve a 3000-pixel-wide image when it is shown at 400 pixels). Prefer modern formats (WebP or AVIF) where supported, with a fallback (e.g. PNG or JPEG) via picture and source. The loading attribute: setting loading="lazy" defers loading until the image is near the viewport, which can improve initial load time. Use it for images below the fold; avoid it for the first visible image (LCP candidate) so it loads immediately. The largest contentful paint (LCP) metric often involves an image; if that image is lazy-loaded, it may not load until the user scrolls, which can hurt the metric. So identify the main image that is visible on first paint and do not lazy-load it. Specify width and height (or aspect-ratio) to reduce layout shift, as in section 1. If you have many images on one page (e.g. a gallery of sensor snapshots), lazy loading and thumbnails can keep the page responsive. On a homestead dashboard, a single status diagram or webcam thumbnail per section is usually enough; keep image count and size reasonable so the page works on slow or metered connections. If you generate images on the server (e.g. charts from sensor data), ensure the generated file is sized for the display and cached where appropriate. Decoding hint: the decoding attribute can be set to "async" so the image decoding does not block the main thread; "sync" is the default. For above-the-fold images you may leave it default; for below-the-fold images async decoding can help responsiveness. Many of these choices (format, dimensions, lazy loading, decoding) depend on your actual image sources and viewport; start with correct alt and dimensions, then optimize format and loading as needed. If your dashboard is used on mobile or over slow links, prioritize smaller file sizes and lazy loading for non-critical images. If the main goal is accessibility, prioritize alt and figcaption first; performance tuning can follow once the content is available to all users.
+
+## 5) When to Use What
+
+Use a single img when you have one image, one format, and one size that works everywhere. Use picture with source when you need format negotiation (WebP/AVIF + fallback) or art direction (different image per breakpoint). Use figure and figcaption when the image has a caption or is a referenced, self-contained unit. Use empty alt for decorative images; use meaningful alt for every content image. Always set dimensions (or aspect ratio) when you know them to avoid layout shift. Prefer lazy loading for images below the fold; do not lazy-load the main hero or LCP image. Validators (Chapter 2.23) can check for missing alt and invalid structure; they cannot check whether alt is meaningful or dimensions are correct, so include the checklist in your workflow when you add or update images. Chapter 2.09 covers audio and video elements and embedded content (iframes); the same principles of alternative content and performance apply there. If an image is purely illustrative and the same information is in the adjacent text, you can use empty alt so the screen reader does not repeat the information. If an image is purely illustrative and the same information is in the adjacent text, you can use empty alt so the screen reader does not repeat the information. If the image adds information (e.g. a chart that summarizes data), the alt or figcaption must convey that information. When in doubt, provide meaningful alt; it is easier to shorten later than to add after deployment. If you use a content management system or a build step that generates HTML, ensure it does not strip alt or dimensions; automated tools sometimes omit "optional" attributes that are in fact required or important for accessibility and layout.
+
+## 6) Homestead Examples: Images in Practice
+
+Your voltage or solar dashboard might include a small graph or gauge image showing current state; use an img with alt that summarizes the reading (e.g. "Battery voltage 12.4 V, in normal range") and set width and height so the layout does not jump. A coop status page might show a thumbnail from an ESP32-CAM or similar; use alt like "Coop camera view: door closed, no motion" and consider loading="lazy" if it is below the fold. A poultry net or energizer status page might have an icon or diagram of the fence circuit; put it in a figure with a figcaption "Fence circuit schematic" and give the img alt that describes the diagram’s content. For a drip or garden page, a soil moisture chart could be a figure with figcaption "Soil moisture by zone, last 7 days" and img alt "Line chart: zone 1 40–45%, zone 2 38–42%." A Pi or Home Assistant dashboard that shows camera snapshots can use img with descriptive alt per camera (e.g. "Barn view: pigs in pen") and lazy loading for cameras not in the first view. If you offer multiple image formats (e.g. WebP for modern browsers, JPEG fallback), use picture and source so older browsers still get a usable image. Keep file sizes small: crop or resize images to the display size and use an efficient format so the dashboard stays fast on limited bandwidth. A freezer or barn temperature page might show a simple trend graphic; wrap it in figure with figcaption "Temperature trend, last 24 hours" and give the img alt that summarizes the range (e.g. "Freezer internal −18 °C to −16 °C"). A live webcam or property overview might have one main camera as the LCP image (no lazy load) and additional camera thumbnails with loading="lazy" and descriptive alt per view. When you add a new image to the dashboard, run through the checklist: alt, dimensions, and whether it needs figure or picture. Consistency in how you handle images (e.g. all status diagrams in figures, all thumbnails lazy-loaded) makes the page easier to maintain and reason about.
+
+## 7) What Breaks When Images Are Wrong
+
+Missing alt: validators report it and screen readers may read the filename or "image"; add meaningful alt or empty alt as appropriate. Empty alt on a content image: users who cannot see the image get no information; add a short description. Overlong alt: verbose alt is hard to listen to; keep it concise and put long descriptions in the caption or body text. Using "image of" or "picture of" in alt: redundant with the "image" announcement; describe the content directly. Missing or wrong width/height: layout shift when images load; specify dimensions or aspect ratio. Very large image files: slow loads and heavy data use; resize and compress. Lazy loading the first visible image: it may delay LCP; do not use loading="lazy" on the primary above-the-fold image. Hotlinking: the external image can break or change; host your own assets. Picture without a fallback img: the img is required inside picture; always include it with a valid src. Figcaption outside figure or multiple figcaptions in one figure: invalid or confusing; keep one figcaption per figure as a direct child. Fix images so every img has alt, dimensions where possible, and appropriate use of picture, figure, and loading. Using an image as the only content of a link without meaningful alt: the link destination is unclear to screen reader users; give the img alt that describes the link (Chapter 2.06). Serving images from a different origin without considering CORS or referrer policy can affect how they are loaded or displayed in some contexts; for same-origin assets you avoid those issues. When you change image paths or move assets, update all src and srcset references so images do not break. Broken image URLs result in a missing image icon and failed requests; the alt text is then the only information users get, so ensure alt is still accurate. If an image is updated (e.g. a new chart from fresh data), ensure the alt or figcaption still describes the current content and not the previous version.
+
+## 8) Image Checklist
+
+When you add an image, confirm: img has src and alt; alt is meaningful for content images and empty for decorative. Width and height (or aspect-ratio) are set when known to reduce layout shift. For multiple formats or art direction, use picture and source with a fallback img. For captioned or referenced content, use figure and figcaption. Use loading="lazy" for below-the-fold images, not for the main LCP image. Prefer relative URLs for your own assets; avoid hotlinking. Test with images disabled or with a screen reader to ensure alt and captions are sufficient. If you use picture, ensure the img inside has a src that works when no source matches. If you change image paths or add new assets, verify that all references still resolve. Chapter 2.09 (Audio, Video, Embedded Content) covers media elements and iframes so you can add live streams or embedded dashboards.
+
+## Common Pitfalls
+
+Omitting alt: every img must have an alt attribute; use meaningful text or empty string.
+
+Using alt to describe the image format or filename: describe content or function, not "JPEG image" or the file name.
+
+Forgetting width and height: specify them (or aspect-ratio) to avoid layout shift when the image loads.
+
+Lazy loading the first visible image: reserve lazy loading for images below the fold so LCP is not delayed.
+
+Serving oversized images: resize and compress to match display size and use efficient formats.
+
+Using figure for every image: reserve figure for captioned or semantically grouped content; inline/decorative images usually do not need it.
+
+Putting critical information only in the image: ensure key information is in alt or in the page text so everyone can access it.
+
+Relying on image filename or path as alt: never use the file path or "photo.jpg" as alt; write content or function, or use empty alt for decorative.
+
+Skipping dimensions to "let the image size naturally": that causes layout shift; always set width and height or aspect-ratio when you know the dimensions.
 
 ## Summary
 
-- img needs src and alt; width/height reduce shift; picture/source for responsive/formats; figure/figcaption for captions.
-- Good alt and sizing support accessibility and performance.
+Use img with required src and alt; give content images meaningful alt and decorative images empty alt. Set width and height (or aspect ratio) to reduce layout shift. Use picture and source when you need multiple formats or art direction, with a fallback img. Use figure and figcaption for captioned or self-contained image units. Balance accessibility (good alt, captions) with performance (sizing, format, lazy loading). Run through the image checklist when you add or change images so alt, dimensions, and loading behavior are correct. Avoid hotlinking and oversized files; prefer relative URLs and appropriately sized assets. When you add a new dashboard page that includes images, ensure each image has a place in the document structure (e.g. inside main, inside a section with a heading, or inside a figure) so that the outline and landmarks still make sense. Re-run the checklist whenever you change image paths or add new formats (e.g. WebP) so that fallbacks and alt stay correct. Testing with images disabled in the browser is a quick way to confirm that alt and structure are sufficient. Chapter 2.09 (Audio, Video, Embedded Content) covers audio, video, and embedded content so you can add live feeds and media to your dashboard.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.5.7 — Tables**.
-
----
-
-*Expansion note for ChatGPT: One img and one figure example. Target ~150 lines.*
+Chapter 2.09 (Audio, Video, Embedded Content) covers the audio and video elements, tracks, and embedded content (iframes) so you can add live streams, recordings, or embedded dashboards alongside your images and lists. Images and media together let you build dashboards that are both informative and accessible when you follow the checklist and test with real content. The same discipline—alternative text, dimensions, and appropriate loading—applies to video and audio, as you will see in the next chapter. For now, ensure every img has src and alt, dimensions when known, and the right use of picture, figure, and loading so your dashboard images are accessible and performant. Chapter 2.09 continues with audio, video, and iframes so you can add live camera feeds or embedded controls.

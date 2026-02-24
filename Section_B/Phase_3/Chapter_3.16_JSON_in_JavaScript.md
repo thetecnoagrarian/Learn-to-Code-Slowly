@@ -54,7 +54,7 @@ JSON.stringify and JSON.parse; when JSON is used; limits and safety. Bridge to P
 
 ## Bridge / Next
 
-Phase 2.6 complete. Next: **Phase 2.7 — Node.js, npm, and JSON** (runtime, packages, JSON in Node).
+Next: **Chapter 3.17: Array Methods and Iteration**. After Phase 3, the curriculum continues with **Phase 4 — Node.js, npm, and JSON**.
 
 ---
 

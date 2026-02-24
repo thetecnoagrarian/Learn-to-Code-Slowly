@@ -1,61 +1,97 @@
-# Phase 2.5 · Chapter 2.5.7: Tables
+# Section B Phase 2 · Chapter 2.10: Tables
 
-table, thead, tbody, th, td; scope and headers; when tables are appropriate (tabular data); accessibility.
-
----
+Tables present tabular data: rows and columns that relate to each other, such as sensor readings, logs, or schedules. This chapter covers the table element and its parts (thead, tbody, tfoot, tr, th, td), scope and headers for accessible associations, caption, and when to use tables versus other structure. Using tables only for tabular data and marking headers correctly keeps your dashboard readable by screen readers and easy to style. Chapter 2.09 covered media and embeds; tables let you add structured data (e.g. sensor logs or zone schedules) alongside that content. Tables should be used only for data that has a clear row–column relationship; use lists or descriptions for other content. Correct table markup improves both accessibility and styling consistency. This chapter assumes you have read Chapter 2.07 (Lists) and 2.09 (Media); tables often appear on the same dashboard as lists of links and media, and each element is chosen for the type of content it presents.
 
 ## Learning Objectives
 
-- Structure tables with table, thead, tbody, th, td.
-- Use scope (th) and headers (td) for accessible table associations.
-- Use tables only for tabular data, not for layout.
-- Add a caption when it helps.
+By the end of this chapter, you should be able to:
+- Structure a table with table, thead, tbody, optional tfoot, tr, th, and td
+- Use scope on header cells (th) so assistive technology knows what each header applies to (row, column, or group)
+- Use the headers attribute on td when the table structure is complex and scope is not enough
+- Use tables only for tabular data, not for page layout; add a caption when it helps describe the table
+- Avoid or simplify colspan and rowspan so the table stays accessible
 
----
+## Key Terms
+
+- **table**: The element that wraps the whole table; contains caption (optional), thead, tbody, and optionally tfoot
+- **thead**: Table header section; contains one or more tr rows of header cells (th) that describe columns or rows
+- **tbody**: Table body; contains one or more tr rows of data cells (td); there can be multiple tbody elements
+- **tfoot**: Table footer (optional); contains summary or footer rows; one per table
+- **tr**: Table row; contains th or td cells
+- **th**: Header cell; contains the label for a row, column, or group (e.g. "Sensor," "Value," "Unit")
+- **td**: Data cell; contains the value for that row and column
+- **scope**: Attribute on th; values row, col, rowgroup, colgroup—tells assistive technology what the header applies to
+- **headers**: Attribute on td; space-separated list of th id values that apply to this cell (for complex tables)
+- **caption**: Optional caption inside table; gives the table a title or short summary
+
+Tables are flow content. They can appear in main, section, or other block containers. Screen readers can announce the table, its caption, and the relationship between headers and cells when scope and headers are used correctly. Do not use tables for layout (e.g. to position nav and content side by side); use CSS for layout. Styling tables (borders, zebra striping, alignment) is done with CSS; the markup defines structure and semantics. Chapter 2.11 (Forms) covers form structure and input types so you can add inputs and controls to your dashboard.
 
 ## 1) Table Structure
 
-- [Expand: <table> wraps <thead>, <tbody>, <tfoot> (optional); rows <tr>; cells <th> or <td>.]
-- [Expand: th = header cell; td = data cell; use thead for header row(s).]
-- [Expand: one thead, one or more tbody, optional tfoot.]
+A table is built from a table element that contains, in order: an optional caption, then one thead, one or more tbody, and optionally one tfoot. Each row is a tr element. Each cell is either a th (header cell) or a td (data cell). So the structure is: table wraps caption (optional), thead (one), tbody (one or more), tfoot (optional). Inside thead, tbody, and tfoot you have tr elements; inside each tr you have th or td elements. You cannot put a tr directly inside table; every tr must be inside thead, tbody, or tfoot. Thead typically holds the column headers (e.g. "Sensor," "Value," "Unit," "Time"); the first row of thead is often one th per column. Tbody holds the data rows; each row has one td per column (or one th per column if it is a row header). Tfoot, when present, holds summary or footer rows (e.g. "Total" or "Last updated"); it is rendered after the body in the visual order but can be placed before tbody in the markup so that screen readers and print can get the summary without reading all rows.
 
----
+Header cells (th) identify what the data in the column or row represents. Data cells (td) hold the actual values. Do not mix th and td in a way that breaks the grid: each row should have the same number of cells (or use colspan/rowspan explicitly when you need to span). The first row of thead is often all th with scope="col" so that each column has a header. If the first column of each row is a label (e.g. sensor name), those cells can be th with scope="row". That way assistive technology can announce "Sensor, Battery voltage; Value, 12.4; Unit, V" when the user moves to a cell. Tables can have multiple tbody elements when you want to group rows (e.g. one tbody per day or per category); the structure is still rows and cells, with clear headers. Validators will flag tr outside thead/tbody/tfoot or invalid nesting; keep the structure strict so that the table is both valid and predictable for assistive technology. The order of elements inside table is fixed: caption first (if present), then thead, then tbody (one or more), then tfoot (if present). You can have more than one tbody to group rows (e.g. one tbody per day in a log); each tbody still contains tr elements with th or td. Do not use thead or tfoot for data that is not actually header or footer; use tbody for all data rows. Screen readers can announce "Table with 4 columns and 10 rows" and then, when the user moves to a cell, "Battery voltage, 12.4, volts, 14:32" when the headers are correctly marked with scope. The colgroup and col elements can be used to group or style columns (e.g. set a width for the first column); they are optional and do not change the requirement that each row has th or td cells. For most dashboard tables, thead with one row of th and tbody with tr/td rows is enough. Keep the number of columns reasonable (e.g. four to eight) so that the table fits on small screens with horizontal scroll or so you can hide less important columns on narrow viewports.
 
 ## 2) scope and headers
 
-- [Expand: scope on th: row, col, rowgroup, colgroup—tells assistive tech what the header applies to.]
-- [Expand: headers on td: list of header cell ids when structure is complex.]
-- [Expand: simple tables: scope="col" on column headers, scope="row" on row headers.]
+The scope attribute on a th tells assistive technology what the header applies to. Use scope="col" for a column header: the header applies to all cells in that column. Use scope="row" for a row header: the header applies to all cells in that row. Use scope="colgroup" or scope="rowgroup" when the th is the header for a group of columns or rows (used with colgroup and rowgroup structure). For most dashboard tables—for example a list of sensors with columns Sensor, Value, Unit, Timestamp—you put th in the first row with scope="col" for each. If the first column is a label (e.g. sensor name), use th with scope="row" in that column. Screen readers can then announce the column and row header when the user focuses a cell, so "Battery voltage, 12.4 V, 14:32" is clear. In a simple grid with one header row and no row headers, every thead cell gets scope="col". In a table where the first column is row headers (e.g. "Battery," "Solar," "Load"), each of those cells gets scope="row" and the top row (if present) gets scope="col". That way each data cell is associated with exactly one column header and one row header, or with multiple when you use headers and id.
 
----
+When the table is complex (e.g. multiple levels of headers or irregular layout), scope alone may not be enough. In that case you give each th an id and, on each td, a headers attribute whose value is a space-separated list of those id values. The headers attribute explicitly links the cell to its header(s). Assistive technology can then announce the correct headers for each cell. For simple tables, scope is enough; prefer scope and avoid headers unless the structure requires it. Keep id values unique within the page (Chapter 2.17). If you use both scope and headers, headers takes precedence for association. Avoid merged cells (colspan, rowspan) when possible; they make the grid irregular and can complicate scope and headers. When you do use colspan or rowspan, ensure that every cell is still associated with the right headers (e.g. scope on the th that spans, or headers on the td). The scope values rowgroup and colgroup apply when you use thead with multiple rows or when you use colgroup to group columns; for simple tables with one header row and one header column, row and col are enough. Some authors omit scope and rely on the default behavior of th; explicitly setting scope="col" or scope="row" is more reliable across browsers and assistive technology. If you change the table structure (e.g. add a column or swap rows), update the scope or headers so the associations stay correct.
 
 ## 3) When to Use Tables
 
-- [Expand: tables for tabular data: rows and columns that relate (sensor readings, logs, comparisons).]
-- [Expand: don’t use tables for page layout—use CSS (Phase 4) for layout.]
-- [Expand: homestead: table of sensor name, value, unit, timestamp.]
+Use a table when the content is tabular: data that has a natural grid of rows and columns where each cell relates to its row and column header. Sensor readings (sensor name, value, unit, timestamp), event logs (time, event, source), schedules (zone, start, duration, days), and comparisons (option A vs option B with criteria as rows) are all good fits. Do not use a table for layout: for example, putting the nav in one column and the main content in another. Layout is the job of CSS (flexbox, grid, or floats). Using table for layout was common in the past; today it causes accessibility and responsiveness problems and makes the markup misleading (screen readers announce "table with 2 columns" when it is not data). CSS Grid and Flexbox (covered in later phases) give you full control over layout without misusing the table element. Reserve the table element for real tabular data so that when a screen reader user encounters a table, they can expect a data grid and use table navigation if their tool supports it. If you have a list of items with no strong row–column relationship (e.g. a list of links or a set of cards), use a list (Chapter 2.07) or a group of block elements, not a table.
 
----
+When the data is sparse or the relationship is not really a grid (e.g. key–value pairs where each key appears once), a description list (dl, dt, dd) may be more appropriate (Chapter 2.07). Use a table when there are multiple rows of the same kind of data (same columns) or when the data is inherently two-dimensional. For a dashboard, a table of "Last 10 sensor readings" or "Drip zones this week" fits; a single set of "Current status: voltage 12.4, coop closed" might be a dl or a set of paragraphs. Choose the structure that matches the data. Chapter 2.11 (Forms) will add form elements; tables can sit inside or next to forms when you need to display or edit tabular data. A table is not a substitute for a list of links (use ul/li) or for a set of key–value pairs where each key appears once (use dl). When the same columns repeat for many rows (e.g. 50 sensor readings), a table is appropriate; when you have a single row of "current status" values, a dl or a few paragraphs may be clearer and easier to style on small screens.
 
 ## 4) caption and Accessibility
 
-- [Expand: <caption> inside table—title or summary of the table.]
-- [Expand: screen readers can announce caption; helps context.]
-- [Expand: avoid merged cells (colspan/rowspan) when possible; they complicate accessibility.]
+The caption element is an optional child of table, typically the first child. It gives the table a title or short summary (e.g. "Battery and solar readings, last 24 hours"). Screen readers can announce the caption when the user enters the table, so "Table: Battery and solar readings, last 24 hours. 3 columns, 12 rows" gives context. Use a caption when the table needs a title; if the table is already introduced by a heading (e.g. an h2 above it), the caption can repeat or shorten that, or you can omit caption. Do not use caption for long descriptions; keep it short. The caption is visible by default above the table; CSS can move it (e.g. caption-side: bottom) but the semantics stay the same.
 
----
+Accessibility for tables also depends on correct use of th, scope, and headers so that each cell is associated with its header(s). The caption can be the first or only way a screen reader user learns what the table contains; make it descriptive but concise (e.g. "Voltage and current readings, last 24 hours" rather than "Readings"). Avoid merged cells (colspan, rowspan) when possible. When you use them, test with a screen reader: ensure that the announced headers for each cell are correct. If a cell spans multiple rows or columns, the header association can be ambiguous; use headers on the td to list the relevant th id values. Empty cells (th or td with no content) are valid but can confuse assistive technology; use a non-breaking space or "—" or aria-label if you need to leave a cell intentionally empty. Some screen readers announce "blank" for empty cells; a short placeholder (e.g. "—" for "no data") can make the table easier to understand. Do not use empty cells to create visual spacing; use CSS (e.g. padding or empty cells only where the data is truly missing). Tables with many columns or rows can be hard to navigate; consider splitting into multiple tables or providing a summary (e.g. in caption or in surrounding text) so users know what to expect. Responsive design: on small screens, long tables may need horizontal scroll or a different presentation (e.g. cards per row); the markup stays table, and CSS or scripting handles the display. Chapter 2.14 and 2.15 cover landmarks and headings; place tables inside a landmark and use a heading or caption so the table is discoverable. Sorting and filtering (e.g. "Sort by time" or "Show only voltage sensors") are often implemented with script; the table markup stays the same, and you can add buttons or links that reorder or filter the rows. Keep the initial order logical (e.g. newest first or alphabetical) so that users without script still get a useful order. If the table is very long (e.g. hundreds of rows), consider pagination or virtual scrolling so the DOM stays manageable; the first page of rows still uses the same table structure and scope.
+
+## 5) When to Use What
+
+Use a table when you have tabular data: rows and columns with a clear relationship. Use thead for the header row(s), tbody for data rows, and tfoot for summary if needed. Use th for every header cell and set scope (col for column headers, row for row headers). Use td for data cells. Add a caption when the table needs a title. Use headers on td only when the table is complex and scope is insufficient. Do not use tables for layout; use CSS. Use a description list (dl) for a single set of term–value pairs; use a list (ul, ol) for a list of items without column structure. When in doubt, ask: "Is this data a grid where each cell belongs to a row and a column?" If yes, use a table. Validators can check table structure (e.g. same number of cells per row when no colspan/rowspan); they cannot check whether the content is really tabular, so choose the right element yourself. If you are displaying data that comes from a script or API (e.g. sensor readings fetched via JavaScript), the table markup is still written in HTML or generated so that thead and tbody contain the right number of th and td elements; ensure generated tables also get scope and caption so they stay accessible.
+
+## 6) Homestead Examples: Tables in Practice
+
+Your voltage or solar dashboard might show a table of readings: columns Sensor, Value, Unit, Timestamp; one row per sensor. Use thead with one tr of th cells, scope="col" on each; tbody with one tr per sensor, td in each column. Caption: "Current sensor readings." A coop or poultry net status page might have a table of events: Time, Event, Source. Thead with scope="col"; tbody with one tr per event. A drip schedule might be a table: Zone, Start time, Duration, Days. Use thead for the column headers and tbody for each zone row. A freezer or barn temperature log could be a table with columns Sensor, Temp, Humidity, Time. Keep the number of columns modest so the table is readable on small screens; if you have many columns, consider splitting (e.g. "Voltage sensors" and "Temperature sensors" as two tables) or providing a way to show/hide columns.
+
+A Pi or Home Assistant dashboard might show "Recent alerts" in a table: Time, Alert, Severity, Action. Use th with scope="col" for each column. If the first column is a row label (e.g. zone name in a zones table), use th with scope="row" for that cell in each row. For a comparison table (e.g. "Energizer A vs B" with rows like "Voltage," "Cost," "Warranty"), the first column can be th scope="row" and the comparison columns th scope="col". Add a caption that describes the table (e.g. "Drip zones schedule for this week"). When you add a new table to the dashboard, ensure it has a caption or a heading above it, correct thead/tbody structure, and scope on every th so the table is accessible. A freezer or barn log might list Sensor, Temp, Humidity, Time in thead and one tbody row per reading. An electric poultry net status table might have columns like Fence, Voltage, Status, Last check; use scope="col" on each thead th. For a drip irrigation summary, a table with Zone, Run count, Total minutes, Last run gives a quick overview. Keep column headers short and use consistent units (e.g. "V" not "Volts" in one table and "voltage" in another) so the table scans well. For a "Recent events" or "Alerts" table, columns like Time, Message, Severity, Source work well; put the most important column (e.g. Time or Message) first or second so the table reads logically. If you have both a summary block (e.g. "Current readings" as a dl) and a detailed table (e.g. "Last 24 hours"), place the summary above the table and give the table a caption that distinguishes it (e.g. "Detailed log, last 24 hours"). Chapter 2.11 (Forms) will let you add inputs; tables can display data that forms submit or that you edit in place.
+
+## 7) What Breaks When Tables Are Wrong
+
+Using a table for layout: screen readers announce "table" and users expect data; use CSS for layout. Missing or wrong scope on th: assistive technology cannot associate headers with cells; add scope="col" or scope="row" as appropriate. Putting tr directly in table: invalid; every tr must be in thead, tbody, or tfoot. Unequal number of cells per row (without colspan/rowspan): can break the grid and confuse screen readers; ensure each row has the same number of cells or correct spanning. Using td for header cells: use th for headers so semantics and styling (e.g. bold) match. Empty table (no rows or only header row): valid but useless; add data or remove the table. Colspan/rowspan without proper headers: cells may be associated with the wrong header; use headers on td when needed. Missing caption when the table is not introduced by a heading: users may not know what the table is; add a caption or a heading. Very wide tables with no responsive strategy: horizontal scroll or cramped layout on small screens; consider splitting or responsive design. Using a table when a list or description list would be clearer: if there is only one row of data or the relationship is term–value rather than a grid, prefer dl or a list. Fix tables so that structure is valid (thead, tbody, tr, th, td), every th has scope (or id and headers on td), and the table is used only for tabular data. Mixing th and td in the same row without a clear pattern (e.g. some rows with two th and two td, others with four td) can confuse the grid; keep header rows in thead and data rows in tbody with consistent cell counts. Missing caption and no heading above the table leaves the table without a name; add one or the other. Chapter 2.11 (Forms) covers form structure so you can add inputs and controls alongside your tables.
+
+## 8) Table Checklist
+
+When you add a table, confirm: table contains thead and tbody (and optionally caption, tfoot); every tr is inside thead, tbody, or tfoot. Use th for header cells and td for data cells. Set scope on every th (col for column headers, row for row headers). Add a caption when the table needs a title. Do not use the table for layout. If the table has complex structure (e.g. multiple header levels or colspan/rowspan), add id to the relevant th and headers to the td that need explicit association. Test with a screen reader to ensure headers and caption are announced correctly. When you add or remove columns or rows, update thead and any scope or headers so the table stays consistent. If you use colspan or rowspan, verify that the table still has a logical grid and that each cell has the correct header association (scope or headers). Run a validator on the page to catch invalid table markup (e.g. tr outside thead/tbody/tfoot or wrong number of cells). When you copy table data from a spreadsheet or CSV, ensure the first row becomes thead with th and scope, and that subsequent rows are tbody with td; do not leave the table as raw td in every row. Chapter 2.11 (Forms) covers form elements so you can combine tables with inputs for editable data or filtering.
+
+## Common Pitfalls
+
+Using tables for layout: use CSS (flexbox, grid) for layout; reserve tables for tabular data.
+
+Omitting scope on th: add scope="col" or scope="row" so assistive technology can associate headers with cells.
+
+Putting tr as a direct child of table: put every tr inside thead, tbody, or tfoot.
+
+Using td for headers: use th for header cells so semantics and accessibility are correct.
+
+Unequal row lengths (without colspan/rowspan): ensure each row has the same number of cells so the grid is valid.
+
+Skipping caption when the table has no heading: add a caption or a heading so users know what the table is.
+
+Overusing colspan/rowspan: prefer simple grid structure; use spanning only when necessary and set headers when needed.
+
+Leaving header cells empty: give every th meaningful text (or an abbr attribute for an abbreviation) so the column or row has a clear label.
+
+Using thead for a row that is not actually a header: put only real header rows in thead; data rows belong in tbody.
 
 ## Summary
 
-- Use table, thead, tbody, th, td for real tabular data; use scope (and headers if needed) for accessibility.
-- Don’t use tables for layout; add caption when it helps.
+Use table, thead, tbody, and optionally tfoot and caption for tabular data. Use tr for rows and th for header cells, td for data cells. Set scope on th (col or row) so assistive technology can associate headers with cells; use headers on td only when the table is complex. Add a caption when the table needs a title. Do not use tables for layout; use CSS. Keep thead for header rows only and tbody for data rows; use consistent cell counts per row or explicit colspan/rowspan. Keep the grid consistent (same number of cells per row or explicit colspan/rowspan) and test with a screen reader. Use caption or a heading so each table has a clear name. Test with a screen reader to confirm that table, caption, and header associations are announced correctly. Keep tables simple when possible: one thead row and one tbody (or multiple tbody for grouping) with consistent columns. Then add scope and caption so the table is accessible. Tables, together with lists (Chapter 2.07), links (Chapter 2.06), images (Chapter 2.08), and media (Chapter 2.09), give you the main building blocks for dashboard content; Chapter 2.11 (Forms) adds form structure and input types so you can add forms alongside tables and media. Always run through the table checklist when you add or change a table: thead/tbody, th with scope, caption or heading, and no layout use. Avoid using tables for anything other than tabular data so that screen reader users and styling stay predictable. Chapter 2.11 continues with forms so you can add inputs and controls to your dashboard.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.5.8 — Forms: Structure and Input Types**.
-
----
-
-*Expansion note for ChatGPT: One simple accessible table example. Target ~150 lines.*
+Chapter 2.11 (Forms — Structure and Input Types) covers the form element, labels, and input types so you can add controls for settings, filters, or data entry alongside your tables and media. With tables you can present sensor logs, schedules, and comparisons in a structured way; with forms you can add inputs that filter or edit that data. Use the table checklist in section 8 whenever you add or change a table so structure and scope stay correct. Validators and accessibility checkers can report missing scope or invalid structure; fix those first, then test with a screen reader to confirm header announcements.

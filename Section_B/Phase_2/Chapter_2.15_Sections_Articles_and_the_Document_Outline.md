@@ -1,52 +1,120 @@
 # Section B Phase 2 · Chapter 2.15: Sections, Articles, and the Document Outline
 
-section vs article; heading hierarchy (h1–h6) and the document outline; how assistive tech and SEO use structure. Avoiding skipped levels and generic wrappers.
-
----
+This chapter explains how to use section and article correctly, how heading hierarchy (h1–h6) builds the document outline, and how assistive technology and tools use that structure. It builds on Chapter 2.14 (Semantic HTML and Landmarks), where you learned header, main, footer, nav, aside, section, and article; here we focus on when to use section versus article, how to keep headings in order, and what goes wrong when structure is wrong. Chapter 2.16 (Div and Span) then covers generic containers when no semantic element fits.
 
 ## Learning Objectives
 
-- Use section for thematic grouping with a heading; use article for self-contained composition.
-- Maintain a logical heading hierarchy (no skipped levels); one h1 per page (or per major section where appropriate).
-- Explain how the document outline is derived from sections and headings; relate to screen readers and landmarks.
-- Avoid using section or article as a generic wrapper when div is sufficient.
+By the end of this chapter, you should be able to:
+- Use section for thematic grouping of content that has (or can have) a heading; use article for self-contained compositions that could stand alone.
+- Keep a logical heading hierarchy: no skipped levels (e.g. no h1 then h4), and typically one h1 per page or per major region.
+- Explain how the document outline is derived from sectioning elements and headings, and how screen readers and other tools use it.
+- Avoid using section or article as generic wrappers when a div is enough (no thematic boundary, no self-contained unit).
 
----
+## Key Terms
+
+- **section**: A thematic grouping of content that usually has a heading; used to divide main, article, or another section into logical parts (e.g. "Battery status", "Recent events").
+- **article**: A self-contained composition that could be distributed or reused on its own (e.g. a blog post, a sensor card, a news item); may contain one or more sections.
+- **document outline**: The logical structure of the page implied by sectioning elements (section, article) and headings (h1–h6); used by assistive technology and some tools for navigation and understanding.
+- **heading hierarchy**: The ordered levels h1 through h6; each heading defines a level in the outline; skipping levels (e.g. h1 then h4) makes the outline confusing.
+- **sectioning content**: Elements that create a new section in the outline: section, article, aside, nav (and in some specs, blockquote, details, fieldset, figure, td).
+- **sectioning root**: A container that can own its own outline (e.g. body, blockquote, details, fieldset, figure, td); content inside has its own heading hierarchy relative to that root.
 
 ## 1) Section and Article in Practice
 
-- [Expand: section = thematic grouping, usually with a heading; article = self-contained (blog post, card, widget); both can nest; use heading inside each.]
+Section is for thematic grouping. Use it when you are dividing content into named parts and can give that part a heading. For example, a dashboard main area might contain a section "Battery status", a section "Solar production", and a section "Recent alerts". Each section groups related content and typically has an h2 or h3 that names it. Section does not mean "any block of content"; it means "a distinct theme or topic within the page". If you have a block that is only there for layout or styling and has no thematic label, use a div instead. Section adds semantics: it tells assistive technology and outline algorithms that this block is a named region. Use that meaning when it applies.
 
----
+The boundary of a section is thematic, not visual. You might have a "Battery status" section that includes a paragraph, a small table of readings, and a link to the full battery page. That is one theme: battery. You might have another section "Solar production" with a chart and a summary. The sections divide the page by topic so that both humans and tools can understand the structure. Screen readers can list "Battery status" and "Solar production" as separate regions; the outline reflects that. If you had one big block with no sections and only headings, the outline would still have the headings but the sectioning boundaries would be missing. Section gives you both: a named region and a place for a heading that labels it.
 
-## 2) Heading Hierarchy and Outline
+Article is for self-contained compositions. Use it when the block could stand on its own: a blog post, a forum post, a product card, or a sensor card that could be shown in an RSS feed or on another page. Article can nest inside section (e.g. a "Sensors" section containing several sensor cards, each an article) and section can nest inside article (e.g. an article "Coop report" with sections "Temperature", "Door status", "Alerts"). The rule of thumb: if you could syndicate it or reuse it as a unit, article fits. If you are only grouping related content under a heading, section fits. Do not use article for every small box; use it when the block is actually self-contained.
 
-- [Expand: h1–h6 define levels; outline is implied by sectioning and headings; don’t skip levels (e.g. h1 then h4); one h1 per page or per main landmark.]
+An article often has its own heading (e.g. the sensor name or the blog post title) and may contain one or more sections inside. For instance, a long "Weekly coop report" might be one article with sections "Temperature and humidity", "Door events", and "Alerts". Each of those sections would have an h2 or h3. The outline would show the article as a top-level block and the sections as sub-blocks. When you have a list of similar items (sensor cards, device cards, event entries), each item that is self-contained can be an article. The parent can be a section with a heading like "Sensors" or "Devices", and each article can have a heading with the item name. That way the outline has one "Sensors" section and under it each sensor as a distinct unit, which helps both navigation and understanding.
 
----
+Both section and article participate in the document outline. Each one that is a direct child of a sectioning root (or of another section or article) can start a new outline section. For the outline to be useful, each such section or article should have a heading (h1–h6) that names it. Without a heading, the outline may show an "untitled section" or similar, which is less helpful for navigation. So when you add a section or article, add a heading inside it that describes the content, and keep the heading level consistent with the hierarchy (e.g. first level in main is h2 if the page title is h1, then h3 for subsections).
 
-## 3) Outline and Assistive Technology
+## 2) Heading Hierarchy and the Document Outline
 
-- [Expand: screen readers use headings and landmarks for navigation; good outline improves findability; homestead: dashboard with main, sections per widget, clear headings.]
+Headings define the levels of the document outline. An h1 is the top level, h2 is under that, h3 under h2, and so on. The outline is not just a flat list of headings; sectioning elements (section, article, and in some models aside and nav) create boundaries. So the outline is built from both: the sectioning structure and the heading levels inside it. Browsers and assistive technology can derive a tree: for example "Sensor dashboard" (h1), then "Battery status" (h2), then "Voltage" (h3) and "State of charge" (h3), then "Solar production" (h2), and so on.
 
----
+The hierarchy is strict: each heading level should reflect its place in the structure. A top-level topic is h1; the next level down is h2; under an h2 you use h3, and so on. That way the outline tree matches the content tree. If you use h1 for the page and then h4 for the first section, the outline suggests there are missing levels (h2 and h3), which is confusing. Screen-reader users who navigate by "next heading" or "headings level 2" rely on that hierarchy; skipping levels makes the structure inconsistent.
 
-## 4) When Not to Use Section or Article
+Do not skip heading levels. If your first heading is h1, the next should be h2, not h4. Skipping (e.g. h1 then h4) confuses the outline and screen-reader users who navigate by heading level. If you want something to look smaller, use CSS; keep the logical level correct (h2, h3, etc.). One common pattern is one h1 per page for the page or main topic, then h2 for major sections inside main, then h3 for subsections. On a dashboard, the page title might be h1, then "Battery status", "Solar production", "Coop status" as h2, and under "Battery status" you might have "Voltage" and "State of charge" as h3. That gives a clear, navigable outline.
 
-- [Expand: if no heading and no thematic boundary, use div; section and article add semantics—use them when the meaning applies.]
+The document outline is what you get when you combine sectioning and headings. Some tools (e.g. screen readers, browser extensions, validators) can show or use this outline. It helps users jump by section or by heading instead of reading the whole page. It also helps search engines and other tools understand the structure of the page. So even if you do not see the outline visually, keeping a logical hierarchy matters for accessibility and for tools that rely on structure. Consistency across pages helps too: if every page uses h1 for the page title and h2 for the main sections, users learn the pattern and can navigate faster.
 
----
+## 3) How the Outline Is Built
+
+The outline is built from the sectioning content and the headings inside it. When the parser sees a section or article (or in some specs, aside or nav), it can start a new outline section. The heading inside that section (usually the first one) gives that section its title and level. If you have a section with an h2, that section appears in the outline at level 2. If inside that section you have an h3, that creates a subsection. So the order of headings and the nesting of section and article determine the outline tree.
+
+The algorithm effectively walks the document and builds a tree: each sectioning element starts a new branch, and the first heading inside it sets the title and level for that branch. Sibling sections or articles become sibling branches. So a main with three sections, each with an h2, produces an outline with one top-level (often the h1 before or inside main) and three h2 entries. If one of those sections has two h3 subsections, the outline shows those as children of that section. Screen readers and outline tools use this tree to let users move by "next section" or "next heading at level 2".
+
+A section or article without a heading may still create an outline entry, but it may be "untitled". That is why adding a heading to each section and article that you want in the outline is recommended. You can use a visually hidden heading (e.g. with CSS that moves it off-screen but keeps it for assistive technology) if you do not want a visible title. The important part is that the outline has a clear label for each region so users know what they are jumping to.
+
+Multiple h1s are allowed in HTML5: each sectioning root can have its own outline, and the first heading in each can be an h1. So in theory you could have an h1 per section. In practice, many authors and accessibility guidelines prefer one h1 per page (or one per main content area) so the top-level topic is clear. If you use one h1 for the page and then h2 for major sections, the outline is simple and predictable. If you use multiple h1s (e.g. one per article in a list), ensure the outline still makes sense and that screen-reader users can orient. Consistency across pages (e.g. always h1 for page title, then h2 for main sections) helps.
+
+## 4) Outline and Assistive Technology
+
+Screen readers and other assistive technology use the document outline and landmarks to let users navigate quickly. Users can list headings and jump to a heading (e.g. "Battery status") or list landmarks and jump to a region (e.g. "Main"). A good outline means users can find "Solar production" or "Recent alerts" without reading the whole page. A bad outline (e.g. skipped levels, untitled sections, or everything in one flat list) makes navigation harder.
+
+Landmarks (main, nav, aside, header, footer, and the roles implied by section and article) work together with headings. Landmarks answer "where am I in the page?" (e.g. in main, in the sidebar). Headings answer "what is this block about?" (e.g. "Battery status", "Coop temperature"). So you need both: use main, nav, aside, section, and article for structure, and use h1–h6 in order so the outline is clear. A dashboard with main containing sections "Battery status", "Solar production", "Coop status", each with a heading, gives both a clear landmark (main) and a clear outline (the three sections and their subsections). Screen-reader users can then jump by heading to the part they care about.
+
+When you add a new section or article, ask whether it needs a heading for the outline. If it does, use the correct level (e.g. the first heading in main is often h1 or h2, and sections inside main use h2 or h3 depending on the hierarchy). Consistency across pages (e.g. always h1 for the page title, then h2 for main sections) makes the outline predictable for users who navigate by headings. Screen readers and other tools use the outline for navigation (e.g. "Heading, Sensor dashboard; Heading, Battery status"). A well-structured page has one main, clear landmarks, and a logical heading hierarchy so both sighted and screen-reader users can navigate quickly. You can inspect the accessibility tree in browser dev tools to see how landmarks and headings are exposed; that helps verify that main, nav, aside, section, and article are correctly identified and that the outline matches what you intend.
+
+SEO and other crawlers may also use heading and section structure to understand the page. A logical outline and clear section titles help both humans and tools. There is no need to stuff keywords into headings; just make the headings describe the content accurately and keep the hierarchy correct.
+
+## 5) When Not to Use Section or Article
+
+Use section only when you have a thematic grouping that has or can have a heading. If you are wrapping a block only for layout (e.g. a flex container or a grid cell) and there is no thematic boundary, use a div. Section says "this is a named part of the document"; if there is no name and no theme, do not use section. Same idea for article: use it when the block is self-contained. If the block is just a styled box with no syndication or reuse meaning, a div may be enough. Do not use section or article as fancy divs; use them when the semantic meaning applies.
+
+Generic wrappers are a common mistake. For example, a div that only holds a row of cards for CSS grid is not necessarily a section; it has no heading and no distinct theme. A div with a class like "card-row" is fine. If that row is part of a larger "Dashboard overview" theme, the larger block might be a section with an h2 "Dashboard overview", and the card-row can stay a div inside it. Reserve section and article for when they add real structure and meaning. That keeps the outline meaningful and avoids "untitled section" noise.
+
+Another case: a block that only wraps content for styling (e.g. a rounded box or a shadow) with no thematic or self-contained meaning should be a div. If you later decide that block is a distinct theme (e.g. "Alert summary"), you can change it to a section and add a heading. Starting with div and upgrading to section or article when the meaning is clear keeps the outline accurate and avoids overusing section and article.
+
+## 6) When to Use What
+
+Use section when you are grouping content by theme and can give it a heading (e.g. "Battery status", "Recent events", "Alert settings"). Use article when the block is self-contained and could be reused or syndicated (e.g. a sensor card, a blog post, a news item). Use div when you need a container but there is no thematic or self-contained meaning (e.g. layout wrappers, styling hooks). Use heading levels in order: one h1 per page or per main area, then h2 for major sections, h3 for subsections, and so on. Do not skip levels. Give each section and article that should appear in the outline a heading so the outline is labeled. If you have multiple nav or aside regions, use aria-label to distinguish them (e.g. "Main navigation", "Active alerts"); that does not change the outline but helps screen-reader users. When in doubt, ask: does this block have a theme and a heading? Then section. Could this block stand alone? Then article. Otherwise, consider div.
+
+Landmarks do not replace headings; use both so users can navigate by region and by heading. A page with good landmarks but no headings (or skipped levels) is harder to navigate by outline; a page with good headings but no main or nav is harder to navigate by region. When you have multiple sections inside main, give each section a heading that describes its content (e.g. "Current readings", "History", "Settings"); that creates a useful outline and helps screen-reader users jump by heading. If a section has no visible heading but you want it in the outline, you can use a visually hidden heading (e.g. with a CSS class that moves it off-screen but keeps it for assistive tech) so the outline stays meaningful without changing the visual design.
+
+## 7) Homestead Examples: Sections, Articles, and Outline
+
+On a homestead dashboard, the main area might have an h1 "Sensor dashboard" and then sections with h2: "Battery status", "Solar production", "Coop status", "Recent alerts". Each section groups related content. Under "Battery status" you might have subsections (h3) for "Voltage" and "State of charge" if the content is long. Under "Coop status" you might have "Temperature and humidity" and "Door status" as h3. That gives a clear outline: one top-level title and then major sections and subsections. Screen-reader users can jump to "Solar production" or "Recent alerts" without reading the whole page.
+
+A sensor detail page (e.g. for a freezer sensor) might have an h1 with the sensor name, then sections "Current reading", "History", and "Settings", each with an h2. Inside "Settings" you might have h3 for "Thresholds" and "Notifications". The outline reflects the page: one main topic (the sensor) and then logical sections. A coop monitoring page might have an h1 "Coop monitor", then sections "Temperature and humidity", "Door status", "Recent events", each with an h2. If you have a list of sensor cards (e.g. one card per ESP32 or per zone), each card that is self-contained can be an article: for example a section "Sensors" with an h2, and inside it several articles, each with an h3 for the sensor name. That way the outline shows "Sensors" and under it each sensor as a sub-item.
+
+A drip irrigation control page might have main with an h1 "Drip schedule", then sections "Zones", "Schedule", and "History" with h2. Each zone could be an article if it is a self-contained unit (name, schedule, status). A Raspberry Pi dashboard that shows battery, solar, coop, and freezer in one view benefits from one h1 and then one section per system with an h2, so the outline is "Battery", "Solar", "Coop", "Freezer". An alerts page might have an h1 "Active alerts" and then a section per alert type or a list of articles (one per alert) if each alert is self-contained. The pattern is the same: one top-level heading, then sections (or articles) with headings so the outline is clear and navigable.
+
+For a page that shows electric poultry net fence voltage and energizer status, use an h1 for the page title and sections with h2 for "Fence voltage", "Energizer status", and perhaps "History" or "Alerts". Each section gets a clear label in the outline. For a soil moisture or garden monitoring page, an h1 and then sections "Current readings", "Zones", and "Schedule" (or "History") with h2 keeps the outline simple. If you have multiple garden areas, each area could be an article inside a section "Garden areas" so the outline lists each area as a sub-item. A webcam or live stream page might have main with an h1 and sections "Live view", "Controls", and "Other cameras" (or a list of articles, one per camera). A network or ESP32 status page could use an h1 and sections "Devices", "Connectivity", and "Alerts". In every case, one h1 and then sections (or articles) with headings give both structure and a usable outline for navigation and tools.
+
+## 8) What Breaks When Sections, Articles, or the Outline Are Wrong
+
+Skipping heading levels (e.g. h1 then h4) breaks the outline. Screen-reader users navigating by heading level expect a logical hierarchy; skipping levels makes the structure confusing and can make some navigation features less useful. Fix by using sequential levels: h1, then h2, then h3, and so on. Using section or article as a generic wrapper with no heading often produces "untitled section" in the outline or adds noise. Assistive technology users then see many unnamed regions. Fix by adding a heading to each section and article that should be in the outline, or by using a div when there is no thematic or self-contained meaning.
+
+Too many sections or articles when div would suffice clutters the outline and dilutes meaning. Reserve section for thematic groups and article for self-contained units. Putting all content in one big block with no sections or headings makes the outline flat; users cannot jump to "Battery status" or "Solar production" because there are no landmarks or headings for those parts. Fix by dividing main (or article) into sections with headings. Using only divs and no section or article is valid HTML but loses the structure that assistive technology and outline tools use. For a simple page that is acceptable; for a dashboard or content-heavy page, add section and article where they fit and give each a heading.
+
+Multiple h1s are allowed but can be confusing if overused. Prefer one h1 per page (or per main) so the main topic is obvious. Wrong nesting (e.g. section inside section with the wrong heading level) can still produce a valid outline if the levels are in order, but if you use an h4 right after an h1 with no h2 or h3 in between, the outline is broken. Always use the next level down (h2 after h1, h3 after h2) unless you are intentionally starting a new branch. Testing with a screen reader or an outline tool (e.g. browser extensions that show the outline) helps catch these issues before they affect users.
+
+Using section or article only for styling (e.g. to get a border or a grid cell) without a real theme or self-contained meaning makes the outline misleading. Tools and users assume each section or article has a distinct role; if everything is a section with no heading or a generic label, the outline loses value. Prefer div for purely presentational grouping. Putting the only h1 inside a section that is not the main page topic can also confuse the outline: the top-level heading should usually describe the page or the main content, not a subsection. Keep the first heading in main (or body) as the primary topic (h1), and use section and article to subdivide that topic with h2 and below.
+
+## 9) Checklist for Sections, Articles, and the Outline
+
+When you add or change structure, use this list to keep sections, articles, and the outline correct. Use section only for thematic groups that have or can have a heading; use article only for self-contained compositions. Give each section and article that should appear in the outline a heading (h1–h6) at the right level. Keep heading levels sequential: do not skip (no h1 then h4). Prefer one h1 per page or per main content area. Use div when you need a container but there is no thematic or self-contained meaning. Avoid using section or article as generic wrappers. If a block has no heading and no distinct theme, use div. Check the outline: use a browser extension or accessibility tree to see that sections and headings produce a clear, labeled structure. Test with a screen reader: navigate by headings and by landmarks and confirm that "Battery status", "Solar production", and similar regions are easy to find. Reuse the same pattern across pages (e.g. h1 for page title, h2 for main sections) so the outline is consistent. When you add a new dashboard section (e.g. "Freezer status"), add a section with an h2 (or h3 if it is a subsection) so it appears in the outline and is navigable.
+
+## Common Pitfalls
+
+Using section or article as a generic wrapper: Section and article add semantics and outline entries; use them only when the content is thematic or self-contained. Otherwise use div.
+
+Skipping heading levels: Going from h1 to h4 (or any skip) confuses the outline and assistive technology. Use sequential levels (h1, h2, h3).
+
+Leaving sections or articles untitled: An outline full of "untitled section" is not useful. Add a heading (or a visually hidden one) for each section and article that should appear in the outline.
+
+Too many sections: Not every div needs to be a section. Reserve section for real thematic groups with a heading so the outline stays meaningful.
+
+Forgetting to test the outline: Use an outline viewer or screen reader to confirm that the heading hierarchy and section structure match what you intend and that users can jump to the right places.
 
 ## Summary
 
-- Section and article add structure and semantics; heading hierarchy defines the outline. Keep hierarchy logical and use section/article only when they add meaning.
-
----
+Section is for thematic grouping with a heading; article is for self-contained compositions. Both participate in the document outline. Keep heading levels in order (no skipped levels) and prefer one h1 per page or per main area. Give each section and article that should appear in the outline a heading so assistive technology and other tools can use it. Do not use section or article as generic wrappers when div is enough. A clear outline improves navigation for screen-reader users and helps tools understand the page. Use the checklist in section 9 when you add or change structure so sections, articles, and the outline stay correct. Chapter 2.16 (Div and Span) covers when and how to use generic div and span when no semantic element fits.
 
 ## Next
 
-Next: **Chapter 2.16 — Div and Span**.
-
----
-
-*Expansion note: Expand each section with short examples. Target ~24k–27k characters when fully expanded per CONTENT_WORKFLOW.*
+Next: **Chapter 2.16: Div and Span**. That chapter covers when to use div versus semantic elements, span for inline grouping, and how class and id support styling and scripting without adding semantics. After structuring content with section and article, you will use div and span for the cases where no semantic element applies.

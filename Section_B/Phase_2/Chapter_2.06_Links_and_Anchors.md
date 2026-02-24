@@ -1,61 +1,117 @@
-# Phase 2.5 · Chapter 2.5.4: Links and Anchors
+# Section B Phase 2 · Chapter 2.06: Links and Anchors
 
-a href; absolute vs relative URLs; target and rel; fragment identifiers; links as boundaries (Phase 0.8).
-
----
+Links connect your page to other resources: other pages on your site, external sites, or specific spots on the same page. This chapter covers the anchor element, absolute and relative URLs, target and rel for security and behavior, and fragment identifiers so you can add navigation and boundaries correctly to your dashboard and status pages. Getting links right keeps your site easy to move, safe when opening external pages, and usable for keyboard and screen reader users.
 
 ## Learning Objectives
 
-- Create links with <a href="..."> and distinguish absolute vs relative URLs.
-- Use target and rel for opening in new tab and security (noopener, noreferrer).
-- Use fragment identifiers (#id) for in-page navigation.
-- Connect links to Phase 0.8: boundaries (navigating across resources).
+By the end of this chapter, you should be able to:
+- Create links with the anchor element and href, and distinguish absolute from relative URLs
+- Use target and rel for new tabs and security (noopener, noreferrer)
+- Use fragment identifiers for in-page navigation and skip links
+- Treat links as boundaries between resources and choose link text for accessibility and SEO
 
----
+## Key Terms
 
-## 1) The a Element and href
+- **Anchor (a)**: The inline element for hyperlinks; requires href for navigation links
+- **href**: The attribute that holds the URL or path the link points to; required for a real link
+- **Absolute URL**: A full address including scheme and host (e.g. https and domain); use for external or full reference
+- **Relative URL**: A path relative to the current document or site root; use for same-site links
+- **Fragment**: The part of a URL after a hash (e.g. #section-id); points to an element with that id on the same or same-origin page
+- **target**: Attribute that controls where the link opens (e.g. same tab vs new tab)
+- **rel**: Relationship attribute that describes the link’s relation to the current page (e.g. noopener, noreferrer, nofollow)
 
-- [Expand: <a href="url">text</a>; href is required for navigation links.]
-- [Expand: link text should be descriptive (not "click here"); accessibility and SEO.]
-- [Expand: a without href is a placeholder link (use for JS or styling with care).]
+## 1) The Anchor Element and href
 
----
+The anchor element (a) creates a hyperlink. It is phrasing content and fits inside paragraphs, headings, and list items. For a link that navigates somewhere, you give it an href attribute whose value is the URL or path. The content of the anchor is the link text: the visible (and often underlined) part the user clicks. There must be an opening a tag, the link text, and a closing a tag. The href is required for a real navigation link; without it, the element is a placeholder link, which has limited use (e.g. for JavaScript or styling) and can confuse users and assistive technology. So always provide href for links that should go somewhere. You can leave href off only when the link is not yet active (e.g. a disabled nav item) or when the behavior is entirely script-driven; in those cases consider using a button or a span with a role instead of an anchor so the semantics match the behavior. The URL in href can be any valid URL or path: http or https for absolute, a path for relative, or a fragment (#id) for in-page. The browser resolves relative URLs when the user clicks, using the current document’s base URL (or a base element if you set one). The link text should describe the destination or action, not be generic.
+
+Avoid "click here" or "read more" when you can say "Voltage dashboard" or "Coop door status." Descriptive link text helps screen reader users (who may list links) and search engines. It also helps sighted users scan the page. If the link opens a PDF or external site, you can mention that in the text or with an icon or aria-label so users know what to expect. The anchor can wrap text, images (with appropriate alt), or other phrasing content; it cannot wrap interactive elements (e.g. another link or a button). One link per anchor; keep the scope clear. For your dashboard, a nav might have links like "Voltage," "Coop," "Solar," each with an href to the corresponding page. The link text and the href together form the boundary: user clicks here, browser goes there. An image can be the only content of a link (e.g. a logo that links home); in that case the image must have an alt value that describes the link destination (e.g. "Go to dashboard"), not the image itself. Do not use "image of" or "picture of" as link text; describe where the link goes.
+
+The anchor can have other attributes: target (where to open), rel (relationship and security), and optionally title (tooltip; use sparingly and do not rely on it for critical information). Download links can use the download attribute to suggest a filename when the user saves the resource. For now the core is href and good link text. Screen readers often list links; descriptive text makes that list useful. Search engines use link text as a signal for the target page; "Coop door status" is better than "click here" for the coop page. If the link goes to a non-HTML resource (e.g. a PDF), you can indicate that in the text or with an icon so users know what will open.
+
+**Link text and accessibility.** Assistive technology can list all links on a page; if every link says "click here" or "read more," the list is useless. Each link should make sense out of context. "Open the voltage dashboard" is better than "click here" when the destination is the voltage page. If you must use short text (e.g. "Battery" in a nav), ensure the surrounding structure (e.g. a nav labeled "Dashboard sections") gives context, or use an aria-label that expands the meaning for screen readers. Do not use the URL itself as link text unless the URL is short and human-readable (e.g. a stable docs URL). Long URLs are hard to hear when read aloud and are not descriptive. If the link opens in a new tab or goes to a non-HTML resource, say so in the link text or with an icon and optional aria-label (e.g. "Datasheet (PDF)" or "External: weather API"). That way users can decide before they click. Middle-click and keyboard users benefit from descriptive text too; they may open several links in new tabs and rely on the tab title or list to know where each goes.
 
 ## 2) Absolute vs Relative URLs
 
-- [Expand: absolute: full URL (scheme, host, path); use for external sites.]
-- [Expand: relative: path from current document; / for site root; ./ or no leading slash for same directory.]
-- [Expand: examples: same folder (file.html), parent (../page.html), root (/about).]
+The value of href can be absolute or relative. An absolute URL includes the scheme (e.g. https) and the host (e.g. example.com) and optionally a path and query and fragment. Use it when linking to another site or when you need a full, unambiguous address. For example a link to the MDN documentation or to an external API docs page would use an absolute URL.
 
----
+Relative URLs keep your markup portable: if you move the whole site from /dashboard to /app/dashboard, root-relative links like /dashboard/voltage can be updated in one place (e.g. a config or base tag), while document-relative links like voltage.html still work as long as the file stays next to the current page. A relative URL is interpreted relative to the current document or the site root. If your page is at /Section_B/Phase_2/dashboard.html and you write href="sensors.html", the browser resolves it to the same directory: /Section_B/Phase_2/sensors.html. If you write href="../Phase_1/overview.html", the browser goes up one directory to Phase_2’s parent, then into Phase_1. So one dot-dot means one level up. A path that starts with a single slash is relative to the site root: href="/dashboard" goes to the root of the current origin and then to dashboard.
+
+Use relative URLs for links within your own site so that the same project works on localhost, a staging URL, and production without changing every link. Use absolute URLs when the target is on another origin or when you explicitly need a full URL. Resolving is done by the browser when the user clicks; the server sees the requested URL in the request line (Section B Phase 1). For a multi-page dashboard, your nav might use relative paths like "voltage.html," "coop.html," or root-relative like "/dashboard/voltage" depending on your site structure. Keep the pattern consistent so that moving a page does not break every link.
+
+Root-relative paths (starting with /) are useful when your site might be served from a subpath (e.g. example.com/dashboard/) and you want links to always go to the root of that origin. Document-relative paths (no leading slash, optional ./) are relative to the directory of the current file. When in doubt, test: move the HTML file to another folder and see if the links still resolve. If they break, adjust the path (add ../ or change to root-relative).
+
+**How the browser resolves relative URLs.** The browser has a "base URL" for the current document: usually the URL that was used to load the page. When you use a relative href like "sensors.html" or "../Phase_1/overview.html", the browser combines the base URL with that path to get the full URL. If you have a base element in the document head with an href, the browser can use that as the base instead; that is useful when the page is served in a way that makes the "natural" URL wrong (e.g. in a frame or after a redirect). For most pages you do not need a base element; just be consistent with relative vs root-relative paths. Encoding matters: spaces and special characters in paths must be percent-encoded in URLs; most servers and frameworks handle this when you use the right APIs. In HTML you typically write the path in a readable form; the browser encodes when needed. Section B Phase 1 covered URLs and query strings; the same rules apply to href.
 
 ## 3) target and rel
 
-- [Expand: target="_blank"—opens in new tab; always add rel="noopener noreferrer" for security.]
-- [Expand: rel="nofollow" for untrusted or paid links if appropriate.]
-- [Expand: default target is _self (same tab).]
+By default a link opens in the same tab (target _self). If you want the link to open in a new tab or window, you set target to _blank. When you use target _blank, you should also set rel to include noopener and noreferrer. Noopener prevents the new page from accessing the opener window via window.opener, which avoids a class of tab-napping and performance issues. Noreferrer prevents the Referer header from being sent to the new page and implies noopener. So for external links or links you intentionally open in a new tab, use target _blank and rel="noopener noreferrer".
 
----
+Do not use _blank for internal navigation (same site); keep users in the same tab unless there is a clear reason otherwise (e.g. opening a print-friendly page or a reference doc). The rel attribute can also carry nofollow when the link is untrusted or paid (e.g. user-generated or ad links); it hints to crawlers not to follow the link for ranking. Other rel values (e.g. external, help) can be used for semantics or styling. The important habit is: new tab implies noopener noreferrer for security. Default (same tab) needs no target or rel for normal navigation.
+
+Your dashboard might link to an external weather API or to MDN; those could open in a new tab with noopener noreferrer. Links between your own pages typically stay in the same tab. You can combine rel values: rel="noopener noreferrer nofollow" for an external untrusted link that opens in a new tab. The order of values in rel does not matter; what matters is that noopener and noreferrer are present when target is _blank. Some older tutorials omit them; modern best practice is to always add them. Browsers are moving toward defaulting to noopener when target is _blank, but specifying it explicitly ensures consistent behavior across browsers and makes your intent clear in the markup.
+
+**When to use same tab vs new tab.** Use the same tab (default) for all in-site navigation: voltage, coop, solar, drip, settings. Use a new tab with noopener noreferrer when the user is leaving your site (external docs, API reference, forum) or when you explicitly want to keep the current page open (e.g. "Open print view"). Do not use _blank for every link; that forces new tabs and can confuse users who expect back/forward to work within your site.
 
 ## 4) Fragment Identifiers and In-Page Links
 
-- [Expand: href="#section-id" links to element with id="section-id".]
-- [Expand: useful for long pages (toc, skip links); URL can include fragment.]
-- [Expand: Bridge: links are boundaries between resources; Phase 0.8.]
+A fragment is the part of the URL after the hash sign. For example if the full URL is https://example.com/dashboard#sensors, the fragment is sensors. When you use href="#sensors", the browser keeps the current page and scrolls to the element that has id="sensors". So you need an element on the page with that id. The fragment does not trigger a new request; the browser already has the document and just scrolls to the element.
 
----
+Fragments are useful for long pages and for deep-linking: you can share a URL that includes #section-name and the recipient lands on that section. Bookmarking a page with a fragment saves the scroll position. Browsers typically scroll the target element into view and may give it focus for keyboard users. Use fragments for long pages: a table of contents at the top with links like href="#section-battery", href="#section-solar", and sections below with id="section-battery", id="section-solar". Screen reader users and keyboard users can jump to sections; everyone gets in-page navigation.
+
+Skip links are another use: a link at the very start of the body that says "Skip to main content" with href="#main", and your main landmark has id="main". That helps keyboard and screen reader users skip repeated nav. The URL in the address bar can include the fragment; if you share or bookmark that URL, the recipient opens the page and lands on that fragment. You can combine path and fragment: href="long-page.html#section-2" loads the page (if not already loaded) and then scrolls to the fragment. If the target is on another page of the same site, use the path to that page plus the fragment (e.g. href="sensors.html#battery") so the user lands on the right section. The fragment is only applied after the document is loaded; if the target id is on the same page, no extra request is made.
+
+Fragments are boundaries within the same resource: same document, different place. Chapter 2.17 covers the id attribute in more detail; here the point is that every fragment link needs a matching id on the target element. Id values must be unique on the page; so each fragment can point to exactly one element. Avoid using id values that look like numbers or that start with a number; stick to letters, digits (after the first character), hyphens, and underscores. Choose id values that are stable: if you rename a section heading, update the fragment link and the id together so they stay in sync. Names like section-battery, main-content, and skip-nav are clear and unlikely to collide. The fragment in the URL is optional: the page can load without it, and adding #section-id later does not reload the page. That makes fragments ideal for single-page apps and long documents where you want to deep-link to a section. Assistive technology can use the heading structure and landmarks (Chapter 2.14, 2.15) together with fragment links to support navigation; ensure your target elements have the right ids and that headings are in order.
+
+## 5) Links as Boundaries
+
+Section A Phase 1 introduced boundaries: where systems touch the outside world and where validation and trust matter. A link is a boundary: the user leaves the current context and goes to another resource. That resource might be another page on your site, another site, or a different spot on the same page. The link text and the href define what the user expects.
+
+If the link says "Coop status" but the href points to the voltage page, that is a broken boundary: the promise and the destination do not match. If the link opens in a new tab without noopener noreferrer, you have created a security and performance risk. So links are not just "make this text blue and clickable"; they are the contract between the page and the next resource. Use descriptive text, correct URLs, and appropriate target and rel. For external or untrusted destinations, consider nofollow and opening in a new tab with noopener noreferrer. For internal navigation, keep same-tab and use relative URLs. For long pages, use fragments so users can jump to sections.
+
+Validators (Chapter 2.23) can check that href values are present and that links are well-formed; they cannot check that the destination is correct or that rel is set when needed. That is your responsibility as the author. Links that point to resources that no longer exist (404) or that redirect unexpectedly break the user’s mental model. Maintain links when you move or rename pages; use redirects (Section B Phase 1) when you must change URLs so that old links still work. Internal links also affect how crawlers and users discover content; a well-linked site is easier to navigate and to index. When you add a new dashboard page or a new section, ask: where should a user find a link to this? Add that link from the nav, the dashboard home, or a related page, and use the same conventions (relative paths, descriptive text, same-tab for internal) so the boundary stays clear.
+
+## 6) Homestead Examples: Links in Practice
+
+Your voltage dashboard might have a nav with links to "Battery," "Solar," "Load," each pointing to a relative path like battery.html or to a fragment on the same page (e.g. #battery). The main content might link to "Coop door" or "Freezer temps" with relative URLs to other status pages. A footer might have "Home" with href="/" or "Dashboard" with href="/dashboard". If you add a link to an external resource (e.g. a datasheet or a forum), use an absolute URL and consider target _blank with rel="noopener noreferrer".
+
+Your coop status page might link to "Recent events" as a fragment (#events) on the same page, and to "Voltage" or "Solar" as relative links to other pages. A long sensor list page might have a table of contents at the top with fragment links to each sensor section. Use descriptive link text: "Battery voltage" not "Click here," "Coop door status" not "Link." For a multi-page dashboard, keep the nav consistent: same set of links on every page, same order, so users always know how to move. If you use a single long page with sections, fragment links plus a clear heading structure (Chapter 2.04) make the page navigable.
+
+Your solar production page might link to "Today" and "This week" as fragments on the same page, and to "Voltage" and "Coop" as relative links in the nav. Your drip schedule page might link to each zone by fragment (#zone-1, #zone-2) for quick jumping. A Pi dashboard that aggregates several views could use a nav of fragment links to "Overview," "Sensors," "Logs," with each section having a matching id. If you add a "Documentation" or "Help" link to an external site, use an absolute URL and open in a new tab with noopener noreferrer. Consistency in the nav (same links in the same order on every page) helps users build a mental map. When you add a new section or page, add a link to it from the relevant place (nav, dashboard home, or a list of related pages) and use descriptive text so the link is discoverable and understandable. Links connect your content; get the href, text, and rel right so the boundary is clear and secure.
+
+A poultry net or perimeter status page might link to "Voltage" and "Coop" in the nav, and to "Last trigger" or "Alerts" as fragments on the same page. A single long "Status" page that shows battery, solar, coop, and freezer in sections can use a table of contents at the top with fragment links to each section, and a "Back to dashboard" link with a relative path to the main dashboard. Whatever pattern you choose (many small pages vs one long page with fragments), apply it consistently and test that every link goes where the text says it will.
+
+## 7) What Breaks When Links Are Wrong
+
+Missing href on an anchor that should navigate leaves users with a placeholder link; add href. Empty or generic link text ("click here," "link") hurts accessibility and SEO; use descriptive text. Using an absolute URL when a relative one would do ties the link to one origin; prefer relative for same-site links. Forgetting rel="noopener noreferrer" on target="_blank" links exposes users to tab-napping and can hurt performance; always add both. Using a fragment that does not match any id on the page does nothing (or scrolls to top); ensure every href="#something" has a matching id="something". Linking to the wrong page or section breaks the boundary; check that href and link text match the destination. Putting a link inside another link is invalid; do not nest anchors.
+
+Validators will report invalid nesting and missing required attributes. Fix links so that every navigation link has an href, descriptive text, and correct target/rel when opening in a new tab. Then test by clicking through: same-site links should work when you move the project, and fragments should scroll to the right place. Broken links (href pointing to a missing page) result in 404s and frustrate users; check links after renaming or moving files. Links that point to the wrong fragment (e.g. a typo in the id) do nothing useful; validate that every #fragment has a matching id. Using placeholder href="#" for "coming soon" or JavaScript-only links is a bad habit: screen readers and middle-click users may open a new tab to the same page with no indication of intent. Prefer a button or a disabled state for actions that are not yet available, or use a real URL when the target exists.
+
+## 8) Link Checklist
+
+When you add a link, confirm: href is present and points to the right resource (relative for same site, absolute for external). Link text is descriptive and matches the destination. If the link opens in a new tab (target _blank), rel includes noopener and noreferrer. If the link is a fragment (#id), an element on the page has that id. Do not nest anchors or put interactive content inside an anchor. Run through the nav and key links after changing file structure; fix any broken paths. When you add a new page or section, add it to the nav or to a relevant list and test that the link works from different pages (root, subfolder). When you use fragment links, verify that every id is unique and that the target element is focusable or has appropriate semantics (e.g. a section or heading). Chapter 2.07 (Lists) shows how to mark up a list of links (e.g. nav or a table of contents) with ul and li so structure and semantics are correct.
+
+## Common Pitfalls
+
+Using "click here" or "read more" as link text: use text that describes the destination (e.g. "Voltage dashboard," "Coop status").
+
+Opening every link in a new tab: use _blank only when there is a reason (e.g. external reference); use noopener noreferrer when you do.
+
+Forgetting that relative URLs are relative to the current document: ../ goes up one directory; / starts from site root. Check paths when you move files.
+
+Using a fragment without a matching id: href="#section-id" requires an element with id="section-id" on the page.
+
+Nesting links or putting a link around a button: one link per anchor; do not put interactive elements inside an anchor.
+
+Using absolute URLs for internal pages: prefer relative or root-relative paths so the site works on any host.
+
+Relying on title for link purpose: title is often not announced by screen readers. Put the meaning in the link text or in an aria-label if the visible text is not sufficient.
+
+Using href="#" or href="javascript:void(0)" for buttons or script-only actions: use a button element for actions that do not navigate; reserve anchors for navigation so that link list and bookmark behavior stay correct.
 
 ## Summary
 
-- Use a with meaningful href; prefer relative URLs for same site; use target and rel correctly for new tabs.
-- Fragments (#id) enable in-page navigation; links are boundaries to other resources.
+Use the anchor element with href for navigation links; give each link descriptive text. Prefer relative URLs for same-site links; use absolute URLs for external or full addresses. Use target _blank only when needed and always add rel="noopener noreferrer". Use fragment identifiers (href="#id") for in-page navigation and ensure the target element has the matching id. Treat links as boundaries: match link text to destination and set rel and target correctly. Use descriptive link text for accessibility and SEO; use relative URLs for same-site navigation; use fragments for in-page jumps. Avoid nesting anchors or wrapping interactive elements in a link. When you add or move pages, update nav and key links and test that paths still resolve. Run through the link checklist when you add or change links so href, text, target, and rel are correct. Chapter 2.07 (Lists) covers list structure so you can build nav lists and other lists of links.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.5.5 — Lists**.
-
----
-
-*Expansion note for ChatGPT: Include 2–3 link examples (internal, external, fragment). Target ~150 lines.*
+Chapter 2.07 (Lists) covers ordered and unordered lists, list items, and when to use lists so you can mark up navigation menus, sensor lists, and other grouped items.

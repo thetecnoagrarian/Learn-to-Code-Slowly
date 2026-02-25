@@ -1,61 +1,74 @@
-# Phase 2.6 · Chapter 2.6.12: Error Handling
+# Section B Phase 3 · Chapter 3.12: Error Handling
 
-try, catch, finally; throw; Error types; async errors. Bridge to Phase 0.6 and 0.10.
-
----
+This chapter covers try, catch, finally, throw, and how to handle errors in synchronous and asynchronous code. It builds on Chapter 3.11 (Strings and Template Literals): error messages are strings, and you use template literals or concatenation to build user-facing and log messages. Chapter 3.13 (Async — Callbacks and Promises) then covers asynchronous operations in depth; errors in async code are handled with try/catch around await or with .catch on promises. Handling errors well means validating at boundaries, throwing when assumptions are violated, and catching at the right layer so you can report or recover instead of letting the program crash in a confusing way. Error messages you create (Chapter 3.11) are what users and logs see; clear messages make debugging and support much easier.
 
 ## Learning Objectives
 
-- Use try/catch/finally to handle exceptions; catch receives error object.
-- Throw errors with throw new Error("message"); use built-in types (TypeError, RangeError) when appropriate.
-- Handle errors in async code (try/catch around await; .catch on promises).
-- Connect to Phase 0.6 (errors and failure) and Phase 0.10 (failure is normal).
+By the end of this chapter, you should be able to:
+- Use try, catch, and finally to handle exceptions; catch receives the error object and can read message and name.
+- Throw errors with throw new Error("message"); use built-in error types (TypeError, RangeError, etc.) when they fit.
+- Handle errors in async code: try/catch around await in an async function, and .catch on promise chains.
+- Validate at boundaries, throw when preconditions fail, and avoid swallowing errors without logging or rethrowing.
 
----
+## Key Terms
+
+- **exception**: A thrown value that interrupts normal execution. When you throw, control jumps to the nearest enclosing catch (or the program terminates if none). Exceptions are the primary error mechanism in JavaScript.
+- **try/catch/finally**: try wraps code that might throw; catch runs if an exception occurs and receives the thrown value; finally runs after try (and catch if present) whether or not an exception occurred. Use finally for cleanup (e.g. closing a resource).
+- **throw**: A statement that throws a value. Conventionally you throw an Error (or subclass) so the value has message, name, and stack. Callers can catch and handle the error or let it propagate.
+- **Error (and subtypes)**: Built-in constructors for error objects. new Error("message") creates an object with message, name "Error", and a stack trace. TypeError, RangeError, ReferenceError, and others are used by the engine and you can use them when appropriate (e.g. throw new TypeError("expected string")).
+
+When no catch is present and code in try throws, the exception propagates to the caller. So you can have a try/finally without catch: the exception still propagates, but finally runs first. That is useful when you need cleanup but are happy for the error to bubble up. A single try can have one catch and one finally; you cannot have multiple catch blocks for different error types in the same way as in some other languages, but you can check e.name inside catch and branch: if (e.name === "TypeError") { ... } else { ... }.
 
 ## 1) try, catch, finally
 
-- [Expand: try { risky(); } catch (e) { handle(e); } finally { cleanup(); }.]
-- [Expand: catch binds error; use e.message, e.name; optionally rethrow after logging.]
-- [Expand: finally runs whether or not exception occurred; for cleanup.]
-
----
+You wrap code that might throw in a try block. If the code runs without throwing, execution continues after the try (and any finally). If the code throws, execution jumps to the catch block (if present); the catch receives the thrown value as its parameter. You can name it e or err or error. The error object typically has message (the string you passed to new Error), name (e.g. "Error", "TypeError"), and stack (a string representation of the call stack at the time of the throw). Use e.message to show or log the reason; use e.name to distinguish error types if you need different handling. After the catch runs (or if there is no catch), the finally block runs. finally is for cleanup that must run whether or not an exception occurred: close a file, release a lock, or reset state. You can have try/catch without finally, or try/finally without catch (the exception will propagate after finally runs). Do not use catch only to silence the error unless you have a good reason (e.g. you expected the error and handled it). Prefer to log and rethrow (throw e;) so that callers can still handle it, or handle it and return a fallback value so the caller knows the operation did not succeed. For a homestead example: try to parse config or fetch a reading; in catch log the error and show a user message (using the error message string from Chapter 3.11); in finally clear a loading flag or close a connection. You can rethrow after handling: catch (e) { log(e); throw e; } so that the same error propagates but you have logged it. Do not rethrow a different error unless you wrap the original (e.g. for a "cause" chain) so the stack is not lost. If catch does not rethrow and does not return, execution continues after the try/catch/finally block, so the caller does not know an error occurred unless you return an error result or set state. Design the contract: either the function throws on failure (and the caller catches) or it returns a value that indicates success or failure (e.g. null or { error: e }). Mixing both in the same function (sometimes throwing, sometimes returning an error value) is confusing; pick one style per function. In JavaScript you can only throw one value at a time; if you need to report multiple validation errors, you might collect them and throw a single error whose message lists them, or return a result object that contains a list of errors.
 
 ## 2) throw and Error Types
 
-- [Expand: throw new Error("message"); throw new TypeError("..."); custom subclasses possible.]
-- [Expand: throw any value (Error preferred so stack trace and message are standard).]
-- [Expand: callers can catch and handle or let propagate.]
-
----
+You throw with throw value;. The value can be any type, but convention is to throw an Error or a subclass so that message, name, and stack are available. Write throw new Error("description of what went wrong");. The string is the message the user or developer will see; make it clear and actionable. You can throw new TypeError("expected a string") when the caller passed the wrong type, or new RangeError("index out of range") when a value is out of valid bounds. The engine throws these for certain built-in violations; you can use them for your own validation so that catch blocks can check e.name and handle type errors differently from range errors. You can define custom error classes (subclassing Error) for domain-specific errors (e.g. ConfigError, SensorError); that is covered in a later chapter. For now, throw new Error("message") or a built-in type is enough. When you throw, the current function stops and the error propagates up the call stack until a catch handles it or the program exits. So throw when a precondition is violated (e.g. missing required config, invalid sensor id) or when an operation fails and the caller should know. Do not throw for expected control flow (e.g. "item not found" when search is optional); return null or a result object instead. For a homestead example: throw new Error("Sensor id required") when a function that needs a sensor id receives null; throw after a failed API call with a message that includes what was attempted so the log is useful. You can include dynamic values in the message: throw new Error(`Sensor ${id} not found`); that way the log or user sees which id failed. Avoid putting sensitive data (passwords, tokens) in error messages, since they may end up in logs or in UI. The stack property is set when the error is created; it shows the call stack at that moment, which helps when debugging. When you rethrow (throw e), the original stack is preserved; when you throw new Error(e.message), you lose the original stack unless you copy it or use a cause. SyntaxError is used by JSON.parse and similar when the input is not valid; you can throw it for parse errors. URIError is for malformed URIs. Using the right built-in type helps catch blocks that want to handle "type errors" differently from "range errors" or "reference errors." For most application-level failures (e.g. "sensor not found", "config invalid"), plain Error is fine; use the message to distinguish cases if needed.
 
 ## 3) Async Errors
 
-- [Expand: try/catch around await in async function catches rejected promise.]
-- [Expand: promise.catch(handler) for promise chains without async/await.]
-- [Expand: unhandled rejections: ensure .catch or try/catch so errors don’t disappear.]
+Asynchronous code (callbacks, promises, async/await) can also produce errors. A rejected promise is the async equivalent of a thrown exception. When you use async/await, you can wrap the await in try/catch: inside an async function, try { const result = await someAsyncCall(); } catch (e) { handle(e); }. If the promise rejects, the catch runs with the rejection reason (often an Error). So the same try/catch pattern works for async code when you use await. When you use promises without async/await, you chain .catch(handler) to handle rejections: someAsyncCall().then(...).catch(e => handle(e)). If you do not attach .catch or do not await inside try/catch, an unhandled rejection can occur: the promise rejects and no handler runs. In some environments unhandled rejections terminate the process or log a warning. Always ensure every promise chain has a .catch or that every await is inside a try/catch (or that the async function's promise is caught by the caller). Do not leave rejections unhandled. When you catch an async error, you can log it, show a message to the user, retry, or rethrow so the caller can handle it. For a homestead example: try/catch around await fetchReading(sensorId) and in catch show "Failed to load sensor" and log e.message; or .catch on a promise that starts a zone and show a toast or alert on failure. Chapter 3.13 goes deeper into promises and callbacks; this chapter establishes that errors in async code are handled via catch or .catch. If you have multiple await calls in one async function and want to handle each failure separately, wrap each in its own try/catch, or let the first failure jump to a single catch and handle there. If you want to run several async operations and collect all errors (e.g. "try all sensors and report which failed"), you can await each in a loop and push errors to an array instead of throwing on first failure. The key is to ensure every rejection has a handler so that no "unhandled rejection" occurs.
 
----
+## 4) When to Use What and Validating at Boundaries
 
-## 4) Bridge to Phase 0.6 and 0.10
+Use try/catch when you call code that might throw (e.g. JSON.parse, a function that validates and throws, or third-party code). Design for failure: assume that network calls can fail, that files can be missing or malformed, and that user input can be invalid. By validating and throwing (or returning errors) at boundaries, you make the "happy path" clear and centralize failure handling. When you catch, decide whether to recover (e.g. use a default), to report (log and show message), or to rethrow so a higher layer can decide. Do not let the program continue with invalid state (e.g. undefined or null where you expected a number) without at least logging; that leads to follow-on errors that are hard to debug. Use catch to log, to display a user message, or to return a fallback; use finally when you need cleanup regardless of success or failure. Use throw when you detect an invalid state or failed operation and the caller (or an outer catch) should handle it. Use Error or a built-in subtype so that message and stack are available. Validate at boundaries: when data enters your program (API response, user input, config file), check that it has the expected shape and values; if not, throw a clear error or return an error result. That way the rest of your code can assume the data is valid and you do not get mysterious failures deep inside. Do not swallow errors: avoid catch (e) { } with an empty body. At least log the error; or rethrow (throw e;) so something upstream can handle it. If you intentionally handle an error (e.g. you expected "not found" and will return null), that is fine—but document it or use a clear variable name so future readers know it was intentional. For a homestead dashboard: validate config on load and throw if required keys are missing; catch when fetching readings and show "Sensor unavailable"; use finally to clear a loading spinner whether the request succeeded or failed. When you call a library or API that might throw, check its documentation for which errors it throws and under what conditions; then you can catch and either handle or wrap in your own error with more context before rethrowing. When you write a function that can fail, document whether it throws or returns an error value so callers know how to handle it. At the boundary between "external" (network, file, user) and "internal" logic, validate and convert: if the format is wrong, throw with a clear message; once past the boundary, the rest of the code can assume the data is in the expected shape. That reduces the number of places you need to check for null or invalid values and makes errors easier to trace.
 
-- [Expand: Phase 0.6: assumptions break; design for failure; Phase 0.10: missing data, partial truth.]
-- [Expand: validate at boundaries; throw or return Result-style; catch at appropriate layer.]
-- [Expand: don’t swallow errors; log and rethrow or handle intentionally.]
+## 5) Homestead Examples: Error Handling in Practice: Error Handling in Practice
 
----
+Validate config at startup: if (!config.sensorIds || !Array.isArray(config.sensorIds)) throw new Error("config.sensorIds must be an array"); then the rest of the code can assume sensorIds exists. When fetching a reading, wrap in try/catch; in catch log the error and set a display state to "Error" or "—" so the UI does not show stale data. When starting a zone, if the API call fails, catch and show "Could not start zone; check connection." Use the error message (e.message) in a template literal for the user: `Action failed: ${e.message}`. When parsing JSON from a file or API, JSON.parse can throw; catch and throw a new Error with context: catch (e) { throw new Error(`Invalid config JSON: ${e.message}`); } so the caller sees what went wrong. In a retry loop (Chapter 3.06), catch the error, log it, and retry or give up after max attempts; do not let the error disappear. When you call a function that might throw (e.g. getReading(id) that throws if id is invalid), either catch at the call site and show a message, or let the error propagate to a higher-level catch that can show a generic "Something went wrong" and log the details. When validating config, throw once with a message that lists what is missing or invalid so the user can fix it in one go. When a zone or sensor operation fails, include the zone or sensor id in the error message so logs are actionable. When reading from local storage or a file, catch parse errors and throw a new Error that says "Invalid config file" or similar so the user knows what to fix. When you have a top-level catch (e.g. in the main entry or in an event handler), log e.message and e.stack so you have a record; optionally show a sanitized message to the user (no stack trace in UI). For retries (e.g. starting a zone), catch, log, and retry a fixed number of times; after max retries throw or return a failure so the caller knows the operation did not succeed. When displaying errors in the UI, use short user-facing text (e.g. "Could not load sensor") and keep the full message or stack for logs only. When multiple operations can fail (e.g. fetching several sensors), you can catch per operation and show which ones failed instead of failing the whole batch on first error. Error handling ties together strings (for messages), functions (for validation and recovery), and the control flow from Chapters 3.05 and 3.07. Chapter 3.13 (Async — Callbacks and Promises) will show how to structure async code so that errors in callbacks and promises are caught consistently.
+
+## 6) What Breaks When Error Handling Is Wrong
+
+If you catch and do nothing (empty catch), the error is swallowed and the program continues as if nothing happened; bugs become hard to find. Always log or rethrow or handle intentionally. If you throw a string (throw "error") instead of new Error("error"), the thrown value has no .message or .stack; catch blocks that expect an Error object may fail. Prefer throw new Error("message"). If you throw inside a callback that is not in a try block, the try that wraps the code that invoked the callback does not catch it—the callback runs later. So you must catch inside the callback or use .catch on the promise that the callback is part of. If you forget to handle promise rejections (no .catch and no try/catch around await), you get unhandled rejections; add .catch or try/catch. If you rethrow without the error (throw "something else"), you lose the original stack trace; use throw e to rethrow the same error. If you validate too late (deep inside a long function), the error message may not make it clear where the bad data came from; validate at boundaries and throw with context. If you use finally and return a value from try or catch, the return can be overridden by a return in finally; avoid returning from finally. If you throw in a catch block (e.g. after wrapping in a new error), the new throw is not caught by the same catch; it propagates. If you throw in finally, that throw replaces any previous throw from try or catch, which can hide the original error; avoid throwing in finally. So: do not swallow errors, throw Error objects, handle async errors with .catch or try/await, rethrow the same error to preserve the stack, validate at boundaries, and avoid return or throw in finally. In development, showing the full error message and stack in the console or in a dev-only overlay helps debug; in production, show a short user message and send the full details to logs only so you do not expose internal details.
+
+## 7) Checklist
+
+When you work with errors: (1) Wrap risky code in try/catch; use catch to log, display, or rethrow. (2) Use finally for cleanup that must run whether or not an exception occurred. (3) Throw new Error("message") or a built-in type (TypeError, RangeError) when preconditions fail or operations fail. (4) Make error messages clear and actionable; use template literals to include context (e.g. sensor id, expected type). (5) Validate at boundaries (config, API response, user input); throw early so the rest of the code can assume valid data. (6) In async code, use try/catch around await or .catch on promises so rejections are handled. (7) Do not leave promise rejections unhandled. (8) Do not swallow errors; at least log. (9) Include context in error messages (e.g. sensor id, expected type) so logs and UI are actionable. (10) Avoid return or throw in finally. Chapter 3.13 (Async — Callbacks and Promises) covers promise chains and how errors propagate through them.
+
+## Common Pitfalls
+
+Empty catch: catch (e) { } hides the error. Log or rethrow.
+
+Throwing non-Error: throw "error" has no .message or .stack. Use throw new Error("message").
+
+Unhandled promise rejection: Missing .catch or try/catch around await. Add a handler.
+
+Rethrowing a new error without cause: Use throw e to preserve the original stack; or wrap in new Error and set cause if you need to add context.
+
+Losing stack on rethrow: throw new Error(e.message) loses the original stack. Prefer throw e to rethrow.
+
+Validating too late: Validate at boundaries so errors have context and the rest of the code is simpler.
+
+Return in finally: Can override the return from try/catch. Avoid returning from finally.
+
+Throw in finally: Replaces the original exception. Avoid throwing in finally.
 
 ## Summary
 
-- Use try/catch/finally; throw Error (or subtypes); handle async errors with try/await or .catch.
-- Design for failure; validate at boundaries; don’t hide errors.
+Use try/catch/finally to handle exceptions; catch receives the error object (message, name, stack). Throw new Error("message") or built-in types when preconditions fail or operations fail. Handle async errors with try/catch around await or .catch on promises; do not leave rejections unhandled. Validate at boundaries and throw with clear messages; do not swallow errors. Document whether your functions throw or return error values so callers can handle consistently. Chapter 3.13 (Async — Callbacks and Promises) builds on this with promise-based error propagation.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.6.13 — Asynchronous JavaScript: Callbacks and Promises**.
-
----
-
-*Expansion note for ChatGPT: One sync and one async error example. Target ~150 lines.*
+Next: **Chapter 3.13: Async — Callbacks and Promises**. That chapter covers asynchronous execution, callbacks, and promises in depth. You will see how promises propagate rejections and how to chain .then and .catch so that errors in async operations are handled in one place. The try/catch and throw patterns from this chapter apply when you use async/await (Chapter 3.14) on top of promises. Consistently handling errors in async code prevents "unhandled rejection" warnings and makes failures visible to users and logs instead of failing silently.

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.21–2.24.
+  - Ch 2.21: script (defer or end of body), link rel="stylesheet", style (small inline CSS), iframe (title, sandbox, dimensions).
+  - Ch 2.22: This document is the body of a GET response; server sends Content-Type: text/html; charset=utf-8; Cache-Control/ETag control caching.
+  - Ch 2.23: Valid markup — nesting correct, unique id, alt on img, labels on controls; passes validator; accessibility checklist.
+  - Ch 2.24: Full page skeleton — structure first (landmarks, headings), then content, then forms/media; structural contract for CSS and JS.
+  Homestead dashboard: ready for Phase 3 (JS) and Phase 7 (CSS).
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — Homestead</title>
+    <!-- Ch 2.21: External stylesheet in head; preferred for main styles (cacheable, maintainable). -->
+    <link rel="stylesheet" href="css/main.css">
+    <!-- Ch 2.21: Small page-specific CSS in style when not worth a separate file. -->
+    <style>
+      .skip-link { position: absolute; left: -9999px; }
+      .skip-link:focus { position: static; }
+    </style>
+    <!-- Ch 2.21: defer = download in parallel, run after document parsed, in order. Use when script needs DOM. -->
+    <script src="js/dashboard.js" defer></script>
+  </head>
+  <body>
+    <!-- Ch 2.24: Skip link for keyboard users; target main (id required). Ch 2.23: accessibility checklist. -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Ch 2.24: Landmarks first — header, nav, main, footer. Ch 2.23: one main, semantic structure. -->
+    <header>
+      <h1>Homestead dashboard</h1>
+      <nav aria-label="Main navigation">
+        <ul>
+          <li><a href="index.html">Dashboard</a></li>
+          <li><a href="sensors.html">Sensors</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <!-- Ch 2.24: One h1, then h2 for sections; no skipped levels. Ch 2.23: heading hierarchy. -->
+      <section aria-labelledby="overview-heading">
+        <h2 id="overview-heading">Overview</h2>
+        <p>Battery: <span id="battery-voltage" class="reading-value">—</span> V. Coop door: <span id="coop-status" class="reading-value">—</span>.</p>
+      </section>
+
+      <section aria-labelledby="readings-heading">
+        <h2 id="readings-heading">Readings</h2>
+        <!-- Ch 2.23: Every img has alt (descriptive or "" for decorative). -->
+        <figure>
+          <img src="images/status.svg" alt="Battery and solar voltage status" width="400" height="120">
+          <figcaption>Current status</figcaption>
+        </figure>
+      </section>
+
+      <!-- Ch 2.21: iframe with title (accessibility), sandbox (security), width/height (no layout shift). -->
+      <section aria-labelledby="stream-heading">
+        <h2 id="stream-heading">Live view</h2>
+        <iframe
+          src="https://example.com/stream"
+          title="Live coop camera stream"
+          width="640"
+          height="360"
+          sandbox="allow-same-origin"
+        ></iframe>
+      </section>
+
+      <!-- Ch 2.23: Every form control has a label (for/id). Ch 2.24: Forms with labels = structural contract. -->
+      <section aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Threshold</h2>
+        <form action="/api/settings" method="post">
+          <p>
+            <label for="min-voltage">Min voltage (V)</label>
+            <input type="number" id="min-voltage" name="min_voltage" min="10" max="15" step="0.1" required>
+          </p>
+          <p>
+            <button type="submit">Save</button>
+          </p>
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <p><small>© Homestead. Validate with W3C Validator; check view source and DevTools.</small></p>
+    </footer>
+
+    <!-- Ch 2.21: Alternative to defer — script at end of body so DOM is ready when script runs. -->
+    <!-- <script src="js/dashboard.js"></script> -->
+  </body>
+</html>

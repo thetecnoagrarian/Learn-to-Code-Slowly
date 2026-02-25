@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.17–2.20.
+  - Ch 2.17: class (multiple, reusable), id (unique), data-* (custom data for script); boolean attributes (presence = true).
+  - Ch 2.18: aria-label, aria-labelledby, aria-describedby; role="status" + aria-live for dynamic content; role="alert".
+  - Ch 2.19: Character entities — &amp; &lt; &gt; in content; &quot; in attributes when needed; UTF-8 for ° ©.
+  - Ch 2.20: Flow (block) vs phrasing (inline); valid nesting — no block inside p or span.
+  Homestead theme: dashboard, sensors, alerts.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — Ch 2.17–2.20 Examples</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="page-layout">
+      <header>
+        <h1>Homestead dashboard</h1>
+        <!-- Ch 2.18: nav with aria-label so screen readers can distinguish landmarks. -->
+        <nav aria-label="Main navigation">
+          <ul>
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="sensors.html">Sensors</a></li>
+          </ul>
+        </nav>
+        <!-- Ch 2.18: Icon-only button needs aria-label (no visible text). Ch 2.17: id for unique target; class for styling. -->
+        <button type="button" id="btn-refresh" class="btn btn-icon" aria-label="Refresh sensor data">↻</button>
+      </header>
+
+      <main id="main-content">
+        <!-- Ch 2.15/2.20: section is flow content; can contain flow (heading, div, article) and phrasing. -->
+        <section aria-labelledby="readings-heading">
+          <h2 id="readings-heading">Current readings</h2>
+
+          <!-- Ch 2.17: Multiple classes (card + sensor-card + state); data-* for script (sensor id, unit). Ch 2.20: article is flow. -->
+          <article class="card sensor-card" data-sensor-id="battery_1" data-unit="V">
+            <h3>Battery voltage</h3>
+            <!-- Ch 2.20: p is flow but content model is phrasing only — so span (phrasing) inside p is valid; no div/p inside p. -->
+            <p>
+              Value: <span class="reading-value" id="battery-voltage">12.4</span>
+              <span class="unit" data-unit="V">V</span>
+            </p>
+          </article>
+
+          <!-- Ch 2.18: Live region so updates are announced; aria-label gives context. Ch 2.17: data-sensor-id for script. -->
+          <div
+            class="status-block"
+            role="status"
+            aria-live="polite"
+            aria-label="Battery voltage"
+            data-sensor-id="battery_1"
+          >
+            <p>Battery: <span class="reading-value">12.4</span> V</p>
+          </div>
+
+          <!-- Ch 2.19: Escape & and < in text so they are not parsed as markup. UTF-8 allows ° directly. -->
+          <p>Alert when temp &lt; 10 °C. Battery &amp; solar in normal range.</p>
+          <p>Display: Smith &amp; Sons Farm. Threshold: value &lt; 11.8 V.</p>
+        </section>
+
+        <!-- Ch 2.18: aria-labelledby references heading id for accessible name. -->
+        <section aria-labelledby="alerts-heading">
+          <h2 id="alerts-heading">Active alerts</h2>
+          <!-- Ch 2.18: role="alert" for urgent message (assertive live). -->
+          <div class="alert-list" role="alert" aria-live="assertive">
+            <p>No active alerts.</p>
+          </div>
+        </section>
+
+        <!-- Ch 2.18: aria-describedby links help text to the input (description, not label). Ch 2.17: required is boolean (presence = true). -->
+        <section aria-labelledby="form-heading">
+          <h2 id="form-heading">Threshold</h2>
+          <form action="/save" method="post">
+            <p>
+              <label for="min-v">Min voltage (V)</label>
+              <input type="number" id="min-v" name="min_voltage" min="10" max="15" step="0.1" required>
+              <span id="min-v-help" class="help">Between 10 and 15.</span>
+            </p>
+            <input
+              type="number"
+              id="min-v-described"
+              name="min_v2"
+              aria-label="Minimum voltage"
+              aria-describedby="min-v-help"
+              min="10"
+              max="15"
+            >
+            <!-- Ch 2.17: Boolean — disabled means true; omit attribute to enable. Do not use disabled="false". -->
+            <p>
+              <button type="submit" name="action" value="save">Save</button>
+              <button type="button" disabled>Disabled button</button>
+            </p>
+          </form>
+        </section>
+
+        <!-- Ch 2.19: In attribute values, escape " with &quot; if the value contains a double quote. -->
+        <p title="Alert when temp &lt; 10 °C or &gt; 30 °C">Hover for tooltip with entities.</p>
+        <input type="text" placeholder="e.g. battery_1 or coop_door" aria-label="Sensor ID">
+      </main>
+
+      <!-- Ch 2.14/2.18: aside with aria-label so landmark has a name. -->
+      <aside aria-label="Quick links">
+        <h2>Links</h2>
+        <ul>
+          <li><a href="coop.html">Coop</a></li>
+          <li><a href="solar.html">Solar</a></li>
+        </ul>
+      </aside>
+
+      <footer>
+        <!-- Ch 2.19: © and ° can be typed in UTF-8 or use entities; meta charset UTF-8 declared. -->
+        <p><small>© 2025 Homestead. Units: °C / °F.</small></p>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,60 +1,94 @@
-# Phase 2.6 · Chapter 2.6.5: Conditions and Branching
+# Section B Phase 3 · Chapter 3.05: Conditions and Branching
 
-if, else if, else; switch; truthiness and falsiness; explicit checks. Bridge to Phase 0.2.
-
----
+This chapter covers how to branch execution with if, else if, else, switch, and the ternary operator. It builds on Chapter 3.04 (Operators and Expressions); the expressions you write produce values that conditions use to choose which path runs. Chapter 3.06 (Loops and Iteration) then uses similar conditions inside loops. The idea of conditions and branching is the same as in earlier phases: a condition is a true-or-false test, and the program takes one path or another based on the result. Here you see how that is expressed in JavaScript with the language’s syntax and with attention to truthiness and explicit checks so that your branches behave as intended.
 
 ## Learning Objectives
 
-- Write if / else if / else and use blocks correctly.
-- Use switch for multi-way branching on one value; break to avoid fall-through.
-- Rely on explicit checks (=== null, typeof, Array.isArray) instead of truthiness when it matters.
-- Connect to Phase 0.2 (conditions and branching).
+By the end of this chapter, you should be able to:
+- Write if, else if, and else with blocks and use them for single and multi-way branching.
+- Use switch for multi-way branching on a single value and use break to avoid unintended fall-through.
+- Use the ternary operator for simple conditional values in expressions.
+- Prefer explicit checks (=== null, typeof, Array.isArray) over truthiness when 0, "", or NaN are valid values.
+- Use early returns (guard clauses) to keep validation at the top of functions and avoid deep nesting.
+- Connect conditions to boundaries and readability: keep conditions clear and explicit where data enters your code.
 
----
+## Key Terms
+
+- **condition**: An expression that is evaluated and then coerced to boolean; the result determines which branch runs. In if (condition), the block runs when the condition is truthy.
+- **branch**: One of the paths the program can take (e.g. the if block, an else if block, the else block). Only one branch runs for a given evaluation.
+- **block**: A pair of curly braces that groups statements. Use blocks after if, else if, and else even for single statements to avoid bugs and improve readability.
+- **fall-through**: In switch, when a case does not end with break, execution continues into the next case. Usually unintended; use break (or return) to exit each case.
+- **ternary operator**: condition ? valueIfTrue : valueIfFalse. An expression that returns one of two values based on the condition. Use for simple in-line choices.
+- **early return**: Returning from a function as soon as a condition is met, instead of nesting the rest of the function inside else. Keeps code flat and readable.
 
 ## 1) if, else if, else
 
-- [Expand: if (condition) { ... } else if (condition) { ... } else { ... }; condition can be any value (truthy/falsy).]
-- [Expand: use blocks {} even for single statements; improves readability and avoids bugs.]
-- [Expand: else if is just else { if ... }; no special keyword.]
+The if statement runs a block when its condition is truthy. You write if (condition) followed by a block. The condition can be any expression; it is evaluated and then coerced to boolean. So you can write if (x), if (x > 0), if (x !== null && x !== undefined), or if (isValid). When the condition is falsy (false, 0, "", null, undefined, NaN), the block is skipped. To run code when the condition is falsy, use else: if (condition) { ... } else { ... }. To test multiple conditions in sequence, use else if: if (a) { ... } else if (b) { ... } else if (c) { ... } else { ... }. Only one of these blocks runs: the first whose condition is truthy, or the else block if none are. else if is not a separate keyword; it is else followed by an if. So the structure is: if, then zero or more else if, then optionally else. The conditions are evaluated in order from top to bottom until one is truthy; then that block runs and the rest are not evaluated. That is why order matters: if you put a broad condition before a narrow one (e.g. if (x > 0) before if (x > 10)), the broad one will match first and the narrow branch will never run when both are true; put the more specific condition first when that is what you want.
 
----
+Always use blocks (curly braces) after if, else if, and else, even when the body is a single statement. Omitting braces can cause bugs when you later add a second statement and forget that only the first is conditional. Blocks also make the scope of the condition clear and improve readability. Indent the block contents consistently so the structure is obvious. For a homestead example: if (reading !== undefined && reading !== null && !Number.isNaN(reading) && reading < threshold) then trigger a low-voltage alert; else if (reading === undefined || reading === null) show "waiting for data"; else show the reading. The first branch runs when the reading is a valid number below threshold; the second when the reading is missing; the third for any other case (e.g. reading above threshold). Each branch does one clear thing, and the conditions are explicit so that 0 is not treated as "no reading." You can nest if inside else or inside another if when you need sub-conditions. Keep nesting shallow; if you have more than two or three levels, consider early returns (see section 5) or extracting logic into a helper function. The order of conditions matters: put the most specific or most likely case first when it makes the logic clearer, and put the catch-all (else) last. For another example: checking a coop door state. If the door is opening or closing, show a spinner; if it is open, show "Open"; if it is closed, show "Closed"; else show "Unknown." That gives you four branches: two for transitional states (which might share one block), one for open, one for closed, and else for unknown or error. Writing the conditions in a consistent order (e.g. error or unknown first, then transitional, then stable states) helps readers follow the flow. In JavaScript there is no elseif keyword; you always write else if as two words. The space between else and if is required. Some languages use elseif as one token; in JavaScript the structure is explicitly "else, then if" so you can have else { if (x) { ... } } or the shorter else if (x) { ... } with the same meaning when the else block contains only an if.
 
 ## 2) switch
 
-- [Expand: switch (value) { case a: ... break; case b: ... break; default: ... }.]
-- [Expand: strict equality (===) for matching; break to exit; fall-through is rarely intended.]
-- [Expand: default for "none of the above"; good for enums or status codes.]
+The switch statement compares one value to several possible values and runs the first matching case. You write switch (value) and then case value1:, case value2:, and so on, each followed by statements and usually break. The comparison uses strict equality (===). When a case matches, execution runs from that case until a break (or return, or the end of the switch). If no case matches and there is a default: label, that block runs. If you omit break, execution falls through to the next case; that is rarely what you want, so add break at the end of each case unless you intentionally want fall-through (e.g. multiple cases sharing the same code). A common pattern is: switch (status) { case "open": ... break; case "closed": ... break; case "opening": case "closing": ... break; default: ... break; }. Here "opening" and "closing" fall through to the same block; the other cases each break. Use default for "none of the above" so that unexpected values are handled.
 
----
+switch is a good fit when you branch on a single value (a variable or expression) and have several discrete options (e.g. status codes, enum-like strings, or a small set of numbers). For many conditions that are not simple equality (e.g. ranges, multiple variables), if/else if is clearer. For a homestead coop door: switch (doorState) { case "open": updateDisplay("Open"); break; case "closed": updateDisplay("Closed"); break; case "unknown": updateDisplay("—"); break; default: updateDisplay("?"); break; }. The value being switched on should be the same type as the case values (e.g. string with string cases); otherwise no case matches and default runs. Keep case blocks short; if a case needs more logic, call a function or use a block so the switch stays readable. You can use switch with numbers (e.g. HTTP status codes or sensor error codes), with strings (e.g. "open", "closed", "unknown"), or with other primitives. You cannot use objects or arrays as case values in a meaningful way because === compares by reference. So switch is for a single value that has a small, fixed set of possibilities. When the set grows large (e.g. dozens of cases), consider a lookup object or a map from value to handler instead of a long switch; for a handful of options, switch is clear and fast. For a drip zone controller: switch (mode) with cases "manual", "schedule", "off"; each case does one thing and breaks; default logs or handles invalid mode so the program does not silently ignore bad input. If you find that your switch has many cases and each case just assigns a value or calls one function, you might instead use an object mapping value to result (e.g. const handlers = { manual: runManual, schedule: runScheduled, off: stopAll }; const fn = handlers[mode]; if (fn) fn(); else logUnknownMode(mode);). That pattern is useful when the options are many and the action per option is simple; for a few options or when each case has different logic, switch remains clear.
 
-## 3) Truthiness and Falsiness
+## 3) Ternary Operator
 
-- [Expand: falsy: false, 0, -0, "", null, undefined, NaN; truthy: everything else (including [], {}).]
-- [Expand: if (x) treats 0 and "" as false—ok for "has value" but wrong when 0 is valid.]
-- [Expand: explicit: if (x !== null && x !== undefined), or if (x != null) for both, or optional chaining.]
+The ternary operator is a shorthand for a conditional value: condition ? valueIfTrue : valueIfFalse. The condition is evaluated; if it is truthy, the expression returns valueIfTrue; otherwise it returns valueIfFalse. Only one of the two branches is evaluated. Use it when you need a value (not a side effect) and the choice is simple. For example: const label = isOpen ? "Open" : "Closed"; or const message = reading != null ? String(reading) : "—";. Do not nest ternaries deeply; if the logic is complex, use if/else instead so it stays readable. Ternary is an expression, so you can use it anywhere a value is expected: in an assignment, as an argument, or in a template literal. For a homestead dashboard: statusText = reading < threshold ? "Low" : "OK"; or unitLabel = unit ?? "V"; (nullish coalescing is often clearer than ternary for null/undefined defaults). Use ternary when both branches are short and the intent is "one of two values"; use if/else when you have side effects or multiple statements. You can use ternary in template literals (e.g. show reading or "—") or as an argument to a function; keep the two branches short so the line does not become hard to read. If you find yourself nesting ternaries (condition ? a : condition2 ? b : c), rewrite as if/else or extract a helper; nested ternaries are a common source of confusion. In conditionals that choose between two string labels or two numeric results, ternary is idiomatic; for choosing between two function calls or two blocks of logic, if/else is usually clearer because each branch can be multiple lines and the structure is easier to scan.
 
----
+## 4) Truthiness, Falsiness, and Explicit Checks
 
-## 4) Bridge to Phase 0.2
+Conditions in if, while, ternary, and in the short-circuit operators (&&, ||) rely on truthiness and falsiness. The falsy values are: false, 0, -0, "", null, undefined, NaN, and (in modern JS) 0n (BigInt zero). Everything else is truthy, including the string "0", empty array [], and empty object {}. So if (value) runs the block when value is truthy; when value is 0 or "", the block is skipped. That is convenient when "has a value" means "non-falsy," but wrong when 0 or "" is a valid value. For example, if (reading) would skip the block when the battery reading is 0 volts, which might be a valid reading. So at boundaries (data from API, form, or user) prefer explicit checks: if (reading !== null && reading !== undefined) or, if you want to treat both null and undefined the same, if (reading != null). Use Number.isNaN(reading) when the value might be NaN. Use typeof and Array.isArray when you need to distinguish types. When 0 or "" is valid, do not use if (value) to mean "value is present"; use value != null or value !== undefined (or ?? for defaults) so that 0 and "" are preserved. Keeping conditions explicit at boundaries (where data enters) reduces bugs and makes the code easier to reason about.
 
-- [Expand: Phase 0.2: true/false tests, branching paths, state determines flow—same in JS.]
-- [Expand: conditions guard actions; keep conditions readable and explicit at boundaries.]
+Deeper inside your logic, truthiness can be fine when you have already normalized the data (e.g. you know reading is either a number or null at that point). The string "false" is truthy; so is "0". So when you receive data from a form or API, do not assume that a string like "false" will behave like the boolean false. Parse or compare explicitly (e.g. value === "true" or value === "false") when the meaning matters. For optional chaining, obj?.prop is undefined when obj is null or undefined; that fits well with ?? for defaults and with explicit checks in conditions. One more nuance: the empty array [] and empty object {} are truthy. So if (items) runs when items is [] (an array with no elements). That is usually what you want for "do we have a list?" but if you need "do we have at least one item?" you must check items.length > 0 or similar. Same for objects: if (config) is true for {}, so use Object.keys(config).length > 0 or a specific property check when you need "has any property." In summary: at the edges of your program where data comes in, be explicit about null, undefined, NaN, and empty values; once you have normalized the data, truthiness can simplify inner conditions as long as you remember that 0 and "" are falsy and [] and {} are truthy.
 
----
+## 5) Early Returns
+
+Instead of nesting logic inside else blocks, you can return from a function as soon as you have handled a case. For example: if (reading == null) return "—"; if (Number.isNaN(reading)) return "—"; return String(reading);. The rest of the function only runs when reading is a valid value, so you avoid deep nesting. Early returns are especially useful for validation: if (!name) return showError("Name required"); if (!email) return showError("Email required"); then proceed with the rest of the submit logic. Each guard clause handles one failure and exits; the main path stays at the top level. This pattern is called "guard clauses" or "early return." It makes the code easier to read and to extend: adding a new validation is one more if-and-return at the top. For homestead code: if (sensorId == null) return; if (!sensors.has(sensorId)) return; then update the display for that sensor. The function exits early for invalid input; the core logic does not sit inside a long else chain. Early returns also make it easier to add new checks later: you add another if-and-return at the top without indenting the rest of the function. Some style guides prefer a single return at the end of a function; in many cases, though, early returns reduce nesting and make the "happy path" obvious, which is why they are widely used in validation and guard clauses.
+
+## 6) When to Use What
+
+Use if/else when you have a few branches or when conditions are not simple equality (e.g. ranges, combined conditions). Use switch when you branch on one value and have many discrete options (e.g. status, mode, status code). Use ternary for simple "one of two values" in an expression. Use blocks after every if, else if, and else. Use break in every switch case unless you intend fall-through. Prefer explicit checks (=== null, !== undefined, Number.isNaN, typeof, Array.isArray) when 0, "", or NaN are valid; use truthiness when you truly mean "any non-falsy value." For optional data (config, API response), combine optional chaining and nullish coalescing (from Chapter 3.04) with conditions: if (config?.threshold != null) use it; else use default. For homestead logic: threshold checks (reading < threshold) use explicit number checks; status or mode display use switch or ternary; "show value or placeholder" use ternary or ??. Use early returns to keep validation and guard clauses at the top of a function and the main path flat. When you are unsure whether to use if/else or switch, ask: am I comparing one value to several fixed options? If yes and there are more than two or three, switch is often clearer. If the logic involves ranges (e.g. temperature bands) or multiple variables, if/else if is a better fit. When you need a value that depends on a condition and both options are simple, ternary keeps the code concise; when you need to run several statements or call functions with side effects in each branch, use if/else.
+
+## 7) Homestead Examples: Conditions in Practice: Conditions in Practice
+
+A low-voltage alert: if (reading != null && !Number.isNaN(reading) && reading < threshold) triggerAlert(). Here you guard on reading being a valid number before comparing; otherwise you might compare undefined to a number or trigger on NaN. A coop door status display: switch (state) with cases "open", "closed", and default "—". A drip zone selector: if (activeZone != null) showZone(activeZone); else showMessage("No zone selected"). A freezer alarm: if (temp != null && temp > maxTemp) triggerAlarm(); else if (temp != null && temp < minTemp) triggerAlarm(); else clearAlarm(). Here temp might be null before the first reading; you only compare when it is not null. For "display reading or placeholder": const text = reading != null ? String(reading) : "—"; or use ?? so that 0 is shown: reading ?? "—". For form validation: if (!name || !email) showError("Fill required fields"); here truthiness is intentional (empty string means missing). For sensor list: if (Array.isArray(sensors) && sensors.length > 0) renderList(sensors); else showEmpty(). You use Array.isArray because typeof sensors === "object" is true for arrays and for null; explicit check avoids wrong branches.
+
+Soil moisture: if (moisture != null && moisture < dryThreshold) startDrip(zone); else if (moisture != null && moisture >= wetThreshold) stopDrip(zone). Poultry net energizer status: switch (status) with cases "on", "off", "fault"; show a different icon or message for each. Wi‑Fi or network status: if (connected) showLastSeen(timestamp); else showDisconnected(). Outdoor temperature: if (temp != null && (temp < freezeTemp || temp > heatWarningTemp)) showAlert(temp); else showNormal(temp). In each case the condition is explicit about null and about the range or state you care about.
+
+Solar or battery split: if (source === "solar") useSolarReading(); else if (source === "battery") useBatteryReading(); else useMains(). Barn or coop sensor: if (Array.isArray(readings) && readings.length > 0) { const latest = readings[readings.length - 1]; if (latest.temp != null && latest.temp > highTemp) triggerVentilation(); }. Here you first ensure readings is an array with at least one element, then you safely index and check the latest temperature. Webcam or ESP32-CAM status: switch (streamState) with "live", "offline", "error"; show the right badge or message. Conditions tie together: type checks (from Chapter 3.03), operators (from 3.04), and branching (this chapter) to implement thresholds, status, and validation in homestead dashboards and scripts.
+
+## 8) What Breaks When Conditions Are Wrong
+
+If you use if (value) when value can be 0 or "", you skip the block for valid values. Fix by checking explicitly: value != null or value !== undefined, or use ?? for defaults. If you forget break in a switch case, execution falls through and runs the next case. Fix by adding break (or return) at the end of each case unless fall-through is intended. If you omit blocks and add a second statement under an if, only the first statement is conditional; the second runs always. Fix by always using blocks. If you use == in a condition, type coercion can make the condition true or false when you did not expect it. Fix by using === and explicit checks. If you switch on a value and the case values are a different type (e.g. switch on number but cases are strings), no case matches. Fix by ensuring the switched value and case values have the same type. If your condition is too complex (many && and ||), it becomes hard to read and test. Fix by extracting a named variable or function (e.g. const isLowBattery = reading != null && reading < threshold; if (isLowBattery) ...). If you nest if/else too deeply, readability suffers. Fix by using early returns or by restructuring with switch or helper functions. So: explicit checks when 0 or "" is valid, blocks always, break in switch, === in conditions, and keep conditions readable. One more: if you use a condition that has side effects (e.g. if (fetchData())), the side effect runs every time the condition is evaluated. That can be intentional (e.g. assign in condition) but is often confusing; prefer assigning to a variable first and then testing the variable so the condition is a pure check. Finally: if you forget the default case in a switch and a new value appears (e.g. a new API status), no branch runs and the program may do nothing or use a stale value. Always add default to handle unexpected values, even if it only logs or shows a generic message.
+
+## 9) Checklist
+
+When you write conditions: (1) Use blocks after if, else if, and else. (2) Use break (or return) in every switch case unless you want fall-through. (3) Prefer explicit checks (=== null, !== undefined, Number.isNaN, typeof, Array.isArray) when 0, "", or NaN are valid. (4) Use === in conditions; avoid ==. (5) Use ternary only for simple "one of two values"; use if/else for side effects or complex logic. (6) Use switch when branching on one value with many discrete options. (7) Keep conditions readable; extract to a variable or function if they get long. (8) At boundaries (API, form, config), validate and normalize before branching so inner code can assume known types. (9) Use early returns for validation and guard clauses to avoid deep nesting. (10) Include a default case in every switch. Chapter 3.06 (Loops and Iteration) uses conditions in loop headers and inside loops to control iteration.
+
+## Common Pitfalls
+
+Relying on truthiness when 0 or "" is valid: if (reading) fails when reading is 0. Use reading != null or explicit checks so that zero is treated as a valid value.
+
+Forgetting break in switch: Execution falls through to the next case and can run the wrong code. Add break (or return) at the end of each case unless you deliberately want multiple cases to share one block.
+
+Omitting blocks: Only the first statement is conditional; a second statement always runs. Use { } after every if, else if, and else so that adding more statements later does not introduce bugs.
+
+Using == in conditions: Type coercion can make the condition true or false in surprising ways. Use === and explicit null/undefined checks for predictable behavior.
+
+Switching on the wrong type: Case values must match the switched value’s type (e.g. string with string). If the types differ, no case matches and only default runs. Use consistent types or convert before switching.
+
+Deep nesting: Many levels of if/else inside else make code hard to read and change. Use early returns, switch, or extract conditions into named variables or helper functions so the main path stays flat.
+
+Overusing ternary: A single ternary for two short values is clear; nesting ternaries or putting long expressions in each branch is hard to read. Use if/else for multi-line or complex logic.
+
+Skipping default in switch: When a new value appears (e.g. from an API update), no case matches and the program may do nothing or keep old state. Always include default to handle unexpected values.
 
 ## Summary
 
-- Use if/else if/else and switch with break; prefer explicit checks when 0 or "" are valid.
-- Truthiness is convenient but can hide bugs; use === and null checks at boundaries.
+Use if, else if, and else with blocks for branching; use switch with break for multi-way branching on one value; use ternary for simple conditional values in expressions. Prefer explicit checks when 0, "", or NaN are valid; use truthiness only when "any non-falsy" is what you mean. Use early returns for validation and guard clauses to keep the main path flat. Keep conditions readable and explicit at boundaries. Loops (Chapter 3.06) rely on the same condition syntax and checks.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.6.6 — Loops and Iteration**.
-
----
-
-*Expansion note for ChatGPT: One if/else and one switch example. Target ~150 lines.*
+Next: **Chapter 3.06: Loops and Iteration**. That chapter covers for, while, do-while, and iteration over arrays and iterables. Conditions determine when a loop runs or when to break out; the operators and branching from this chapter and the previous one are the building blocks for loop conditions and for processing data in the next chapter. You will use the same ideas about truthiness, explicit checks, and blocks when writing loop conditions and when deciding what to do with each item in a collection.

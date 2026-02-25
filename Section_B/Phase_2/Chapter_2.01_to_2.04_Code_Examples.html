@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.01–2.04.
+  - Ch 2.01: Markup vs content, tags/elements, void elements, document tree, structure vs presentation.
+  - Ch 2.02: DOCTYPE, html root, head vs body, meta charset, title, viewport.
+  - Ch 2.03: Head order, meta charset/viewport, title, link (stylesheet, favicon), script placement.
+  - Ch 2.04: Heading hierarchy (h1–h6), paragraphs, line breaks, horizontal rules, document outline.
+  Homestead theme: voltage/coop dashboard.
+-->
+<html lang="en">
+  <!-- Ch 2.02: root element; lang for accessibility and language. Ch 2.01: tree starts here (html = root). -->
+  <head>
+    <!-- Ch 2.02 & 2.03: charset first so browser interprets text correctly (UTF-8). -->
+    <meta charset="UTF-8">
+    <!-- Ch 2.02 & 2.03: viewport for mobile; void element, no closing tag. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Ch 2.03: optional description for search/snippets. -->
+    <meta name="description" content="Homestead voltage and coop status dashboard — current readings and recent events.">
+    <!-- Ch 2.02 & 2.03: one title per page; appears in tab, bookmarks, search. -->
+    <title>Voltage dashboard — Homestead</title>
+    <!-- Ch 2.03: linked stylesheet; rel = relationship. Head is for metadata and linked resources. -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Ch 2.03: favicon (optional); rel="icon" for tab/bookmark icon. -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <!-- Ch 2.01: body holds visible content; structure (headings, paragraphs) not presentation. -->
+    <!-- Ch 2.04: one h1 per page; main title. Heading level = structure, not visual size. -->
+    <h1>Voltage readings</h1>
+
+    <!-- Ch 2.04: paragraph = one block of prose. One p per logical block; no block elements inside p. -->
+    <p>Current readings as of the last update. Battery, solar, and load voltages from the homestead monitoring system.</p>
+
+    <!-- Ch 2.04: h2 = major section under h1. Do not skip levels (h1 → h2 → h3). -->
+    <h2>Battery</h2>
+    <p>Main battery bank voltage. Normal range 11.8–12.6 V.</p>
+
+    <!-- Ch 2.04: h3 = subsection under h2. Outline: h1 → h2 → h3. -->
+    <h3>Last 24 hours</h3>
+    <p>Readings will appear here when data is available.</p>
+
+    <h2>Solar</h2>
+    <p>Solar input voltage and production.</p>
+
+    <h2>Load</h2>
+    <p>Current load voltage.</p>
+
+    <!-- Ch 2.04: hr = thematic break between sections (void element). Use for meaning, not decoration. -->
+    <hr>
+
+    <!-- Ch 2.04: second major section with its own h2; same outline level as "Battery"/"Solar"/"Load". -->
+    <h2>Coop door status</h2>
+    <p>The door is currently closed. Last change: today at 06:30.</p>
+
+    <!-- Ch 2.04: br = line break within flow (void). Use sparingly; e.g. address or fixed line breaks. -->
+    <p>
+      Homestead Monitoring<br>
+      123 Farm Road<br>
+      Rural, ST 00000
+    </p>
+
+    <!--
+      Ch 2.03: script at end of body so HTML parses and renders first (non-blocking).
+      Alternatively use <script src="app.js" defer></script> in head.
+    -->
+    <script src="app.js"></script>
+  </body>
+</html>

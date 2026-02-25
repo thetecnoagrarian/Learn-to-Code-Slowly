@@ -1,60 +1,86 @@
-# Phase 2.6 · Chapter 2.6.6: Loops and Iteration
+# Section B Phase 3 · Chapter 3.06: Loops and Iteration
 
-for, while, do...while; for...of, for...in; break and continue; avoiding infinite loops. Bridge to Phase 0.3.
-
----
+This chapter covers how to repeat execution with for, while, do-while, for...of, and for...in. It builds on Chapter 3.05 (Conditions and Branching): loop conditions use the same syntax and checks to decide when to run another iteration or stop. Chapter 3.07 (Functions) then lets you package loop logic and other code into reusable units. The idea of re-execution over time and termination is the same as in earlier phases; here you see how it is expressed in JavaScript and how to avoid infinite loops and off-by-one errors. Loops rely on the same condition syntax as if and while in Chapter 3.05: the loop condition is an expression that is evaluated and coerced to boolean, so you use the same rules for explicit checks when 0 or empty values are valid. Termination is critical: every loop must have a path where the condition becomes false or where break runs, or the program will hang.
 
 ## Learning Objectives
 
-- Use for, while, and do...while; choose the right loop for the situation.
-- Use for...of for iterating values (arrays, strings); understand for...in for keys (and its pitfalls with objects).
-- Use break and continue to exit or skip iterations.
-- Avoid infinite loops (ensure condition eventually becomes false or use break). Bridge to Phase 0.3.
+By the end of this chapter, you should be able to:
+- Use for, while, and do-while and choose the right loop for the situation (known count, condition-only, or run-at-least-once).
+- Use for...of to iterate over values in arrays, strings, and other iterables.
+- Use for...in to iterate over object keys and understand its pitfalls (inherited properties, keys as strings, not for arrays).
+- Use break to exit a loop immediately and continue to skip to the next iteration.
+- Ensure loops terminate: make the condition eventually false or use break so you avoid infinite loops.
 
----
+## Key Terms
 
-## 1) for, while, do...while
+- **iteration**: One pass through the loop body. Each time the body runs is one iteration.
+- **loop condition**: The expression that is evaluated before each iteration (or after the body in do-while). When the condition is falsy, the loop stops.
+- **termination**: The loop stops when the condition becomes false or when break is executed. A loop that never terminates is an infinite loop.
+- **for...of**: A loop that iterates over the values of an iterable (array, string, and other iterable objects). You get each value in turn (e.g. each element of an array).
+- **for...in**: A loop that iterates over the enumerable property keys of an object. You get key names (strings); use the key to get the value. Not intended for arrays; use for...of for arrays.
+- **break**: Exits the loop immediately; no more iterations run. Control continues after the loop.
+- **continue**: Skips the rest of the current iteration and proceeds to the next one (or exits if the condition is now false).
 
-- [Expand: for (init; condition; update) { }—classic loop; while (condition) { }; do { } while (condition)—runs at least once.]
-- [Expand: same logic as Phase 1.4; condition is checked before each iteration (except do first time).]
-- [Expand: off-by-one and infinite loop pitfalls; ensure termination.]
+Loops are where automation lives: the same block of code runs repeatedly with different data (each sensor, each zone, each retry). Getting the condition and the loop variable right ensures the loop runs the right number of times and terminates; choosing the right loop form (for, while, do-while, for...of, for...in) keeps the code readable and avoids common bugs.
 
----
+## 1) for, while, and do-while
+
+The for loop has three parts in its header: an initialization, a condition, and an update. You write for (init; condition; update) followed by a block. The init runs once at the start. Before each iteration, the condition is evaluated; if it is falsy, the loop ends. If it is truthy, the body runs, then the update runs, and then the condition is checked again. So the condition controls whether another iteration runs. Typical use: a counter starts at zero, the condition checks that the counter is less than a length or limit, and the update increments the counter. That gives you a fixed number of iterations (e.g. process each index from 0 to length minus one). The loop variable is often declared in the init (e.g. let i = 0) so its scope is the loop; you can use it in the condition and update and in the body. Off-by-one errors are common: if you use <= where you meant < or vice versa, you run one time too many or one too few. Check the condition against the first and last index you want to confirm the count. For example, to run exactly length times with indices 0 through length minus one, the condition is i < length (not i <= length, which would run one extra time). To run from index 1 through length (if that is what you need), start at 1 and use i <= length. You can omit the init or the update (use a semicolon to leave the slot empty); you can even omit the condition, but then the loop is infinite unless you break. In practice, keep all three parts when you have a counter so the loop is easy to read and reason about.
+
+The while loop has only a condition: while (condition) followed by a block. Before each iteration, the condition is evaluated; if it is falsy, the loop ends. So the body might not run at all if the condition is false from the start. Use while when you do not have a simple counter and instead depend on some other change (e.g. "keep reading until no more data" or "retry until success"). Ensure something in the body (or in code that runs when the body runs) eventually makes the condition false; otherwise the loop never terminates. The do-while loop is do { block } while (condition). The body runs once, then the condition is evaluated; if truthy, the body runs again, and so on. So the body always runs at least once. Use do-while when you need to run the loop once before you can check the condition (e.g. "read one item, then repeat while there are more"). As with while, ensure the condition can become false so the loop terminates. For a homestead example: a for loop over a list of sensor IDs to fetch the latest reading for each; the count is known (the length of the list). A while loop to retry sending a command to an energizer until success or max retries: the condition checks attempt count and success flag. A do-while to process at least one batch of drip zone updates: run once, then repeat while the schedule says more zones are due. In all three forms, the condition uses the same syntax as in Chapter 3.05: comparisons, logical operators, and explicit checks for null or undefined when the loop variable or the data might be missing. If the condition is always truthy (e.g. while (true)) you must break somewhere or the loop never ends; that pattern is sometimes used with break when the termination condition is complex or happens in the middle of the body.
 
 ## 2) for...of and for...in
 
-- [Expand: for (const item of array)—iterates values; use for arrays, strings, iterables.]
-- [Expand: for (const key in object)—iterates keys; includes inherited enumerable properties; not for arrays (use for...of).]
-- [Expand: for...in on array gives indices as strings; prefer for...of for arrays.]
+The for...of loop iterates over the values of an iterable. You write for (const item of iterable) (or let item if you need to reassign). Each iteration, item is the next value. Arrays are iterable, so you get each element in order. Strings are iterable, so you get each character (or Unicode code unit, depending on the string). Other iterables include certain built-in and library objects. Prefer const for the loop variable in for...of (e.g. for (const item of array)) unless you need to reassign item inside the body; that makes it clear the variable is not being mutated for the next iteration. Use for...of when you want to work with each value and do not need the index; the loop is simpler and avoids index mistakes. You can still get the index if needed by using a separate counter or by using entries (e.g. for (const [index, value] of array.entries()) in code that supports it). For a homestead dashboard: loop over an array of sensor readings with for...of and display each reading or aggregate (e.g. average, min, max). Loop over a list of zone names to render a row per zone. Do not use for...in for arrays: for...in iterates over property keys, which for an array are the indices, and the keys are strings; the order is not guaranteed in all cases, and inherited enumerable properties can appear. So for...of gives you the value directly and in array order; for...in gives you string keys and is meant for plain objects. Many DOM collections and other browser or Node APIs are iterable and work with for...of; when in doubt, check the type or the documentation. Prefer for...of for arrays and for any iterable where you want values. If you need to iterate backwards over an array, use a for loop with an index that decrements from length minus one to zero, or make a copy of the array, reverse it, and use for...of; do not reverse the original if other code depends on its order.
 
----
+The for...in loop iterates over the enumerable property keys of an object. You write for (const key in object). Each iteration, key is a string (the property name). To get the value, use object[key]. for...in includes keys from the object itself and from its prototype chain (inherited enumerable properties). If you only want the object’s own keys, use hasOwnProperty (or Object.hasOwn) inside the loop to skip inherited ones, or use Object.keys(object) and loop over that array with for...of. Use for...in when you need to iterate over object keys (e.g. config keys, response fields). Do not use for...in for arrays: use for...of or a classic for loop with an index. For a homestead config object: for...in over the config to validate each key or to build a summary; use object[key] to read the value and check type or range. The order of keys in for...in is not guaranteed to match insertion order in all engines; for predictable order over own keys, use Object.keys(object) and then for...of over the keys array.
 
 ## 3) break and continue
 
-- [Expand: break—exit loop immediately; continue—skip to next iteration.]
-- [Expand: useful in search (break when found) or filter (continue to skip).]
-- [Expand: label (rare): break label; for nested loops.]
+The break statement exits the loop immediately. No more iterations run; execution continues after the loop. Use break when you have found what you were looking for or when you hit a condition that means you should stop (e.g. error, "done" flag). For example: loop over a list of sensors to find one by id; when you find it, set a variable and break so you do not keep looping. Or loop until you get a valid response; on success, break out. You can also use break in a switch statement to exit the switch (that is a different use of the same keyword). Break only exits the innermost loop that contains it. If you have nested loops and need to break out of an outer loop, you can use a labeled loop: give the outer loop a label and use break labelName; that exits the labeled loop. Labels are rare; often restructuring (e.g. extract the inner loop into a function and return) is clearer.
 
----
+The continue statement skips the rest of the current iteration and proceeds to the next one. The loop condition is checked again; if it is still truthy, the next iteration runs. Use continue when you want to skip certain items (e.g. skip invalid readings, skip empty zones). For example: loop over readings and continue when the reading is null or NaN so you only process valid numbers. Or loop over zones and continue when a zone is disabled so you only run enabled zones. Continue, like break, only affects the innermost loop. Use continue sparingly; sometimes an if around the main logic (if (valid) { ... }) is easier to read than the inverse (if (!valid) continue; ...). Both are valid; choose the one that keeps the loop body clear. Neither break nor continue can be used to jump into or out of a function; they only affect the current loop. In nested loops (e.g. a loop over zones and inside it a loop over sensors), break in the inner loop only exits the inner loop; the outer loop continues. If you need to exit both when a condition is met in the inner loop, use a labeled outer loop and break labelName, or set a flag in the inner loop and check it in the outer condition, or extract the inner loop into a function and return from that function when you want to stop. Labels are a valid tool but not used often; clear naming and small loop bodies reduce the need for them.
 
-## 4) Bridge to Phase 0.3
+## 4) When to Use What
 
-- [Expand: Phase 0.3: re-execution over time, termination, drift—same in JS.]
-- [Expand: loops are where automation lives; keep termination condition clear.]
+Use for when you have a known number of iterations (e.g. index from 0 to length minus one) or when you want init, condition, and update in one place. Use while when you only have a condition and the number of iterations is not fixed (e.g. retry until success, read until empty). Use do-while when the body must run at least once before the condition can be checked. Use for...of when you iterate over an array, string, or other iterable and want each value; avoid for...in for arrays. Use for...in when you need to iterate over an object’s keys; filter inherited properties if you only want own keys. Use break when you need to exit early (found item, error, done). Use continue when you want to skip the rest of the current iteration. Always ensure the loop can terminate: the condition eventually becomes false or you break. For homestead logic: iterating sensor lists or zone lists use for...of; walking config or response objects use for...in (or Object.keys and for...of); retries or "until ready" use while or do-while; fixed-length runs use for. When you need both the index and the value in an array, use a for loop with an index and array[index], or use a counter that you increment inside for...of, or use an entries-style iteration if available; that way you avoid the pitfalls of for...in on arrays.
 
----
+Later chapters introduce array methods (e.g. forEach, map, filter) that iterate for you; those are built on the same idea of running once per element and often make the intent clearer than a raw for or for...of when you are transforming or filtering a list.
+
+## 5) Homestead Examples: Loops in Practice
+
+Loop over an array of battery readings: use for...of to compute average, min, or max, or to find the first reading below threshold and break. Loop over drip zones: for...of over the zones array to start or stop each zone based on moisture; use continue to skip zones that are disabled. Coop door schedule: a for loop over the next N minutes to see when the door should open or close; or a while loop that runs until the current time is past the last event. Freezer alarms: loop over a list of freezers (or sensors) with for...of and check each temperature; if any is out of range, set a flag and optionally break if you only need "any fault." Soil moisture: loop over moisture readings per zone with for...of and update the display or trigger irrigation. Poultry net energizer: retry sending a command with a while loop (attempt count and max attempts in the condition) until success or give up. Wi‑Fi or network: loop over a list of devices with for...of and ping or check status; use continue for devices that are offline so you only process online ones. Config validation: for...in over the config object to check each key has a valid value; use object[key] to read and validate. Sensor list rendering: for...of over sensors to build a list of rows; each iteration adds one row. When you need the index (e.g. to show "Sensor 1", "Sensor 2"), use a for loop with an index or track a counter inside for...of. Another pattern: polling. You might use a while loop that checks a "ready" flag or a timestamp; inside the loop you wait a short time (e.g. via a timer or delay) and then check again. The condition becomes true when the device or service is ready or when a timeout is reached. That is a form of "retry until ready" that fits while; ensure you have a maximum wait or attempt count so the loop cannot run forever. For batch processing (e.g. "process up to 10 zones per tick"), a for loop with a limit works: run at most 10 iterations per call, then return and let the caller invoke again if there is more work.
+
+Solar or battery split: loop over an array of source names with for...of and update the display for each source. Barn or coop: loop over an array of temperature readings with for...of to find the max or to count how many are above a threshold. Garden areas: for...of over zones to compute total water needed or to find the driest zone. Webcam or stream list: for...of over streams to render a thumbnail per stream; use break when you have found the one you need by id. Loops tie together variables (Chapter 3.02), types (3.03), operators (3.04), and conditions (3.05) to process collections and repeat actions in homestead dashboards and scripts. When the same loop logic is needed in more than one place (e.g. "find sensor by id" or "compute average of readings"), you will package it in a function in Chapter 3.07 so you can call it by name instead of copying the loop.
+
+## 6) What Breaks When Loops Are Wrong
+
+If the loop condition never becomes false and you never break, you get an infinite loop. The program hangs or runs until it is killed. Fix by ensuring the condition depends on something that changes in the body (e.g. increment a counter, update a flag, consume input) or use break when a termination condition is met. If you use the wrong comparison (e.g. <= when you meant <), you run one iteration too many and may read past the end of an array or process an extra item. Fix by checking the condition against the first and last index you want. If you use for...in on an array, you get string indices and may see inherited properties; the order may not match array order in edge cases. Fix by using for...of or a for loop with a numeric index for arrays. If you forget to advance the loop variable in a while loop (e.g. never increment the counter), the condition never changes and the loop is infinite. Fix by updating the variable that the condition depends on. If you use continue and then assume code after it in the same iteration runs, remember that continue skips the rest of the body. If you need to run logic for "skipped" items, put it before the continue or use an if/else structure. If you break out of a loop and then expect the loop variable to have a "found" value, ensure you set that value before breaking. If the iterable is empty, for...of runs zero times and the body never runs; that is correct. If you pass null or undefined where an iterable is expected, you get an error; guard with a check or provide a default (e.g. items ?? []) so the loop is safe. So: ensure termination, use the right loop for arrays vs objects, and double-check loop bounds and updates. One more: if you modify the array or object you are iterating over (add or remove elements or properties) inside the loop, you can get skipped or repeated iterations and hard-to-debug behavior; prefer iterating over a copy or collecting changes and applying them after the loop. When debugging a loop that seems to run the wrong number of times, trace the condition and the loop variable (or the iterated value) for the first iteration, the last iteration you want, and one past that; confirm the condition is false when you expect the loop to stop.
+
+## 7) Checklist
+
+When you write loops: (1) Prefer for when you have a known count or index range; use while when you only have a condition; use do-while when the body must run at least once. (2) Use for...of for arrays and other iterables when you want values; do not use for...in for arrays. (3) Use for...in for object keys when you need to iterate keys; filter inherited properties if you need only own keys. (4) Ensure the loop can terminate: condition becomes false or break runs. (5) Use break to exit early when done or on error; use continue to skip the rest of an iteration. (6) Avoid off-by-one errors: check the condition against the first and last index or count you intend. (7) Keep the loop body readable; if it gets long, extract logic into a function. (8) When iterating over a value that might be null or undefined, check or default it before the loop to avoid errors. (9) Prefer const for the loop variable in for...of unless you need to reassign it. Chapter 3.07 (Functions) lets you package loop logic and conditions into reusable functions.
+
+## Common Pitfalls
+
+Infinite loop: The condition never becomes false and break never runs. Ensure the body updates whatever the condition depends on, or use break when a termination condition is met.
+
+Using for...in for arrays: You get string keys and possibly inherited properties; order and semantics are wrong for array iteration. Use for...of or a for loop with a numeric index.
+
+Off-by-one: Using <= instead of < (or vice versa) so you run one time too many or too few. Check the condition against the first and last index or count.
+
+Forgetting to update the loop variable in while: The condition never changes. Update the variable (e.g. increment counter) inside the body so the loop can terminate.
+
+Modifying the collection while iterating: Adding or removing items during for...of or for...in can lead to skipped or repeated elements and confusion. Prefer iterating over a copy or collecting changes and applying them after the loop.
+
+Break or continue too far: break only exits the innermost loop; continue only skips the current iteration of the innermost loop. Use a label for outer break if needed, or restructure with a function and return.
+
+Empty or undefined collection: If you use for...of over a variable that is null or undefined, you get an error. Guard with a check (e.g. if (array != null) before the loop) or use a default empty array so the loop runs zero times instead of throwing.
 
 ## Summary
 
-- for/while/do...while for general loops; for...of for values, for...in for object keys (not arrays).
-- Use break/continue sparingly; ensure loops terminate.
+Use for, while, and do-while for general loops; for when you have a known count or index, while when you only have a condition, do-while when the body must run at least once. Use for...of for iterating values in arrays and iterables; use for...in for object keys, not for arrays. Use break to exit a loop early and continue to skip to the next iteration. Ensure every loop can terminate. Chapter 3.07 (Functions) uses these constructs inside functions to build reusable logic; you will define functions that contain loops and call them from multiple places. Scope (Chapter 3.08) will clarify where loop variables are visible and how they interact with function parameters and outer variables.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.6.7 — Functions**.
-
----
-
-*Expansion note for ChatGPT: One for-loop and one for...of example. Target ~150 lines.*
+Next: **Chapter 3.07: Functions**. That chapter covers defining and calling functions, parameters and return values, and how functions package loops, conditions, and other code into reusable units. The loops and conditions from this chapter and the previous one are the building blocks you will put inside functions to structure programs and avoid repetition. Functions also introduce scope (where variables are visible), which affects loop variables and counters when you nest loops inside functions.

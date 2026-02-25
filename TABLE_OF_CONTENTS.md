@@ -143,6 +143,7 @@ Phases build in order; sections can be explored in parallel after Section A.
 - **Ch 03.22:** Expressions, Statements, and Program Flow (`Chapter_3.22_Expressions_Statements_and_Program_Flow.md`)
 - **Ch 03.23:** JavaScript in Practice (`Chapter_3.23_JavaScript_in_Practice.md`)
 - **Ch 03.24:** From Script to Application (`Chapter_3.24_From_Script_to_Application.md`)
+- **Ch 03.25:** Phase 3 Recap (`Chapter_3.25_Phase_3_Recap.md`)
 
 ### Phase 4: Node.js, npm, JSON — `Section_B/Phase_4/`
 - **Ch 04.01:** What Node.js Is (`Chapter_4.1_What_Node_Is.md`)

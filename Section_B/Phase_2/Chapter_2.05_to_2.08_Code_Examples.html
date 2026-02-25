@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.05–2.08.
+  - Ch 2.05: Paragraphs, inline text (strong, em, b, i, small, mark, span), br, hr.
+  - Ch 2.06: Anchor (a), href (absolute/relative), target and rel, fragment identifiers.
+  - Ch 2.07: Unordered (ul/li), ordered (ol/li), description (dl/dt/dd), nested lists.
+  - Ch 2.08: img (src, alt, width, height), picture/source, figure/figcaption, loading.
+  Homestead theme: voltage, coop, sensors, dashboard.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — Ch 2.05–2.08 Examples</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <!-- Ch 2.06: Skip link to main content; fragment identifier (#main). -->
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <header>
+      <h1>Homestead dashboard</h1>
+      <!-- Ch 2.07: Unordered list for nav; order does not matter. Only li as direct children of ul. -->
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="voltage.html">Voltage</a></li>
+          <li><a href="coop.html">Coop</a></li>
+          <!-- Ch 2.07: Nested list: ul inside li for submenu. -->
+          <li>
+            <a href="solar.html">Solar</a>
+            <ul>
+              <li><a href="solar.html#today">Today</a></li>
+              <li><a href="solar.html#week">This week</a></li>
+            </ul>
+          </li>
+          <li><a href="drip.html">Drip schedule</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main">
+      <h2>Voltage readings</h2>
+
+      <!-- Ch 2.05: Paragraph with inline semantics. strong = importance, em = emphasis. -->
+      <p>Battery voltage is currently <strong>12.1 V</strong>, <em>within normal range</em>. Monitor the <i>State of charge</i> (SOC) for low-battery alerts.</p>
+
+      <!-- Ch 2.05: b = stylistically offset (e.g. keyword); i = alternate voice (technical term). -->
+      <p>Key terms: <b>Battery</b>, <b>Solar input</b>, <b>Load</b>. The <i>LVD</i> (low-voltage disconnect) has not triggered. <small>Last updated: auto-refresh every 30 s.</small></p>
+
+      <!-- Ch 2.05: mark = highlighted/reference text (e.g. search hit or highlight). -->
+      <p>Alert threshold: <mark>11.8 V</mark> — below this the system may disconnect the load.</p>
+
+      <!-- Ch 2.05: span = generic inline container when no semantic element fits (e.g. for styling). -->
+      <p>Status: <span class="status-ok">OK</span>. No action required.</p>
+
+      <!-- Ch 2.05: hr = thematic break between sections (void element). -->
+      <hr>
+
+      <h2>Coop door status</h2>
+
+      <!-- Ch 2.05: br = line break within flow (e.g. address). Use sparingly. -->
+      <p>
+        The door is <strong>closed</strong>. Last opened at 06:30.<br>
+        Homestead Monitoring<br>
+        123 Farm Road<br>
+        Rural, ST 00000
+      </p>
+
+      <!-- Ch 2.07: Ordered list when order matters (e.g. steps). -->
+      <h3>Manual override steps</h3>
+      <ol>
+        <li>Disconnect power to the motor.</li>
+        <li>Release the manual latch.</li>
+        <li>Open or close the door by hand.</li>
+        <li>Re-engage the latch and restore power.</li>
+      </ol>
+
+      <!-- Ch 2.07: Description list for term–value pairs (sensor label : reading). -->
+      <h3>Current readings</h3>
+      <dl>
+        <dt>Battery voltage</dt>
+        <dd>12.4 V</dd>
+        <dt>Coop door</dt>
+        <dd>Closed</dd>
+        <dt>Last event</dt>
+        <dd>Door closed at 06:30</dd>
+      </dl>
+
+      <!-- Ch 2.06: External link with target="_blank" and rel="noopener noreferrer" for security. -->
+      <p>See <a href="https://example.com/docs/voltage" target="_blank" rel="noopener noreferrer">external voltage docs (opens in new tab)</a> for reference.</p>
+
+      <!-- Ch 2.06: Relative URL for same-site page. Descriptive link text. -->
+      <p><a href="voltage.html">View full voltage dashboard</a> for history and graphs.</p>
+
+      <hr>
+
+      <!-- Ch 2.08: img with required alt, width, height to reduce layout shift. -->
+      <h2>Status diagram</h2>
+      <img
+        src="images/voltage-status.svg"
+        alt="Battery 12.4 V, solar 18.2 V, load 12.1 V; all in normal range."
+        width="400"
+        height="200"
+      >
+
+      <!-- Ch 2.08: figure and figcaption for self-contained content with a caption. -->
+      <figure>
+        <img
+          src="images/battery-24h.png"
+          alt="Line graph: battery voltage 12.2 V to 12.6 V over the last 24 hours."
+          width="600"
+          height="300"
+          loading="lazy"
+        >
+        <figcaption>Battery voltage, last 24 hours</figcaption>
+      </figure>
+
+      <!-- Ch 2.08: picture with source for format negotiation (WebP with PNG fallback). -->
+      <figure>
+        <picture>
+          <source type="image/webp" srcset="images/coop-cam.webp">
+          <img
+            src="images/coop-cam.png"
+            alt="Coop camera view: door closed, no motion in frame."
+            width="640"
+            height="360"
+            loading="lazy"
+          >
+        </picture>
+        <figcaption>Coop camera snapshot</figcaption>
+      </figure>
+
+      <!-- Ch 2.08: Decorative icon could use alt="" so assistive tech skips it (not shown here; would be alt=""). -->
+    </main>
+
+    <footer>
+      <p><small>© Homestead Monitoring. Data is approximate.</small></p>
+    </footer>
+  </body>
+</html>

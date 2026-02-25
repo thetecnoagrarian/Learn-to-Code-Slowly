@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.13–2.16.
+  - Ch 2.13: Form validation (required, pattern, min/max, minlength), action/method (GET vs POST), name and submitted data.
+  - Ch 2.14: Semantic landmarks — header, main, footer, nav, aside; one main per page.
+  - Ch 2.15: section (thematic + heading), article (self-contained); document outline; heading hierarchy (no skip).
+  - Ch 2.16: div (block-level generic wrapper), span (inline hook); class (reusable), id (unique).
+  Homestead theme: dashboard, sensors, alerts, settings.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — Ch 2.13–2.16 Examples</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <!-- Ch 2.16: div as layout wrapper with no semantic meaning; landmarks come from header, main, footer inside. -->
+    <div class="page-layout">
+      <!-- Ch 2.14: header = intro/nav for page or section; banner landmark. -->
+      <header>
+        <h1>Homestead dashboard</h1>
+        <!-- Ch 2.14: nav = major navigation; use aria-label to distinguish if multiple navs. -->
+        <nav aria-label="Main navigation">
+          <ul>
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="sensors.html">Sensors</a></li>
+            <li><a href="settings.html">Settings</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <!-- Ch 2.14: one main per page; primary content; not inside header/footer/nav/aside. -->
+      <main id="main-content">
+        <!-- Ch 2.15: section = thematic grouping with heading; contributes to outline. -->
+        <section aria-labelledby="readings-heading">
+          <h2 id="readings-heading">Current readings</h2>
+
+          <!-- Ch 2.15: article = self-contained composition (e.g. sensor card); could stand alone. -->
+          <article class="sensor-card">
+            <h3>Battery voltage</h3>
+            <!-- Ch 2.16: span = inline hook for styling/script; no semantics. -->
+            <p>Value: <span class="reading-value" id="battery-voltage">12.4</span> <span class="unit">V</span></p>
+          </article>
+
+          <article class="sensor-card">
+            <h3>Coop door</h3>
+            <p>Status: <span class="reading-value">Closed</span>. Last change: <span class="reading-value" id="coop-last">06:30</span></p>
+          </article>
+        </section>
+
+        <!-- Ch 2.15: another section with heading; outline = h2 "Filter" then form. -->
+        <section aria-labelledby="filter-heading">
+          <h2 id="filter-heading">Filter</h2>
+          <!-- Ch 2.13: GET for query/filter; data in URL; bookmarkable. Validation attributes for UX; server must validate. -->
+          <form action="readings.html" method="get">
+            <p>
+              <label for="filter-sensor">Sensor</label>
+              <select id="filter-sensor" name="sensor">
+                <option value="">All</option>
+                <option value="battery">Battery</option>
+                <option value="coop">Coop</option>
+              </select>
+            </p>
+            <p>
+              <label for="filter-from">From</label>
+              <input type="date" id="filter-from" name="from">
+            </p>
+            <p>
+              <button type="submit">Apply</button>
+            </p>
+          </form>
+        </section>
+
+        <!-- Ch 2.13: POST for state-changing; validation: required, pattern (with title), min/max, minlength. -->
+        <section aria-labelledby="settings-heading">
+          <h2 id="settings-heading">Alert settings</h2>
+          <form action="/dashboard/settings" method="post">
+            <p>
+              <label for="min-v">Min voltage (V)</label>
+              <input type="number" id="min-v" name="min_voltage" value="11.8" min="10" max="15" step="0.1" required>
+            </p>
+            <p>
+              <label for="alert-email">Email</label>
+              <input type="email" id="alert-email" name="alert_email" required>
+            </p>
+            <p>
+              <label for="sensor-id">Sensor ID</label>
+              <input type="text" id="sensor-id" name="sensor_id" pattern="[a-z]+_[a-z]+" title="e.g. battery_1 or coop_door" minlength="3" maxlength="20">
+            </p>
+            <p>
+              <button type="submit" name="action" value="save">Save</button>
+            </p>
+          </form>
+        </section>
+      </main>
+
+      <!-- Ch 2.14: aside = tangential content; complementary landmark. -->
+      <aside aria-labelledby="alerts-heading">
+        <h2 id="alerts-heading">Active alerts</h2>
+        <!-- Ch 2.16: div for grouping with no theme; class for styling. -->
+        <div class="alert-list">
+          <p>No active alerts.</p>
+        </div>
+      </aside>
+
+      <!-- Ch 2.14: footer = end of page; contentinfo landmark. -->
+      <footer>
+        <nav aria-label="Footer links">
+          <ul>
+            <li><a href="about.html">About</a></li>
+            <li><a href="api.html">API</a></li>
+          </ul>
+        </nav>
+        <p><small>© Homestead. Validate on server; HTTPS for forms.</small></p>
+      </footer>
+    </div>
+  </body>
+</html>

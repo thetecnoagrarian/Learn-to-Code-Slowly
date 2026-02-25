@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!--
+  Code examples for Section B Phase 2, Chapters 2.09–2.12.
+  - Ch 2.09: audio, video (source, track, poster, controls), object/embed fallback, iframe (title, sandbox).
+  - Ch 2.10: table, caption, thead/tbody/tfoot, th/td, scope (col/row).
+  - Ch 2.11: form (action, method), label+for+id, input (text, number, email, password, checkbox, radio), name, required.
+  - Ch 2.12: select/option/optgroup, textarea, button (submit/button), fieldset/legend, validation attributes.
+  Homestead theme: dashboard, sensors, alerts, settings.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — Ch 2.09–2.12 Examples</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header>
+      <h1>Homestead dashboard</h1>
+    </header>
+
+    <main>
+      <!-- ========== Ch 2.09: Audio, Video, Embedded ========== -->
+      <section aria-labelledby="media-heading">
+        <h2 id="media-heading">Media and embeds</h2>
+
+        <!-- Ch 2.09: audio with source(s), controls; no autoplay with sound. -->
+        <h3>Alert sound</h3>
+        <audio controls>
+          <source src="audio/alert.mp3" type="audio/mpeg">
+          <source src="audio/alert.ogg" type="audio/ogg">
+          <p>Your browser cannot play the alert. <a href="audio/alert.mp3">Download the file</a>.</p>
+        </audio>
+
+        <!-- Ch 2.09: video with poster, width/height, controls; source for format; track for captions. -->
+        <h3>Coop camera</h3>
+        <video
+          controls
+          poster="images/coop-poster.jpg"
+          width="640"
+          height="360"
+          preload="metadata"
+        >
+          <source src="video/coop-stream.webm" type="video/webm">
+          <source src="video/coop-stream.mp4" type="video/mp4">
+          <track kind="captions" src="video/coop-captions.vtt" srclang="en" label="English" default>
+          <p>Video not supported. <a href="video/coop-stream.mp4">Download the clip</a>.</p>
+        </video>
+
+        <!-- Ch 2.09: object with fallback content when PDF cannot be displayed. -->
+        <h3>Wiring diagram</h3>
+        <object data="docs/wiring.pdf" type="application/pdf" width="600" height="400">
+          <p><a href="docs/wiring.pdf">Download the wiring diagram (PDF)</a>.</p>
+        </object>
+
+        <!-- Ch 2.09: iframe with title (accessibility), sandbox (security), loading="lazy". -->
+        <h3>Property map</h3>
+        <iframe
+          src="https://example.com/map/embed"
+          title="Embedded map of homestead property"
+          width="600"
+          height="400"
+          sandbox="allow-same-origin"
+          loading="lazy"
+        ></iframe>
+      </section>
+
+      <!-- ========== Ch 2.10: Tables ========== -->
+      <section aria-labelledby="tables-heading">
+        <h2 id="tables-heading">Sensor readings</h2>
+
+        <!-- Ch 2.10: table with caption, thead (th scope="col"), tbody (tr/td), tfoot. -->
+        <table>
+          <caption>Current sensor readings, last update</caption>
+          <thead>
+            <tr>
+              <th scope="col">Sensor</th>
+              <th scope="col">Value</th>
+              <th scope="col">Unit</th>
+              <th scope="col">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Battery voltage</td>
+              <td>12.4</td>
+              <td>V</td>
+              <td>14:32</td>
+            </tr>
+            <tr>
+              <td>Solar input</td>
+              <td>18.2</td>
+              <td>V</td>
+              <td>14:32</td>
+            </tr>
+            <tr>
+              <td>Coop door</td>
+              <td>Closed</td>
+              <td>—</td>
+              <td>06:30</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4">Data refreshes every 30 s.</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- Ch 2.10: row headers — first column is th with scope="row". -->
+        <table>
+          <caption>Thresholds by zone</caption>
+          <thead>
+            <tr>
+              <th scope="col">Zone</th>
+              <th scope="col">Min (V)</th>
+              <th scope="col">Max (V)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Battery</th>
+              <td>11.8</td>
+              <td>14.4</td>
+            </tr>
+            <tr>
+              <th scope="row">Load</th>
+              <td>11.5</td>
+              <td>13.0</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ========== Ch 2.11 & 2.12: Forms ========== -->
+      <section aria-labelledby="forms-heading">
+        <h2 id="forms-heading">Forms</h2>
+
+        <!-- Ch 2.11: GET for filter (query); action, method; label for/id, input name. -->
+        <h3>Filter readings</h3>
+        <form action="readings.html" method="get">
+          <p>
+            <label for="filter-sensor">Sensor</label>
+            <select id="filter-sensor" name="sensor">
+              <option value="">All</option>
+              <optgroup label="Voltage">
+                <option value="battery">Battery</option>
+                <option value="solar">Solar</option>
+              </optgroup>
+              <optgroup label="Status">
+                <option value="coop">Coop door</option>
+              </optgroup>
+            </select>
+          </p>
+          <p>
+            <label for="filter-date">From date</label>
+            <input type="date" id="filter-date" name="from">
+          </p>
+          <p>
+            <button type="submit">Apply filter</button>
+            <button type="button">Clear</button>
+          </p>
+        </form>
+
+        <!-- Ch 2.11: POST for save; Ch 2.11: text, number, email, checkbox, radio. Ch 2.12: fieldset/legend, select, textarea, submit. -->
+        <h3>Alert settings</h3>
+        <form action="/dashboard/settings" method="post">
+          <fieldset>
+            <legend>Thresholds</legend>
+            <p>
+              <label for="min-voltage">Min voltage (V)</label>
+              <input type="number" id="min-voltage" name="min_voltage" value="11.8" min="10" max="15" step="0.1" required>
+            </p>
+            <p>
+              <label for="max-voltage">Max voltage (V)</label>
+              <input type="number" id="max-voltage" name="max_voltage" value="14.4" min="10" max="15" step="0.1" required>
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Notifications</legend>
+            <p>
+              <label for="alert-email">Email for alerts</label>
+              <input type="email" id="alert-email" name="alert_email" required placeholder="you@example.com" autocomplete="email">
+            </p>
+            <p>
+              <span class="label">Alert when</span>
+              <label><input type="checkbox" name="alert_low_voltage" value="1" checked> Low voltage</label>
+              <label><input type="checkbox" name="alert_coop" value="1"> Coop door open</label>
+              <label><input type="checkbox" name="alert_fault" value="1"> Poultry net fault</label>
+            </p>
+            <p>
+              <span class="label">Unit</span>
+              <label><input type="radio" name="unit" value="V" checked> Volts (V)</label>
+              <label><input type="radio" name="unit" value="A"> Amps (A)</label>
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Notes</legend>
+            <p>
+              <label for="settings-notes">Optional notes</label>
+              <textarea id="settings-notes" name="notes" rows="3" cols="40" minlength="0" maxlength="500" placeholder="e.g. Only alert during night hours."></textarea>
+            </p>
+          </fieldset>
+
+          <p>
+            <button type="submit" name="action" value="save">Save settings</button>
+            <button type="reset">Reset</button>
+          </p>
+        </form>
+
+        <!-- Ch 2.12: textarea with default content between tags; submit with name/value. -->
+        <h3>Report issue</h3>
+        <form action="/report" method="post">
+          <p>
+            <label for="report-category">Category</label>
+            <select id="report-category" name="category" required>
+              <option value="">Choose…</option>
+              <option value="voltage">Voltage</option>
+              <option value="coop">Coop</option>
+              <option value="other">Other</option>
+            </select>
+          </p>
+          <p>
+            <label for="report-details">Details</label>
+            <textarea id="report-details" name="details" rows="4" cols="50" minlength="10" maxlength="1000" required>Describe what happened…</textarea>
+          </p>
+          <p>
+            <button type="submit" name="submit" value="send">Send report</button>
+          </p>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

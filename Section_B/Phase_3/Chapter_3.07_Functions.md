@@ -1,61 +1,92 @@
-# Phase 2.6 · Chapter 2.6.7: Functions
+# Section B Phase 3 · Chapter 3.07: Functions
 
-Function declarations vs expressions; parameters and return; arrow functions; functions as values. Bridge to Phase 0.4.
-
----
+This chapter covers how to define and call functions, pass parameters, return values, and use functions as values. It builds on Chapter 3.06 (Loops and Iteration): you package loop logic, conditions, and other code inside functions so they can be reused by name. Chapter 3.08 (Scope and Closures) then explains where variables are visible and how functions retain access to the scope where they were created. The idea of naming behavior and isolating responsibility is the same as in earlier phases; here you see how it is expressed in JavaScript with declarations, expressions, arrow functions, and callbacks. Functions are the main way you structure programs: instead of one long script, you break logic into named pieces that you call by name, which makes code easier to read, test, and reuse.
 
 ## Learning Objectives
 
-- Define functions with function declarations and function expressions (including arrow functions).
-- Pass parameters and return values; understand missing/extra arguments and default parameters.
-- Use arrow functions for short callbacks and to preserve this (brief mention).
-- Treat functions as values (assign, pass, return). Bridge to Phase 0.4 (functions and behavior).
+By the end of this chapter, you should be able to:
+- Define functions with function declarations and function expressions (including named expressions and arrow functions).
+- Pass parameters and return values; handle missing and extra arguments; use default parameters and rest parameters.
+- Use arrow functions for short callbacks and where you need to preserve the enclosing this (brief mention).
+- Treat functions as values: assign them to variables, pass them to other functions, and return them.
+- Choose between declarations, expressions, and arrow functions based on hoisting, callbacks, and method context.
 
----
+## Key Terms
+
+- **function declaration**: A statement that defines a function with a name; it is hoisted so the function can be called before the line where it appears in the source. You write function name(parameters) { body }.
+- **function expression**: An expression that produces a function value; it is not hoisted. You assign it to a variable (e.g. const name = function(parameters) { body }) or pass it where a value is expected.
+- **parameter**: A variable listed in the function’s parentheses; it receives the value passed in when the function is called. Parameters are local to the function.
+- **argument**: The value you pass to a function when you call it. The argument is assigned to the corresponding parameter (by position).
+- **return**: A statement that exits the function and optionally supplies a value. If the function has no return or returns without a value, the call result is undefined.
+- **arrow function**: A concise function form: (params) => expression or (params) => { statements }. It has no own this (it inherits from the enclosing scope) and no arguments object; useful for callbacks and short inline functions.
+- **callback**: A function passed to another function to be called later (e.g. when an event occurs, when a loop processes an item, or when an async operation completes).
+
+Once you have functions, you can structure a program as a set of named behaviors: one function fetches data, another validates it, another formats it for display, and the top-level flow calls them in order. That makes it easier to change one part without touching the rest and to test each piece in isolation.
 
 ## 1) Declarations vs Expressions
 
-- [Expand: function name() { }—declaration; hoisted; const name = function() { }—expression; not hoisted.]
-- [Expand: const name = function otherName() { }—named expression; otherName for recursion/debugging.]
-- [Expand: both create function values; difference is hoisting and naming.]
+A function declaration is a statement that defines a named function. You write function name(parameters) followed by a block. The function is hoisted: the JavaScript engine treats it as if it were moved to the top of its scope, so you can call the function before the line where the declaration appears in the source. That is convenient when the main logic of a script or module is at the top and helper functions are defined below; you can still call the helpers. Use declarations when you want a named function that is available throughout the scope and when the order of definition does not matter for readability. The function name is visible in stack traces and when debugging. In strict mode and in modules, function declarations are block-scoped in some contexts; in a simple script, a declaration at the top level is in the global scope. You can have multiple declarations with the same name in different blocks (e.g. one per if branch), but that can be confusing; prefer one definition per name per scope.
 
----
+A function expression produces a function value as part of a larger expression. You often assign it to a variable: const name = function(parameters) { body };. The function is not hoisted; the variable is hoisted (with let or const it is in the "temporal dead zone" until the line runs), but the function value is only assigned when that line executes. So you cannot call the function before the assignment. Use expressions when you want to assign a function to a variable, when you pass a function as an argument, or when you need the function to be created at a specific point (e.g. inside a condition or loop). You can give the function a name after the function keyword: const name = function innerName(parameters) { body };. The inner name is useful for recursion (the function can call itself by that name) and for stack traces; it is not a variable in the outer scope. Both declarations and expressions create function values; the difference is hoisting and how you refer to the function (by the declaration name or by the variable holding the expression). You can also put a function expression inside an object: const api = { fetchReading: function(id) { ... } }; then call api.fetchReading("sensor1"). The property holds the function; the object is a simple way to group related functions. For a homestead example: a declaration for getBatteryReading() that is called from the top of the script; an expression assigned to handleZoneClick that is passed to a UI library or used as an event handler; a named expression for a recursive helper that walks a tree of zones so the stack trace shows the inner name.
 
-## 2) Parameters and return
+## 2) Parameters and Return
 
-- [Expand: parameters: (a, b); return value; no return or return; → undefined.]
-- [Expand: extra arguments ignored; missing arguments are undefined; default parameters: (a = 0) {}.]
-- [Expand: rest: (...args) for remaining arguments as array.]
+Parameters are the variables listed in the function’s parentheses. When you call the function, you pass arguments; the first argument is assigned to the first parameter, the second to the second, and so on. If you pass fewer arguments than parameters, the extra parameters are undefined. If you pass more arguments than parameters, the extra arguments are ignored (but they are available via the arguments object in a non-arrow function, or you can use rest parameters). You can give parameters default values: function name(a, b = 0) so that when the second argument is missing (or explicitly undefined), b is 0. Default parameters are evaluated when the function is called, so you can use earlier parameters in later defaults (e.g. function scale(x, factor = 1) and use x in the body). Defaults make it clear what value is used when an argument is omitted and reduce the need for checks inside the body.
 
----
+The return statement exits the function and can provide a value. You write return; or return value;. If the function runs to the end without hitting return, or if it hits return with no value, the call result is undefined. So every path that should produce a value needs a return with that value. Return only sends one value back; if you need to return multiple values, return an object or an array and the caller can destructure or index. A function can have multiple return statements in different branches (e.g. if (invalid) return null; ... return result;); the first return that runs exits the function. That is a common pattern for early exits: validate inputs and return early, then do the main work and return the result. For a homestead example: a function that takes a sensor id and a threshold and returns the latest reading if it is below threshold, or null otherwise; the caller uses the return value to decide whether to show an alert. Another: a function that takes a list of zone names and returns the first zone that needs water; it uses a loop and return as soon as it finds one, so the rest of the list is not processed.
+
+Rest parameters let you collect the "rest" of the arguments into an array. You write ...paramName as the last parameter; paramName is an array containing all arguments from that position onward. So function log(...args) can be called as log("a", "b", "c") and args is ["a", "b", "c"]. Rest is useful when the number of arguments varies (e.g. a formatter that takes a message and then any number of values to interpolate). You cannot have another parameter after a rest parameter; the rest must be last. You can combine normal parameters with rest: function format(unit, ...readings) so the first argument is the unit and the rest are collected into readings. When you call a function, you pass arguments by position; the names of the variables at the call site do not matter, only the order. So format("V", r1, r2, r3) passes "V" as unit and [r1, r2, r3] as readings. For a homestead example: a function that takes a threshold and any number of sensor ids and returns the first id whose reading is below threshold; use rest for the ids and loop over them inside the function.
 
 ## 3) Arrow Functions
 
-- [Expand: (params) => expression or (params) => { statements }.]
-- [Expand: no own this (inherits from enclosing scope); no arguments; concise for callbacks.]
-- [Expand: when to use: callbacks, map/filter; when not: methods that need this, need arguments.]
+An arrow function is a shorter syntax for a function. You write (params) => expression or (params) => { statements }. For a single parameter you can omit the parentheses: param => expression. For zero parameters you use () =>. The expression form returns the value of the expression without writing return; the block form requires return if you want to return a value. Arrow functions do not have their own this: they inherit this from the enclosing scope (the scope where the arrow function was defined). That makes them useful as callbacks when the callback should use the same this as the surrounding code (e.g. inside a method or event setup). Arrow functions also do not have their own arguments object; use rest parameters if you need a list of arguments. Use arrow functions for short callbacks (e.g. passed to map, filter, forEach, or setTimeout) and when you want to preserve the enclosing this. Do not use arrow functions for object methods that need to use this to refer to the object; in those cases use a regular function so this is bound when the method is called. The "no own this" rule means that in an object like { name: "sensor1", getLabel: () => this.name }, the arrow would not refer to the object (this would be the enclosing scope, often undefined in strict mode). So for methods, use function getLabel() { return this.name; } so that when you call obj.getLabel(), this is obj. For a homestead example: an arrow function passed to map to transform each sensor reading into a display string; or an arrow function passed as a click handler that uses variables from the enclosing scope (e.g. the selected zone id).
 
----
+When the arrow function body is a single expression, you can omit the braces and the return; the expression’s value is returned. When the body has multiple statements or you need to do something before returning, use braces and an explicit return. Keep arrow functions short; if the logic is long or complex, use a named function (declaration or expression) so the intent is clear and the code is easier to test. Arrow functions are often used with array methods: you pass an arrow that takes one item and returns a transformed value or a boolean, and the method calls it for each element. That keeps the loop inside the method and the behavior in your callback. For example: sensors.map(s => s.reading < threshold ? "Low" : "OK") to get an array of status strings; the arrow is the callback that runs once per sensor.
 
 ## 4) Functions as Values
 
-- [Expand: functions are values; can be assigned, passed to other functions, returned.]
-- [Expand: callbacks: pass a function to be called later (e.g. setTimeout, array methods).]
-- [Expand: Bridge to Phase 0.4: naming behavior, isolating responsibility.]
+In JavaScript, functions are values. You can assign a function to a variable, store it in an object or array, pass it as an argument to another function, and return it from a function. That enables callbacks: you pass a function to be called later. For example, a function that processes a list might accept a callback that is invoked for each item; the caller supplies the behavior (e.g. "format this reading" or "check if this zone is dry"). The same loop can then be reused for different behaviors. Another pattern: a function that returns a function (e.g. a factory that creates configured handlers). You will see this more in Chapter 3.08 (Scope and Closures) when the returned function retains access to variables from the outer function.
 
----
+Callbacks are used everywhere: array methods (map, filter, forEach, find) take a callback; timers (setTimeout, setInterval) take a callback to run after a delay; event handlers are callbacks; many async APIs take a callback to run when the operation completes. Passing a function is the same as passing any other value; the receiver can call it with arguments and use the return value. You can also return a function from a function: the outer function runs once and returns a new function; the inner function can use variables from the outer function's scope when it is later called. That pattern (a function that returns a function) is common for creating configured handlers (e.g. one handler per zone id). For a homestead dashboard: pass a function to "on each sensor" that updates the UI for that sensor; pass a function to "when button clicked" that starts the drip zone; pass a function to a retry helper that performs one attempt and returns success or failure. Functions as values let you name behavior and plug it in where it is needed, which keeps code modular and testable. Chapter 3.08 will make the "returned function remembers the outer scope" idea precise with closures.
+
+## 5) When to Use What
+
+Use a function declaration when you want a named function available throughout the scope and hoisting is useful (e.g. main helpers defined below the top-level logic). Use a function expression when you assign to a variable, pass as an argument, or need the function created at a specific point; use a named expression (function innerName() { }) when you need recursion or better stack traces. Use an arrow function for short callbacks (especially with map, filter, forEach), when you want to preserve the enclosing this, or when the body is a single expression. Do not use arrow functions for object methods that need this to refer to the object. Use default parameters when a parameter often has a fixed fallback; use rest when the number of arguments varies. You can use default parameters for optional behavior: for example, a function that takes a config object and an optional formatter; if no formatter is passed, the default is a function that stringifies the value. That way the caller can omit the formatter and get sensible behavior, or pass a custom one. Always return a value from paths that should produce a result; use undefined or null explicitly when "no value" is meaningful. When you are not sure whether to use a declaration or an expression, prefer a declaration for top-level helpers that are called from several places, and use an expression when the function is assigned to a variable or passed as an argument (that makes the "this is a value" usage clear). For homestead code: declarations for main helpers (getReading, validateConfig); expressions for handlers assigned to variables or passed to APIs; arrow functions for one-line callbacks in loops or array methods.
+
+## 6) Homestead Examples: Functions in Practice
+
+A function getBatteryReading(sensorId) that returns the latest reading or null; the caller uses it in a condition or passes the result to a display function. A function formatReading(value, unit) that returns a string (e.g. "12.3 V"); use it inside a loop over sensors so each row shows the same format. A function findZoneNeedingWater(zones) that loops over zones and returns the first zone below the moisture threshold, or null; the irrigation logic calls it and runs that zone. A function validateConfig(config) that uses for...in over the config object and returns true only if all required keys are present and valid; call it before starting the dashboard. An arrow function passed to map to turn each reading into a status string (e.g. reading < threshold ? "Low" : "OK"). A callback passed to a "retry" helper: the callback performs one attempt and returns success or failure; the helper calls it in a loop until success or max attempts. A function createZoneHandler(zoneId) that returns another function; the returned function is the click handler for that zone and uses zoneId from the outer scope (you will see this pattern again in Chapter 3.08). Event handlers for coop door, drip buttons, or sensor rows: each is a function (declaration, expression, or arrow) that is passed to the UI or event system and called when the user acts. A function getReadingsBelowThreshold(threshold, ...sensorIds) that uses rest for sensor ids and returns an array of readings that are below threshold; the caller can pass one or many ids. A function that takes a list of freezers and a callback, and calls the callback for each freezer with its id and current temp; the caller supplies the behavior (e.g. update a row, or add to an alert list). A function that builds a summary string from several readings (battery, solar, load) and takes an optional formatter callback; if no formatter is passed, it uses a default (e.g. two decimal places). That way the same summary logic can be reused with different display formats. Functions tie together variables (3.02), types (3.03), operators (3.04), conditions (3.05), and loops (3.06) into named, reusable behavior for homestead dashboards and scripts.
+
+## 7) What Breaks When Functions Are Wrong
+
+If you call a function expression before the assignment runs, you get an error (the variable exists but does not hold a function yet). Fix by defining or assigning the function before the first call, or use a declaration so the function is hoisted. If you pass fewer arguments than expected and do not use defaults, the missing parameters are undefined; using them without checks can cause errors or wrong behavior. Fix by adding default parameters or by checking for undefined at the start of the function. If you forget to return a value in a path that should produce one, the function returns undefined; the caller may then use undefined in a calculation or display. Fix by adding return value on every path that should yield a result. If you use an arrow function as an object method and refer to this, this will not be the object (it will be the enclosing scope). Fix by using a regular function for methods that need this. If you pass a callback that expects arguments but the caller does not pass them (or passes them in the wrong order), the callback gets undefined or wrong values. Fix by matching the callback signature to what the API documents (e.g. forEach passes item, index, array). If you have too many parameters and the list is hard to remember, consider passing an options object so the caller passes one object with named properties; the function destructures or reads the properties it needs. If you mutate a parameter that is an object or array, the caller sees the change (objects are passed by reference). Sometimes that is intended; if not, work on a copy so the caller's data is unchanged. So: define before use for expressions, use defaults or checks for missing args, return explicitly when needed, use regular functions for methods that need this, match callback signatures to the API, and be aware of mutating parameters. When debugging "wrong value returned," add a return on every branch that should produce a value and ensure the condition for each branch is correct. One more: if you pass a function where a callback is expected but you write handleClick() instead of handleClick, you are passing the result of calling the function (often undefined) instead of the function itself. The API will try to call that value and get an error. Pass the function reference without parentheses when you want to give the receiver a function to call later; use parentheses when you want to call the function yourself and pass its return value.
+
+## 8) Checklist
+
+When you write functions: (1) Use declarations when hoisting helps; use expressions when assigning or passing. (2) Use arrow functions for short callbacks and when preserving this; avoid arrows for object methods that need this. (3) Give parameters defaults when a value is commonly omitted. (4) Use rest parameters when the number of arguments varies. (5) Return a value on every path that should produce one. (6) Name functions clearly (verb or verb phrase) so call sites are readable. (7) Keep functions focused: one responsibility per function; extract helpers when a function gets long. (8) Match callback parameters to the signature the caller will use. (9) Avoid mutating parameters (objects/arrays) unless the caller expects it; copy when in doubt. Chapter 3.08 (Scope and Closures) explains where variables are visible and how functions retain access to the scope where they were defined.
+
+## Common Pitfalls
+
+Calling a function expression before assignment: The variable is not yet assigned. Use a declaration or move the call after the assignment.
+
+Missing return: A path that should produce a value does not return; the caller gets undefined. Add return value on every such path.
+
+Using arrow function as method that needs this: this in the arrow is the enclosing scope, not the object. Use a regular function for the method.
+
+Wrong number or order of arguments: Parameters get wrong values. Use defaults, check for undefined, or pass an options object.
+
+Callback signature mismatch: The callback expects (item, index) but the API passes (item) only. Check the API docs and match the parameters.
+
+Too many parameters: Hard to remember order. Consider a single options object with named properties.
+
+Mutating parameters: Changing an object or array passed in affects the caller. Copy first if the caller should not see changes.
+
+Passing result instead of function: Writing callback() passes the return value; the receiver needs the function. Pass callback (no parentheses) when registering a callback.
 
 ## Summary
 
-- Declarations vs expressions; parameters, return, defaults, rest; arrow functions for callbacks.
-- Functions are values—assign, pass, return; enables callbacks and higher-order patterns.
+Use function declarations for named, hoisted functions; use function expressions when assigning or passing. Use parameters with defaults and rest as needed; return explicitly on every path that should produce a value. Use arrow functions for short callbacks and when preserving this; use regular functions for object methods that need this. Functions are values: assign, pass, and return them to build callbacks and reusable behavior. Chapter 3.08 (Scope and Closures) builds on this by explaining scope and how functions retain access to the environment where they were created. Understanding parameters, return, and functions as values gives you the foundation for closures: a function that "closes over" variables from its defining scope and can use them when it is called later.
 
----
+## Next
 
-## Bridge / Next
-
-Next: **Chapter 2.6.8 — Scope and Closures**.
-
----
-
-*Expansion note for ChatGPT: One declaration, one arrow, one callback example. Target ~150 lines.*
+Next: **Chapter 3.08: Scope and Closures**. That chapter covers where variables are visible (function scope, block scope), how closures allow functions to "remember" the scope where they were defined, and how that enables patterns like factories and event handlers that need to capture a value (e.g. zone id) at creation time. The functions you define in this chapter are the building blocks for understanding scope and closures in the next. When a function is created, it captures a reference to the scope where it was defined; that scope is what Chapter 3.08 will make precise and use to explain closures.
